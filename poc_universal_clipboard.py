@@ -55,7 +55,7 @@ from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 import ifaddr
-from PIL import Image, ImageOps
+from PIL import Image, ImageGrab, ImageOps
 
 try:
     import pillow_heif
@@ -82,12 +82,15 @@ from pymobiledevice3.remote.core_device.pasteboard_service import (
     POLICY_ALL_RESOLVED,
     POLICY_PROMISE_SECONDARY,
     RESOLVE_COMMAND,
+    SET_COMMAND,
     UTI_PLAIN_TEXT,
     UTI_TEXT,
     UTI_URL,
     UTI_UTF8_PLAIN_TEXT,
     UTI_WEB_ARCHIVE,
     PasteboardService,
+    data_item,
+    text_item,
 )
 from pymobiledevice3.remote.remote_service_discovery import RemoteServiceDiscoveryService
 from pymobiledevice3.remote.rsd_tunnel import PreferredRsdTunnel
@@ -412,6 +415,12 @@ class WindowsClipboardWriter:
         self._user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
         self._user32.SetClipboardData.restype = wintypes.HANDLE
 
+        self._user32.GetClipboardData.argtypes = [wintypes.UINT]
+        self._user32.GetClipboardData.restype = wintypes.HANDLE
+
+        self._user32.IsClipboardFormatAvailable.argtypes = [wintypes.UINT]
+        self._user32.IsClipboardFormatAvailable.restype = wintypes.BOOL
+
         self._user32.RegisterClipboardFormatW.argtypes = [wintypes.LPCWSTR]
         self._user32.RegisterClipboardFormatW.restype = wintypes.UINT
 
@@ -421,6 +430,9 @@ class WindowsClipboardWriter:
         self._kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
         self._kernel32.GlobalAlloc.restype = wintypes.HGLOBAL
 
+        self._kernel32.GlobalSize.argtypes = [wintypes.HGLOBAL]
+        self._kernel32.GlobalSize.restype = ctypes.c_size_t
+
         self._kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
         self._kernel32.GlobalLock.restype = ctypes.c_void_p
 
@@ -429,6 +441,72 @@ class WindowsClipboardWriter:
 
         self._kernel32.GlobalFree.argtypes = [wintypes.HGLOBAL]
         self._kernel32.GlobalFree.restype = wintypes.HGLOBAL
+
+    def get_sequence_number(self) -> int:
+        return int(self._user32.GetClipboardSequenceNumber())
+
+    def read_payload(self) -> Optional[tuple["ExtractedPayload", Optional[tuple[int, int]]]]:
+        """Read current Windows clipboard content (Unicode text/URL or PNG/DIB image) for Windows -> iPhone sync."""
+        # 1. Check Unicode Text first
+        if self._user32.IsClipboardFormatAvailable(CF_UNICODETEXT):
+            opened = False
+            for _ in range(5):
+                if self._user32.OpenClipboard(None):
+                    opened = True
+                    break
+                time.sleep(0.015)
+            if opened:
+                try:
+                    handle = self._user32.GetClipboardData(CF_UNICODETEXT)
+                    if handle:
+                        ptr = self._kernel32.GlobalLock(handle)
+                        if ptr:
+                            try:
+                                text = ctypes.wstring_at(ptr)
+                            finally:
+                                self._kernel32.GlobalUnlock(handle)
+                            if text and text.strip():
+                                is_url = bool(URL_REGEX.match(text.strip()))
+                                uti = UTI_URL if is_url else UTI_UTF8_PLAIN_TEXT
+                                raw_bytes = text.encode("utf-8")
+                                return (
+                                    ExtractedPayload(
+                                        kind="url" if is_url else "text",
+                                        uti=uti,
+                                        raw_size=len(raw_bytes),
+                                        text=text,
+                                    ),
+                                    None,
+                                )
+                except Exception:
+                    pass
+                finally:
+                    self._user32.CloseClipboard()
+
+        # 2. Check Image (PNG or DIB via ImageGrab)
+        if (
+            (self.cf_png and self._user32.IsClipboardFormatAvailable(self.cf_png))
+            or self._user32.IsClipboardFormatAvailable(CF_DIB)
+            or self._user32.IsClipboardFormatAvailable(CF_DIBV5)
+        ):
+            with contextlib.suppress(Exception):
+                grabbed = ImageGrab.grabclipboard()
+                if isinstance(grabbed, Image.Image):
+                    rgba = grabbed.convert("RGBA")
+                    width, height = rgba.size
+                    buf = io.BytesIO()
+                    rgba.save(buf, format="PNG")
+                    png_bytes = buf.getvalue()
+                    return (
+                        ExtractedPayload(
+                            kind="image",
+                            uti="public.png",
+                            raw_size=len(png_bytes),
+                            image_bytes=png_bytes,
+                        ),
+                        (width, height),
+                    )
+        return None
 
     @contextlib.contextmanager
     def _open_clipboard_locked(self):
@@ -992,6 +1070,7 @@ class ClipboardHistoryStore:
         ios_version: Optional[str],
         latency_ms: float,
         dimensions: Optional[tuple[int, int]] = None,
+        source: str = "iphone",
     ) -> dict[str, Any]:
         now = time.time()
         iso_now = datetime.fromtimestamp(now, tz=timezone.utc).astimezone().strftime("%H:%M:%S")
@@ -1015,7 +1094,9 @@ class ClipboardHistoryStore:
 
         display_text = payload.text or ""
         if payload.kind == "image":
-            display_text = f"Image ({width} × {height} px)" if width and height else "Image from iPhone"
+            display_text = f"Image ({width} × {height} px)" if width and height else "Image"
+
+        device_label = "This device" if source == "pc" else friendly_device_name(product_type)
 
         entry: dict[str, Any] = {
             "id": item_id,
@@ -1029,8 +1110,9 @@ class ClipboardHistoryStore:
             "raw_size": payload.raw_size,
             "change_count": change_count,
             "transport": transport,
-            "device_model": friendly_device_name(product_type),
-            "product_type": product_type or "iPhone",
+            "source": source,
+            "device_model": device_label,
+            "product_type": product_type or ("PC" if source == "pc" else "iPhone"),
             "ios_version": ios_version or "",
             "latency_ms": round(latency_ms, 1),
             "timestamp": now,
@@ -1158,8 +1240,10 @@ class UniversalClipboardCoordinator:
 
         # Live runtime state for WinUI 3 desktop client
         self.loop: Optional[asyncio.AbstractEventLoop] = None
+        self._active_rsd: Optional[RemoteServiceDiscoveryService] = None
         self._active_pull_trigger: Optional[asyncio.Event] = None
         self._session_cancel_event: Optional[asyncio.Event] = None
+        self._own_change_ids: set[tuple[Any, Optional[int]]] = set()
         self.state: str = "starting"
         self.state_message: str = "Initializing Universal Clipboard service..."
         self.connected_udid: Optional[str] = None
@@ -1233,6 +1317,120 @@ class UniversalClipboardCoordinator:
         html_b64 = item.get("html_base64")
         html_bytes = base64.b64decode(html_b64) if isinstance(html_b64, str) and html_b64 else None
         return self.clipboard.write_text(text, html_bytes=html_bytes, is_url=(kind == "url"))
+
+    def send_history_item_to_iphone(self, item_id: str) -> bool:
+        """Push an existing history item from Windows directly to the connected iPhone pasteboard."""
+        if not self.loop or not self._active_rsd:
+            raise RuntimeError("iPhone is not currently connected")
+        item = self.history.get_item(item_id)
+        if not item:
+            raise KeyError(f"History item {item_id} not found")
+
+        kind = str(item.get("kind") or "text")
+        if kind == "image":
+            img_bytes = self.history.get_image_bytes(item_id)
+            if not img_bytes:
+                raise RuntimeError("Saved image file is missing")
+            payload = ExtractedPayload(
+                kind="image",
+                uti="public.png",
+                raw_size=len(img_bytes),
+                image_bytes=img_bytes,
+            )
+            dims = (int(item.get("width") or 0), int(item.get("height") or 0))
+        else:
+            text = str(item.get("text") or "")
+            raw = text.encode("utf-8")
+            payload = ExtractedPayload(
+                kind=kind,
+                uti=UTI_URL if kind == "url" else UTI_UTF8_PLAIN_TEXT,
+                raw_size=len(raw),
+                text=text,
+            )
+            dims = None
+
+        fut = asyncio.run_coroutine_threadsafe(
+            self._push_payload_to_iphone(
+                self._active_rsd,
+                payload,
+                self.active_transport or "USB",
+                dimensions=dims,
+                record_history=False,
+            ),
+            self.loop,
+        )
+        return bool(fut.result(timeout=12.0))
+
+    async def _push_payload_to_iphone(
+        self,
+        rsd: RemoteServiceDiscoveryService,
+        payload: ExtractedPayload,
+        active_transport: str,
+        dimensions: Optional[tuple[int, int]] = None,
+        record_history: bool = True,
+    ) -> bool:
+        """Write `payload` to the iPhone general pasteboard via `com.apple.coredevice.pasteboardservice` `SET`."""
+        t_start = time.perf_counter()
+        fp = payload.fingerprint
+        self.recent_fingerprints[fp] = time.monotonic()
+
+        if payload.kind == "image" and payload.image_bytes is not None:
+            items = [data_item("public.png", payload.image_bytes)]
+        elif payload.text is not None:
+            utis = [UTI_UTF8_PLAIN_TEXT, UTI_PLAIN_TEXT, UTI_TEXT]
+            if payload.kind == "url":
+                utis.append(UTI_URL)
+            items = [text_item(payload.text, utis)]
+        else:
+            return False
+
+        try:
+            async with PasteboardService(rsd) as pb_service:
+                reply = await asyncio.wait_for(
+                    pb_service.set(items, GENERAL_PASTEBOARD),
+                    timeout=10.0,
+                )
+            total_ms = (time.perf_counter() - t_start) * 1000.0
+            change_id = extract_change_info(reply) if isinstance(reply, dict) else (None, None)
+            if change_id[1] is not None:
+                self._own_change_ids.add(change_id)
+                self.last_change_id = change_id
+            self.recent_fingerprints[fp] = time.monotonic()
+            self.last_sync_ms = total_ms
+            self.total_synced += 1
+
+            if record_history:
+                self.history.add_item(
+                    payload=payload,
+                    change_count=change_id[1],
+                    transport=active_transport,
+                    product_type="This device",
+                    ios_version="",
+                    latency_ms=total_ms,
+                    dimensions=dimensions,
+                    source="pc",
+                )
+
+            logger.info(
+                "[CLIPBOARD_PUSHED] status=SUCCESS direction=Windows->iPhone transport=%s changeCount=%s "
+                "type=%s uti=%s size=%dB total_ms=%.1f",
+                active_transport,
+                change_id[1],
+                payload.kind,
+                payload.uti,
+                payload.raw_size,
+                total_ms,
+            )
+            return True
+        except Exception as exc:
+            logger.warning(
+                "[CLIPBOARD_PUSHED] status=ERROR direction=Windows->iPhone type=%s size=%dB error=%s: %s",
+                payload.kind,
+                payload.raw_size,
+                type(exc).__name__,
+                exc,
+            )
+            return False
 
     async def _resolve_target_and_transport(self) -> tuple[str, str]:
         """Determine `(udid, active_transport)` based on `--udid` and `--transport`."""
@@ -1337,6 +1535,7 @@ class UniversalClipboardCoordinator:
         """Subscribe to `com.apple.pasteboard.notify.changed` and pull changes using isolated connections."""
         pull_trigger = asyncio.Event()
         session_cancel = asyncio.Event()
+        self._active_rsd = rsd
         self._active_pull_trigger = pull_trigger
         self._session_cancel_event = session_cancel
         pull_reason = "notification"
@@ -1420,12 +1619,45 @@ class UniversalClipboardCoordinator:
                 await session_cancel.wait()
                 raise ConnectionError(f"Transport mode switched to {self.transport_mode}")
 
+            async def _windows_clipboard_watcher() -> None:
+                """Monitor Windows system clipboard sequence number and push PC copies to iPhone."""
+                last_seq = self.clipboard.get_sequence_number()
+                while True:
+                    await asyncio.sleep(0.28)
+                    cur_seq = self.clipboard.get_sequence_number()
+                    if cur_seq == last_seq:
+                        continue
+                    last_seq = cur_seq
+                    if cur_seq == self.clipboard.last_sequence_number:
+                        continue
+
+                    now = time.monotonic()
+                    self.recent_fingerprints = {
+                        fp: ts for fp, ts in self.recent_fingerprints.items() if now - ts < self.echo_window_sec
+                    }
+
+                    read_res = self.clipboard.read_payload()
+                    if read_res is None:
+                        continue
+                    payload, dims = read_res
+                    if payload.fingerprint in self.recent_fingerprints:
+                        continue
+
+                    await self._push_payload_to_iphone(
+                        rsd,
+                        payload,
+                        active_transport,
+                        dimensions=dims,
+                        record_history=True,
+                    )
+
             reader_task = asyncio.create_task(_notification_reader(), name="notif-reader")
             worker_task = asyncio.create_task(_pull_worker(), name="pull-worker")
             cancel_task = asyncio.create_task(_transport_switch_watcher(), name="transport-watcher")
+            win_watch_task = asyncio.create_task(_windows_clipboard_watcher(), name="win-clip-watcher")
             try:
                 done, pending = await asyncio.wait(
-                    {reader_task, worker_task, cancel_task},
+                    {reader_task, worker_task, cancel_task, win_watch_task},
                     return_when=asyncio.FIRST_EXCEPTION,
                 )
                 for task in pending:
@@ -1437,9 +1669,10 @@ class UniversalClipboardCoordinator:
                     if exc is not None:
                         raise exc
             finally:
+                self._active_rsd = None
                 self._active_pull_trigger = None
                 self._session_cancel_event = None
-                for task in (reader_task, worker_task, cancel_task):
+                for task in (reader_task, worker_task, cancel_task, win_watch_task):
                     if not task.done():
                         task.cancel()
 
@@ -1463,6 +1696,10 @@ class UniversalClipboardCoordinator:
 
         change_id = extract_change_info(snapshot)
         change_count = change_id[1]
+
+        if change_id in self._own_change_ids:
+            self.last_change_id = change_id
+            return False
 
         if change_id[1] is not None and change_id == self.last_change_id:
             if reason != "unlock_catchup":
@@ -1820,13 +2057,20 @@ def start_local_api_server(
                 self._send_json(200, {"ok": True, "removed": removed, "revision": coordinator.history.revision})
                 return
 
-            m_action = re.match(r"^/api/history/([^/]+)/(copy|pin|delete)$", path)
+            m_action = re.match(r"^/api/history/([^/]+)/(copy|send|pin|delete)$", path)
             if m_action:
                 item_id, action = m_action.group(1), m_action.group(2)
                 if action == "copy":
                     try:
                         formats = coordinator.copy_history_item_to_windows(item_id)
                         self._send_json(200, {"ok": True, "formats": formats})
+                    except Exception as exc:
+                        self._send_json(400, {"ok": False, "error": str(exc)})
+                    return
+                if action == "send":
+                    try:
+                        ok = coordinator.send_history_item_to_iphone(item_id)
+                        self._send_json(200, {"ok": ok})
                     except Exception as exc:
                         self._send_json(400, {"ok": False, "error": str(exc)})
                     return
