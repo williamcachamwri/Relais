@@ -623,7 +623,7 @@
                                 Visibility="Collapsed"
                                 VerticalAlignment="Center"
                                 HorizontalAlignment="Center"
-                                Spacing="14">
+                                Spacing="12">
                                 <Border
                                     Background="#0D0D0F"
                                     BorderBrush="#24242A"
@@ -633,20 +633,20 @@
                                     HorizontalAlignment="Center">
                                     <Image
                                         x:Name="InspectorPreviewImage"
-                                        MaxHeight="250"
-                                        MaxWidth="480"
+                                        MaxHeight="210"
+                                        MaxWidth="460"
                                         Stretch="Uniform" />
                                 </Border>
 
                                 <TextBlock
                                     x:Name="InspectorImageTitleText"
                                     Text="Clipboard.png"
-                                    FontSize="14"
+                                    FontSize="13.5"
                                     FontWeight="SemiBold"
                                     Foreground="#EDEDF2"
                                     TextTrimming="CharacterEllipsis"
                                     HorizontalAlignment="Center"
-                                    Margin="0,0,0,10" />
+                                    Margin="0,0,0,8" />
                             </StackPanel>
 
                             <!-- File Preview Stage (Monochrome Carbon-Gray Badge) -->
@@ -724,7 +724,10 @@
                                     CornerRadius="12"
                                     Padding="24,20"
                                     MaxHeight="360">
-                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ScrollViewer
+                                        x:Name="InspectorTextScrollViewer"
+                                        VerticalScrollBarVisibility="Auto"
+                                        HorizontalScrollBarVisibility="Disabled">
                                         <TextBlock
                                             x:Name="InspectorPreviewText"
                                             Text=""
@@ -732,6 +735,8 @@
                                             Foreground="#F2F2F5"
                                             LineHeight="22"
                                             TextWrapping="Wrap"
+                                            HorizontalAlignment="Stretch"
+                                            TextAlignment="Left"
                                             IsTextSelectionEnabled="True" />
                                     </ScrollViewer>
                                 </Border>

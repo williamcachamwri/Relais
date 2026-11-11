@@ -1429,6 +1429,16 @@ class ClipboardHistoryStore:
                         entry["source"] = "pc"
                         entry["device_model"] = "This device"
                         entry["product_type"] = "PC"
+                    # If this exact payload was just recorded from iPhone within 30s, preserve iPhone source
+                    elif (
+                        old.get("source") == "iphone"
+                        and source == "pc"
+                        and (now - float(old.get("timestamp", 0.0))) < 30.0
+                    ):
+                        entry["source"] = "iphone"
+                        entry["device_model"] = old.get("device_model", "iPhone 16e")
+                        entry["product_type"] = old.get("product_type", "iPhone17,5")
+                        entry["ios_version"] = old.get("ios_version", "")
                     old_img = old.get("image_file")
                     if old_img and old_img != image_file:
                         with contextlib.suppress(Exception):
@@ -2243,6 +2253,9 @@ class UniversalClipboardCoordinator:
                 payload.raw_size,
             )
             return False
+
+        # Pre-register fingerprint so local Windows clipboard watcher ignores this write
+        self.recent_fingerprints[fp] = time.monotonic()
 
         # Write to Windows System Clipboard
         t_write = time.perf_counter()

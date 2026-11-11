@@ -20,7 +20,25 @@ public sealed partial class MainWindow : Window
     private const int HotkeyIdWinAltV = 0x9001;
     private const int HotkeyIdCtrlShiftV = 0x9002;
     private const int WmHotkey = 0x0312;
+    private const uint WmGetMinMaxInfo = 0x0024;
     private const int GwlpWndProc = -4;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int x;
+        public int y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MINMAXINFO
+    {
+        public POINT ptReserved;
+        public POINT ptMaxSize;
+        public POINT ptMaxPosition;
+        public POINT ptMinTrackSize;
+        public POINT ptMaxTrackSize;
+    }
     private const uint ModAlt = 0x0001;
     private const uint ModControl = 0x0002;
     private const uint ModShift = 0x0004;
@@ -138,6 +156,17 @@ public sealed partial class MainWindow : Window
 
     private IntPtr CustomWndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
+        if (msg == WmGetMinMaxInfo)
+        {
+            var dpi = GetDpiForWindow(hWnd);
+            var scale = dpi > 0 ? (float)dpi / 96.0f : 1.0f;
+            var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
+            mmi.ptMinTrackSize.x = (int)(920 * scale);
+            mmi.ptMinTrackSize.y = (int)(560 * scale);
+            Marshal.StructureToPtr(mmi, lParam, false);
+            return IntPtr.Zero;
+        }
+
         if (msg == WmHotkey)
         {
             var id = wParam.ToInt32();
@@ -930,6 +959,7 @@ public sealed partial class MainWindow : Window
                 ? new FontFamily("Cascadia Mono, Consolas")
                 : new FontFamily("Segoe UI Variable Text, Segoe UI");
             InspectorPreviewText.FontSize = item.IsCode ? 13 : 14;
+            InspectorTextScrollViewer?.ChangeView(0, 0, 1.0f, true);
             InspectorTextSubtitle.Text = $"{direction}  ·  {item.Uti}  ·  {item.FormattedSize}  ·  {item.Transport}  ·  {item.LatencyMs:F1} ms";
             if (animateStage) AnimateStageEntrance(InspectorTextStage);
         }
@@ -1255,4 +1285,7 @@ public sealed partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr hWnd);
 }
