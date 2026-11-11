@@ -738,9 +738,9 @@
                                 x:Name="InspectorTextStage"
                                 Visibility="Visible"
                                 VerticalAlignment="Center"
-                                HorizontalAlignment="Center"
-                                MaxWidth="560"
-                                Margin="20,0"
+                                HorizontalAlignment="Stretch"
+                                MaxWidth="640"
+                                Margin="24,0"
                                 Spacing="12">
                                 <Border
                                     x:Name="InspectorTextCardBorder"
@@ -749,6 +749,7 @@
                                     BorderThickness="1"
                                     CornerRadius="12"
                                     Padding="24,20"
+                                    HorizontalAlignment="Stretch"
                                     MaxHeight="360">
                                     <ScrollViewer
                                         x:Name="InspectorTextScrollViewer"

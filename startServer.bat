@@ -4,5 +4,5 @@ cd /d "%~dp0"
 if exist "bin\x64\Release\net10.0-windows10.0.19041.0\win-x64\UniversalClipboard.exe" (
     start "" "bin\x64\Release\net10.0-windows10.0.19041.0\win-x64\UniversalClipboard.exe"
 ) else (
-    python -u poc_universal_clipboard.py --transport auto --sync-on-connect
+    python -u universalClipboard.py --transport auto --sync-on-connect
 )

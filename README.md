@@ -14,7 +14,8 @@ Automatic, zero-interaction **iPhone Copy â†’ Windows System Clipboard Update â†
 
 | File | Description |
 | :--- | :--- |
-| [`poc_universal_clipboard.py`](file:///d:/UniversalClipboard/poc_universal_clipboard.py) | Standalone Universal Clipboard daemon for Windows (CoreDevice RSD tunnel, DDI auto-mounter, `NotificationProxyService` listener, `PasteboardService` pull/resolve engine, and 64-bit Win32 clipboard writer). |
+| [`universalClipboard.py`](file:///d:/UniversalClipboard/universalClipboard.py) | Universal Clipboard entrypoint forwarding to `CoreDeviceBridge.bridgeService`. |
+| [`CoreDeviceBridge/`](file:///d:/UniversalClipboard/CoreDeviceBridge) | Modular technical package: `bridgeService.py`, `continuityCoordinator.py`, `winClipboard.py`, `payloadModels.py`, `deviceTunnel.py`, `historyStore.py`, `bridgeServer.py`. |
 | [`test_universal_clipboard.py`](file:///d:/UniversalClipboard/test_universal_clipboard.py) | Automated test suite verifying Win32 `CF_UNICODETEXT` (Vietnamese, Chinese, Japanese, Emoji), `HTML Format`, `UniformResourceLocatorW`, `CF_DIBV5` / `CF_DIB` / `PNG` image conversion (PNG, JPEG, HEIC), and live hardware USB/Wi-Fi sync. |
 | [`requirements.txt`](file:///d:/UniversalClipboard/requirements.txt) | Python dependencies (`pymobiledevice3>=11.50.3`, `Pillow>=11.1.0`, `pillow-heif>=1.8.1`, `ifaddr>=0.2.0`, `pywin32>=306`). |
 | [`docs/RESEARCH_REPORT.md`](file:///d:/UniversalClipboard/docs/RESEARCH_REPORT.md) | Phase 0/1 reverse-engineering report covering `1pm`, CoreDevice `pasteboardservice`, and Apple Continuity (`rapportd`) protocol analysis. |

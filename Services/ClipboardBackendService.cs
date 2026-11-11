@@ -155,8 +155,9 @@ public sealed class ClipboardHistoryItem
     {
         get
         {
-            if (!string.IsNullOrWhiteSpace(FileName)) return FileName;
-            return !string.IsNullOrWhiteSpace(Text) && Text != "Image" && !Text.StartsWith("Clipboard_") ? Text : "Image";
+            if (!string.IsNullOrWhiteSpace(FileName) && !FileName.StartsWith("Clipboard_")) return FileName;
+            if (!string.IsNullOrWhiteSpace(Text) && Text != "Image" && !Text.StartsWith("Clipboard_")) return Text;
+            return Width > 0 && Height > 0 ? $"Image {Width} × {Height}" : "Image";
         }
     }
 
@@ -471,15 +472,22 @@ public sealed class ClipboardBackendService : IDisposable
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         for (var i = 0; i < 6 && dir is not null; i++, dir = dir.Parent)
         {
-            var candidate = Path.Combine(dir.FullName, "poc_universal_clipboard.py");
-            if (File.Exists(candidate))
+            var bridgeServiceCandidate = Path.Combine(dir.FullName, "CoreDeviceBridge", "bridgeService.py");
+            if (File.Exists(bridgeServiceCandidate))
             {
-                return candidate;
+                return bridgeServiceCandidate;
+            }
+            var universalClipCandidate = Path.Combine(dir.FullName, "universalClipboard.py");
+            if (File.Exists(universalClipCandidate))
+            {
+                return universalClipCandidate;
             }
         }
 
-        const string fallback = @"d:\UniversalClipboard\poc_universal_clipboard.py";
-        return File.Exists(fallback) ? fallback : null;
+        const string fallbackBridge = @"d:\UniversalClipboard\CoreDeviceBridge\bridgeService.py";
+        if (File.Exists(fallbackBridge)) return fallbackBridge;
+        const string fallbackUniversal = @"d:\UniversalClipboard\universalClipboard.py";
+        return File.Exists(fallbackUniversal) ? fallbackUniversal : null;
     }
 
     private static string ResolvePythonExecutable()

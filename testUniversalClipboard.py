@@ -26,18 +26,17 @@ import unittest
 
 from PIL import Image
 
-from poc_universal_clipboard import (
+from CoreDeviceBridge.winClipboard import (
     CF_DIB,
     CF_DIBV5,
     CF_UNICODETEXT,
     HEIF_AVAILABLE,
-    UniversalClipboardCoordinator,
     WindowsClipboardWriter,
     _BITMAPV5HEADER,
-    extract_text_from_html,
-    list_usb_udids,
-    list_wifi_paired_udids,
 )
+from CoreDeviceBridge.payloadModels import extract_text_from_html
+from CoreDeviceBridge.deviceTunnel import list_usb_udids, list_wifi_paired_udids
+from CoreDeviceBridge.continuityCoordinator import UniversalClipboardCoordinator
 
 
 def read_win32_clipboard_unicode(writer: WindowsClipboardWriter) -> str:
@@ -163,9 +162,9 @@ class TestLiveHardwareConnectivity(unittest.TestCase):
 
         async def _verify_transport(mode: str) -> None:
             coord = UniversalClipboardCoordinator(transport_mode=mode, sync_on_connect=True)
-            udid, active_transport = await coord._resolve_target_and_transport()
+            udid, active_transport = await coord._resolve_device_and_transport()
             self.assertTrue(udid)
-            task = asyncio.create_task(coord.run_forever())
+            task = asyncio.create_task(coord.run())
             await asyncio.sleep(3.2)
             task.cancel()
             try:
