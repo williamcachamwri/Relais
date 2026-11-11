@@ -2,9 +2,14 @@
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
+  <!-- MSI version can be overridden at build time: wix build -d Version=x.y.z -->
+  <?ifndef Version ?>
+  <?define Version = "2.1.0" ?>
+  <?endif?>
+
   <Package Name="Relais"
            Manufacturer="Relais"
-           Version="2.1.0"
+           Version="$(Version)"
            UpgradeCode="48D93E42-6A81-4C0F-873E-F8B429A265B1"
            Scope="perUserOrMachine">
 

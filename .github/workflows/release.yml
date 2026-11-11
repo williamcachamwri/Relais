@@ -1,0 +1,70 @@
+name: Release MSI
+
+# Builds the standalone Relais MSI and publishes it as a GitHub Release.
+# Trigger: push a tag like "v2.1.0" (MSI version is derived from the tag),
+# or run manually from the Actions tab (uses the version baked into Package.wxs).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install WiX Toolset
+        run: dotnet tool install --global wix --version 5.0.2
+
+      - name: Publish app (self-contained)
+        run: dotnet publish -c Release -o dist/Relais
+
+      - name: Derive MSI version from tag
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $v = ("${{ github.ref_name }}" -replace '^v', '')
+          if ($v -notmatch '^\d+(\.\d+){1,3}$') { throw "Tag '${{ github.ref_name }}' does not look like a version (expected v1.2.3)." }
+          "MSI_VERSION=$v" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build MSI
+        shell: pwsh
+        run: |
+          if (-not $env:MSI_VERSION) { $env:MSI_VERSION = "2.1.0" }
+          wix build -arch x64 `
+            -ext WixToolset.UI.wixext `
+            -ext WixToolset.Util.wixext `
+            -d Version=$env:MSI_VERSION `
+            -o Relais.msi Package.wxs
+
+      - name: Verify MSI
+        shell: pwsh
+        run: |
+          if (-not (Test-Path Relais.msi)) { throw "Relais.msi was not produced." }
+          Get-Item Relais.msi | Format-List Name, Length
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Relais-msi
+          path: Relais.msi
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Relais.msi
+          generate_release_notes: true
