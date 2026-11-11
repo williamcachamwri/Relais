@@ -4,7 +4,7 @@
 
   <Package Name="Relais"
            Manufacturer="Relais"
-           Version="2.0.0"
+           Version="2.1.0"
            UpgradeCode="48D93E42-6A81-4C0F-873E-F8B429A265B1"
            Scope="perUserOrMachine">
 

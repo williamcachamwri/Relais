@@ -161,8 +161,8 @@ dotnet build -c Release
 # Publish output
 dotnet publish -c Release -o dist\Relais
 
-# Build standalone MSI with WiX Toolset
-wix build -arch x64 -o Relais.msi Package.wxs
+# Build standalone MSI with WiX Toolset (extensions are required for WixUI + util custom action)
+wix build -arch x64 -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -o Relais.msi Package.wxs
 ```
 
 ---
