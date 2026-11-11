@@ -65,6 +65,8 @@ public sealed partial class MainWindow : Window
     private AirDropStatus? _airDropStatus;
     private string? _currentPendingTransferId;
     private bool _isAirDropReceivingActive = true;
+    private bool _isInitializing = true;
+    private bool _isUpdatingAirDropUi;
     private int _lastHistoryRevision = -1;
 
     private string _typeOrTagFilter = "type:all";
@@ -131,6 +133,7 @@ public sealed partial class MainWindow : Window
         Closed += OnWindowClosed;
         _ = InitializeBackendAsync();
         _ = InitializeAirDropAsync();
+        _isInitializing = false;
     }
 
     private void ConfigureWindowChrome()
@@ -1363,8 +1366,8 @@ public sealed partial class MainWindow : Window
 
         DeveloperModeToggle.IsOn = _isDeveloperModeEnabled;
         RailLogsBtn.Visibility = _isDeveloperModeEnabled ? Visibility.Visible : Visibility.Collapsed;
-        AirDropMainToggle.IsOn = _isAirDropReceivingActive;
-        AirDropQuickToggle.IsOn = _isAirDropReceivingActive;
+        if (AirDropMainToggle != null) AirDropMainToggle.IsOn = _isAirDropReceivingActive;
+        if (AirDropQuickToggle != null) AirDropQuickToggle.IsOn = _isAirDropReceivingActive;
     }
 
     private void SaveAppSettings()
@@ -1433,15 +1436,24 @@ public sealed partial class MainWindow : Window
             }
 
             // Sync Toggles if out of sync
-            if (AirDropMainToggle.IsOn != airdrop.Enabled)
+            _isUpdatingAirDropUi = true;
+            try
             {
-                AirDropMainToggle.IsOn = airdrop.Enabled;
+                if (AirDropMainToggle != null && AirDropMainToggle.IsOn != airdrop.Enabled)
+                {
+                    AirDropMainToggle.IsOn = airdrop.Enabled;
+                }
+                if (AirDropQuickToggle != null && AirDropQuickToggle.IsOn != airdrop.Enabled)
+                {
+                    AirDropQuickToggle.IsOn = airdrop.Enabled;
+                }
             }
-            if (AirDropQuickToggle.IsOn != airdrop.Enabled)
+            finally
             {
-                AirDropQuickToggle.IsOn = airdrop.Enabled;
+                _isUpdatingAirDropUi = false;
             }
-            if (!string.IsNullOrEmpty(airdrop.ComputerName) && string.IsNullOrEmpty(AirDropDeviceNameInput.Text))
+
+            if (!string.IsNullOrEmpty(airdrop.ComputerName) && AirDropDeviceNameInput != null && string.IsNullOrEmpty(AirDropDeviceNameInput.Text))
             {
                 AirDropDeviceNameInput.Text = airdrop.ComputerName;
             }
@@ -1649,24 +1661,37 @@ public sealed partial class MainWindow : Window
 
     private async void OnAirDropReceivingToggled(object sender, RoutedEventArgs e)
     {
-        var isOn = (sender is ToggleSwitch ts) ? ts.IsOn : AirDropMainToggle.IsOn;
-        _isAirDropReceivingActive = isOn;
-        if (AirDropMainToggle.IsOn != isOn) AirDropMainToggle.IsOn = isOn;
-        if (AirDropQuickToggle.IsOn != isOn) AirDropQuickToggle.IsOn = isOn;
+        if (_isInitializing || _isUpdatingAirDropUi) return;
+        _isUpdatingAirDropUi = true;
+        try
+        {
+            var isOn = (sender is ToggleSwitch ts) ? ts.IsOn : (AirDropMainToggle?.IsOn ?? false);
+            _isAirDropReceivingActive = isOn;
+            if (AirDropMainToggle != null && AirDropMainToggle.IsOn != isOn) AirDropMainToggle.IsOn = isOn;
+            if (AirDropQuickToggle != null && AirDropQuickToggle.IsOn != isOn) AirDropQuickToggle.IsOn = isOn;
 
-        await _backend.ToggleAirDropAsync(isOn);
-        if (isOn)
-        {
-            await _airDropBle.StartAdvertisingAsync();
-            ShowNotification("AirDrop receiving enabled. Nearby Apple devices can discover this PC.", InfoBarSeverity.Success, "AirDrop");
+            await _backend.ToggleAirDropAsync(isOn);
+            if (isOn)
+            {
+                await _airDropBle.StartAdvertisingAsync();
+                ShowNotification("AirDrop receiving enabled. Nearby Apple devices can discover this PC.", InfoBarSeverity.Success, "AirDrop");
+            }
+            else
+            {
+                _airDropBle.StopAdvertising();
+                ShowNotification("AirDrop receiving turned off.", InfoBarSeverity.Informational, "AirDrop");
+            }
+            SaveAppSettings();
+            await RefreshAirDropStatusAsync();
         }
-        else
+        catch (Exception ex)
         {
-            _airDropBle.StopAdvertising();
-            ShowNotification("AirDrop receiving turned off.", InfoBarSeverity.Informational, "AirDrop");
+            ShowNotification("AirDrop toggle error: " + ex.Message, InfoBarSeverity.Warning);
         }
-        SaveAppSettings();
-        await RefreshAirDropStatusAsync();
+        finally
+        {
+            _isUpdatingAirDropUi = false;
+        }
     }
 
     private async void OnSaveAirDropDeviceNameClick(object sender, RoutedEventArgs e)
