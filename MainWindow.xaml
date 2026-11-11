@@ -495,7 +495,7 @@
                 BorderThickness="0,0,1,0">
                 <Grid>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel x:Name="HistoryListPanel" Spacing="0" />
+                        <StackPanel x:Name="HistoryListPanel" Spacing="0" Padding="0,6,0,6" />
                     </ScrollViewer>
 
                     <StackPanel
@@ -531,7 +531,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="44" />
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="56" />
+                        <RowDefinition Height="64" />
                     </Grid.RowDefinitions>
 
                     <!-- Top Inspector Metadata Bar -->
@@ -727,10 +727,18 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Bottom Minimal Action Bar: Copy C · Send to iPhone S · Favorite F · Delete D -->
+                    <!-- Bottom Action Toolbar: Copy C · Send to iPhone S · Favorite F · Delete D -->
+                    <Border
+                        Grid.Row="2"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Background="#18181C"
+                        BorderBrush="#26262C"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="4">
                     <StackPanel
                         x:Name="InspectorBarPanel"
-                        Grid.Row="2"
                         Orientation="Horizontal"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
@@ -836,6 +844,7 @@
                             </StackPanel>
                         </Button>
                     </StackPanel>
+                    </Border>
                 </Grid>
 
                 <!-- LAYER B: CONTINUITY & ONBOARDING PANE (Same neutral #18181B palette) -->

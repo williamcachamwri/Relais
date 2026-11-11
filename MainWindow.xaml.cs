@@ -67,7 +67,8 @@ public sealed partial class MainWindow : Window
 
     private static readonly SolidColorBrush BrushSidebarActive = new(ColorHelper.FromArgb(0xFF, 0x28, 0x28, 0x2D));
     private static readonly SolidColorBrush BrushRailActive = new(ColorHelper.FromArgb(0xFF, 0x2A, 0x2A, 0x2E));
-    private static readonly SolidColorBrush BrushRowSelected = new(ColorHelper.FromArgb(0xFF, 0x1F, 0x1F, 0x24));
+    private static readonly SolidColorBrush BrushRowSelected = new(ColorHelper.FromArgb(0xFF, 0x22, 0x22, 0x28));
+    private static readonly SolidColorBrush BrushRowSelectedEdge = new(ColorHelper.FromArgb(0xFF, 0x2E, 0x2E, 0x36));
     private static readonly SolidColorBrush BrushRowHover = new(ColorHelper.FromArgb(0xFF, 0x1A, 0x1A, 0x1E));
     private static readonly SolidColorBrush BrushRowDivider = new(ColorHelper.FromArgb(0xFF, 0x22, 0x22, 0x25));
     private static readonly SolidColorBrush BrushThumbBorder = new(ColorHelper.FromArgb(0xFF, 0x2C, 0x2C, 0x30));
@@ -235,7 +236,7 @@ public sealed partial class MainWindow : Window
 
         var compactBar = inspectorWidth < 430;
         var veryCompactBar = inspectorWidth < 340;
-        InspectorBarPanel.Spacing = veryCompactBar ? 4 : (compactBar ? 10 : 16);
+        InspectorBarPanel.Spacing = veryCompactBar ? 0 : (compactBar ? 2 : 4);
         ActionSendIphoneLabel.Text = compactBar ? "iPhone" : "Send to iPhone";
 
         var keyHintVis = veryCompactBar ? Visibility.Collapsed : Visibility.Visible;
@@ -494,9 +495,11 @@ public sealed partial class MainWindow : Window
         var rowBorder = new Border
         {
             Background = isSelected ? BrushRowSelected : BrushTransparent,
-            BorderBrush = BrushRowDivider,
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(14, 12, 14, 12),
+            BorderBrush = isSelected ? BrushRowSelectedEdge : BrushTransparent,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Margin = new Thickness(6, 1, 6, 1),
+            Padding = new Thickness(12, 10, 12, 10),
         };
 
         AttachPressAnimation(rowBorder, 0.99f);
@@ -778,11 +781,13 @@ public sealed partial class MainWindow : Window
         if (previousId is not null && _rowBorders.TryGetValue(previousId, out var prevBorder))
         {
             prevBorder.Background = BrushTransparent;
+            prevBorder.BorderBrush = BrushTransparent;
         }
 
         if (item is not null && _rowBorders.TryGetValue(item.Id, out var newBorder))
         {
             newBorder.Background = BrushRowSelected;
+            newBorder.BorderBrush = BrushRowSelectedEdge;
         }
 
         UpdateInspector(item, animateStage);
@@ -850,6 +855,10 @@ public sealed partial class MainWindow : Window
             InspectorTextStage.Visibility = Visibility.Visible;
 
             InspectorPreviewText.Text = item.Text;
+            InspectorPreviewText.FontFamily = item.IsCode
+                ? new FontFamily("Cascadia Mono, Consolas")
+                : new FontFamily("Segoe UI Variable Text, Segoe UI");
+            InspectorPreviewText.FontSize = item.IsCode ? 13 : 14;
             InspectorTextSubtitle.Text = $"{direction}  ·  {item.Uti}  ·  {item.FormattedSize}  ·  {item.Transport}  ·  {item.LatencyMs:F1} ms";
             if (animateStage) AnimateStageEntrance(InspectorTextStage);
         }
