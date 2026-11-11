@@ -88,7 +88,6 @@ from pymobiledevice3.remote.core_device.pasteboard_service import (
     UTI_URL,
     UTI_UTF8_PLAIN_TEXT,
     UTI_WEB_ARCHIVE,
-    PasteboardItem,
     PasteboardService,
     data_item,
     text_item,
@@ -1670,7 +1669,7 @@ class UniversalClipboardCoordinator:
                 if txt_u not in type_list:
                     type_list.append(txt_u)
                     data_dict[txt_u] = {"data": name_bytes}
-            items = [PasteboardItem(types=type_list, data=data_dict)]
+            items = [{"types": type_list, "data": data_dict}]
         elif payload.text is not None:
             utis = [UTI_UTF8_PLAIN_TEXT, UTI_PLAIN_TEXT, UTI_TEXT]
             if payload.kind == "url":
