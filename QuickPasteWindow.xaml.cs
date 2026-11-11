@@ -55,6 +55,7 @@ public sealed partial class QuickPasteWindow : Window
     private IntPtr _origWndProc;
     private WndProcDelegate? _wndProcDelegate;
     private bool _isClosingOrPasting;
+    private DateTime _openedAt = DateTime.MinValue;
 
     private static readonly SolidColorBrush BrushTextPrimary = Hex(0xF2, 0xF2, 0xF5);
     private static readonly SolidColorBrush BrushTextRow = Hex(0xD2, 0xD2, 0xDA);
@@ -174,26 +175,38 @@ public sealed partial class QuickPasteWindow : Window
 
     public void ShowPopup(IntPtr previousForegroundHwnd, List<ClipboardHistoryItem> items, BackendStatus? status)
     {
-        if (previousForegroundHwnd != IntPtr.Zero && previousForegroundHwnd != _hwnd)
+        try
         {
-            _targetForegroundHwnd = previousForegroundHwnd;
+            if (previousForegroundHwnd != IntPtr.Zero && previousForegroundHwnd != _hwnd)
+            {
+                _targetForegroundHwnd = previousForegroundHwnd;
+            }
+
+            _allItems = items ?? [];
+            _searchQuery = "";
+            QuickSearchBox.Text = "";
+            _selectedIndex = 0;
+            _openedAt = DateTime.UtcNow;
+
+            PositionAwayFromCaret(previousForegroundHwnd);
+            ApplyDwmRoundingAndBorder();
+            ApplyFiltersAndRender();
+
+            Activate();
+            _appWindow?.Show();
+            if (_hwnd != IntPtr.Zero)
+            {
+                SetForegroundWindow(_hwnd);
+            }
+
+            AnimatePopupEntrance();
+            QuickSearchBox.Focus(FocusState.Programmatic);
+            QuickListScrollViewer.ChangeView(null, 0, null, true);
         }
-
-        _allItems = items;
-        _searchQuery = "";
-        QuickSearchBox.Text = "";
-        _selectedIndex = 0;
-
-        PositionAwayFromCaret(previousForegroundHwnd);
-        ApplyDwmRoundingAndBorder();
-        ApplyFiltersAndRender();
-
-        _appWindow?.Show();
-        SetForegroundWindow(_hwnd);
-
-        AnimatePopupEntrance();
-        QuickSearchBox.Focus(FocusState.Programmatic);
-        QuickListScrollViewer.ChangeView(null, 0, null, true);
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[QuickPaste ShowPopup Error] {ex.Message}");
+        }
     }
 
     public void HidePopup()
@@ -218,38 +231,47 @@ public sealed partial class QuickPasteWindow : Window
     {
         if (_appWindow is null) return;
 
-        var hasCaret = TryGetCaretScreenRect(targetHwnd, out var anchor);
-        if (!hasCaret)
+        try
         {
-            anchor = GetCursorAnchorRect();
+            var hasCaret = TryGetCaretScreenRect(targetHwnd, out var anchor);
+            if (!hasCaret)
+            {
+                anchor = GetCursorAnchorRect();
+            }
+
+            var displayArea = DisplayArea.GetFromPoint(new PointInt32(anchor.Left, anchor.Bottom), DisplayAreaFallback.Primary);
+            var work = displayArea?.WorkArea ?? DisplayArea.Primary.WorkArea;
+
+            var scale = GetScaleForPoint(anchor.Left, anchor.Bottom);
+            var w = (int)Math.Round(PopupWidthDip * scale);
+            var h = (int)Math.Round(PopupHeightDip * scale);
+            var gap = (int)Math.Round(16 * scale);
+
+            // Place slightly to the right and below the caret/cursor so the active line remains visible
+            var x = anchor.Left + gap;
+            var y = anchor.Bottom + gap;
+
+            if (x + w > work.X + work.Width - ScreenMarginPx)
+            {
+                x = Math.Max(work.X + ScreenMarginPx, anchor.Left - w - gap);
+            }
+
+            if (y + h > work.Y + work.Height - ScreenMarginPx)
+            {
+                y = Math.Max(work.Y + ScreenMarginPx, anchor.Top - h - gap);
+            }
+
+            x = Math.Clamp(x, work.X + ScreenMarginPx, Math.Max(work.X + ScreenMarginPx, work.X + work.Width - w - ScreenMarginPx));
+            y = Math.Clamp(y, work.Y + ScreenMarginPx, Math.Max(work.Y + ScreenMarginPx, work.Y + work.Height - h - ScreenMarginPx));
+
+            _appWindow.MoveAndResize(new RectInt32(x, y, w, h));
         }
-
-        var displayArea = DisplayArea.GetFromPoint(new PointInt32(anchor.Left, anchor.Bottom), DisplayAreaFallback.Primary);
-        var work = displayArea.WorkArea;
-
-        var scale = GetScaleForPoint(anchor.Left, anchor.Bottom);
-        var w = (int)Math.Round(PopupWidthDip * scale);
-        var h = (int)Math.Round(PopupHeightDip * scale);
-        var gap = (int)Math.Round(16 * scale);
-
-        // Place slightly to the right and below the caret/cursor so the active line remains visible
-        var x = anchor.Left + gap;
-        var y = anchor.Bottom + gap;
-
-        if (x + w > work.X + work.Width - ScreenMarginPx)
+        catch (Exception ex)
         {
-            x = Math.Max(work.X + ScreenMarginPx, anchor.Left - w - gap);
+            System.Diagnostics.Debug.WriteLine($"[PositionAwayFromCaret Fallback] {ex.Message}");
+            var work = DisplayArea.Primary.WorkArea;
+            _appWindow.MoveAndResize(new RectInt32(work.X + work.Width - 440, work.Y + work.Height - 500, 420, 460));
         }
-
-        if (y + h > work.Y + work.Height - ScreenMarginPx)
-        {
-            y = Math.Max(work.Y + ScreenMarginPx, anchor.Top - h - gap);
-        }
-
-        x = Math.Clamp(x, work.X + ScreenMarginPx, work.X + work.Width - w - ScreenMarginPx);
-        y = Math.Clamp(y, work.Y + ScreenMarginPx, work.Y + work.Height - h - ScreenMarginPx);
-
-        _appWindow.MoveAndResize(new RectInt32(x, y, w, h));
     }
 
     private static RECT GetCursorAnchorRect()
@@ -334,9 +356,16 @@ public sealed partial class QuickPasteWindow : Window
 
     private void OnWindowActivated(object sender, WindowActivatedEventArgs args)
     {
-        if (args.WindowActivationState == WindowActivationState.Deactivated && !_isClosingOrPasting)
+        if (args.WindowActivationState == WindowActivationState.Deactivated)
         {
-            HidePopup();
+            if ((DateTime.UtcNow - _openedAt).TotalMilliseconds < 250)
+            {
+                return;
+            }
+            if (!_isClosingOrPasting && IsPopupVisible)
+            {
+                HidePopup();
+            }
         }
     }
 

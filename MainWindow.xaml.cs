@@ -48,14 +48,67 @@ public sealed partial class MainWindow : Window
     private const uint ModNoRepeat = 0x4000;
     private const uint VkV = 0x56;
 
+    private const uint WmTrayIcon = 0x8000 + 101;
+    private const uint NIM_ADD = 0x00000000;
+    private const uint NIM_MODIFY = 0x00000001;
+    private const uint NIM_DELETE = 0x00000002;
+    private const uint NIF_MESSAGE = 0x00000001;
+    private const uint NIF_ICON = 0x00000002;
+    private const uint NIF_TIP = 0x00000004;
+
+    private const uint WmLButtonUp = 0x0202;
+    private const uint WmLButtonDblClk = 0x0203;
+    private const uint WmRButtonUp = 0x0205;
+    private const uint WmContextMenu = 0x007B;
+
+    private const uint MfString = 0x00000000;
+    private const uint MfSeparator = 0x00000800;
+    private const uint TpmRightButton = 0x0002;
+    private const uint TpmReturnCmd = 0x0100;
+    private const int SwRestore = 9;
+
+    private const int CmdTrayOpen = 2001;
+    private const int CmdTrayQuickPaste = 2002;
+    private const int CmdTraySyncNow = 2003;
+    private const int CmdTrayExit = 2004;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct NOTIFYICONDATAW
+    {
+        public int cbSize;
+        public IntPtr hWnd;
+        public int uID;
+        public uint uFlags;
+        public uint uCallbackMessage;
+        public IntPtr hIcon;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string szTip;
+        public int dwState;
+        public int dwStateMask;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string szInfo;
+        public int uTimeoutOrVersion;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+        public string szInfoTitle;
+        public int dwInfoFlags;
+        public Guid guidItem;
+        public IntPtr hBalloonIcon;
+    }
+
     private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
     private readonly ClipboardBackendService _backend = new();
     private readonly DispatcherTimer _pollTimer;
     private readonly QuickPasteWindow _quickPasteWindow;
+    private AppWindow? _appWindow;
     private IntPtr _hwnd;
     private IntPtr _origWndProc;
     private WndProcDelegate? _wndProcDelegate;
+
+    private NOTIFYICONDATAW _nid;
+    private IntPtr _trayIconHandle = IntPtr.Zero;
+    private bool _trayIconAdded;
+    private bool _isExplicitExit;
 
     private List<ClipboardHistoryItem> _allItems = [];
     private List<ClipboardHistoryItem> _filteredItems = [];
@@ -135,17 +188,17 @@ public sealed partial class MainWindow : Window
 
         _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
-        var appWindow = AppWindow.GetFromWindowId(windowId);
+        _appWindow = AppWindow.GetFromWindowId(windowId);
 
-        appWindow.Resize(new SizeInt32(1050, 680));
+        _appWindow.Resize(new SizeInt32(1050, 680));
 
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
         if (File.Exists(iconPath))
         {
-            appWindow.SetIcon(iconPath);
+            _appWindow.SetIcon(iconPath);
         }
 
-        if (appWindow.TitleBar is { } titleBar)
+        if (_appWindow.TitleBar is { } titleBar)
         {
             titleBar.ButtonBackgroundColor = Colors.Transparent;
             titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
@@ -154,32 +207,213 @@ public sealed partial class MainWindow : Window
             titleBar.ButtonHoverBackgroundColor = ColorHelper.FromArgb(0xFF, 0x1A, 0x1A, 0x1A);
             titleBar.ButtonHoverForegroundColor = Colors.White;
         }
+
+        _appWindow.Closing += OnAppWindowClosing;
+        InitializeTrayIcon();
+    }
+
+    private void OnAppWindowClosing(AppWindow sender, AppWindowClosingEventArgs args)
+    {
+        if (!_isExplicitExit)
+        {
+            args.Cancel = true;
+            sender.Hide();
+        }
+    }
+
+    private void InitializeTrayIcon()
+    {
+        if (_trayIconAdded || _hwnd == IntPtr.Zero) return;
+
+        try
+        {
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
+            if (File.Exists(iconPath))
+            {
+                _trayIconHandle = LoadImageW(IntPtr.Zero, iconPath, 1 /* IMAGE_ICON */, 16, 16, 0x00000010 /* LR_LOADFROMFILE */);
+            }
+            if (_trayIconHandle == IntPtr.Zero)
+            {
+                _trayIconHandle = LoadIconW(IntPtr.Zero, (IntPtr)32512 /* IDI_APPLICATION */);
+            }
+
+            _nid = new NOTIFYICONDATAW
+            {
+                cbSize = Marshal.SizeOf<NOTIFYICONDATAW>(),
+                hWnd = _hwnd,
+                uID = 1001,
+                uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP,
+                uCallbackMessage = WmTrayIcon,
+                hIcon = _trayIconHandle,
+                szTip = "Relais — Universal Clipboard"
+            };
+
+            _trayIconAdded = Shell_NotifyIconW(NIM_ADD, ref _nid);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[InitializeTrayIcon Error] {ex.Message}");
+        }
+    }
+
+    private void RemoveTrayIcon()
+    {
+        if (_trayIconAdded)
+        {
+            Shell_NotifyIconW(NIM_DELETE, ref _nid);
+            _trayIconAdded = false;
+        }
+        if (_trayIconHandle != IntPtr.Zero)
+        {
+            DestroyIcon(_trayIconHandle);
+            _trayIconHandle = IntPtr.Zero;
+        }
+    }
+
+    private void RestoreMainWindow()
+    {
+        if (_appWindow is not null)
+        {
+            _appWindow.Show();
+            if (_hwnd != IntPtr.Zero)
+            {
+                ShowWindow(_hwnd, SwRestore);
+                SetForegroundWindow(_hwnd);
+            }
+        }
+    }
+
+    private void ShowTrayContextMenu()
+    {
+        var hMenu = CreatePopupMenu();
+        if (hMenu == IntPtr.Zero) return;
+
+        try
+        {
+            AppendMenuW(hMenu, MfString, (UIntPtr)CmdTrayOpen, "Open Relais");
+            AppendMenuW(hMenu, MfString, (UIntPtr)CmdTrayQuickPaste, "Quick Paste (Win + Alt + V)");
+            AppendMenuW(hMenu, MfSeparator, UIntPtr.Zero, string.Empty);
+            AppendMenuW(hMenu, MfString, (UIntPtr)CmdTraySyncNow, "Sync Now");
+            AppendMenuW(hMenu, MfSeparator, UIntPtr.Zero, string.Empty);
+            AppendMenuW(hMenu, MfString, (UIntPtr)CmdTrayExit, "Exit Relais");
+
+            SetForegroundWindow(_hwnd);
+            GetCursorPos(out var pt);
+
+            var cmd = TrackPopupMenuEx(hMenu, TpmRightButton | TpmReturnCmd, pt.x, pt.y, _hwnd, IntPtr.Zero);
+            PostMessageW(_hwnd, 0, IntPtr.Zero, IntPtr.Zero);
+
+            switch (cmd)
+            {
+                case CmdTrayOpen:
+                    RestoreMainWindow();
+                    break;
+                case CmdTrayQuickPaste:
+                    var fgHwnd = GetForegroundWindow();
+                    ToggleQuickPastePopup(fgHwnd);
+                    break;
+                case CmdTraySyncNow:
+                    _ = TriggerTraySyncNowAsync();
+                    break;
+                case CmdTrayExit:
+                    ExitApplication();
+                    break;
+            }
+        }
+        finally
+        {
+            DestroyMenu(hMenu);
+        }
+    }
+
+    private async Task TriggerTraySyncNowAsync()
+    {
+        try
+        {
+            await _backend.TriggerSyncNowAsync();
+            await Task.Delay(250);
+            await RefreshStatusAndHistoryAsync();
+            ShowNotification("Đã gửi tín hiệu đồng bộ tức thời tới iPhone.", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Tray Sync Error] {ex.Message}");
+        }
+    }
+
+    private void ExitApplication()
+    {
+        _isExplicitExit = true;
+        RemoveTrayIcon();
+        UnregisterGlobalHotkeys();
+        try
+        {
+            _quickPasteWindow.Close();
+        }
+        catch
+        {
+            // Ignore if already closed
+        }
+        _pollTimer.Stop();
+        _backend.Dispose();
+        Close();
     }
 
     private void RegisterGlobalHotkeys()
     {
         if (_hwnd == IntPtr.Zero) return;
 
-        _wndProcDelegate = CustomWndProc;
-        var fnPtr = Marshal.GetFunctionPointerForDelegate(_wndProcDelegate);
-        _origWndProc = SetWindowLongPtrW(_hwnd, GwlpWndProc, fnPtr);
+        if (_origWndProc == IntPtr.Zero)
+        {
+            _wndProcDelegate = CustomWndProc;
+            var fnPtr = Marshal.GetFunctionPointerForDelegate(_wndProcDelegate);
+            _origWndProc = SetWindowLongPtrW(_hwnd, GwlpWndProc, fnPtr);
+        }
+
+        // Unregister first if previously registered
+        UnregisterGlobalHotkeys();
 
         // Primary global shortcut: Win + Alt + V (like Windows + V)
-        RegisterHotKey(_hwnd, HotkeyIdWinAltV, ModWin | ModAlt | ModNoRepeat, VkV);
+        var ok1 = RegisterHotKey(_hwnd, HotkeyIdWinAltV, ModWin | ModAlt | ModNoRepeat, VkV);
+        if (!ok1)
+        {
+            ok1 = RegisterHotKey(_hwnd, HotkeyIdWinAltV, ModWin | ModAlt, VkV);
+        }
+
         // Secondary fallback shortcut: Ctrl + Shift + V
-        RegisterHotKey(_hwnd, HotkeyIdCtrlShiftV, ModControl | ModShift | ModNoRepeat, VkV);
+        var ok2 = RegisterHotKey(_hwnd, HotkeyIdCtrlShiftV, ModControl | ModShift | ModNoRepeat, VkV);
+        if (!ok2)
+        {
+            ok2 = RegisterHotKey(_hwnd, HotkeyIdCtrlShiftV, ModControl | ModShift, VkV);
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[Hotkeys] Win+Alt+V registered={ok1}, Ctrl+Shift+V registered={ok2}");
+    }
+
+    private void UnregisterGlobalHotkeys()
+    {
+        if (_hwnd != IntPtr.Zero)
+        {
+            UnregisterHotKey(_hwnd, HotkeyIdWinAltV);
+            UnregisterHotKey(_hwnd, HotkeyIdCtrlShiftV);
+        }
     }
 
     private IntPtr CustomWndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
-        if (msg == WmGetMinMaxInfo)
+        if (msg == WmTrayIcon)
         {
-            var dpi = GetDpiForWindow(hWnd);
-            var scale = dpi > 0 ? (float)dpi / 96.0f : 1.0f;
-            var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
-            mmi.ptMinTrackSize.x = (int)(680 * scale);
-            mmi.ptMinTrackSize.y = (int)(420 * scale);
-            Marshal.StructureToPtr(mmi, lParam, false);
+            var mouseMsg = (uint)(lParam.ToInt64() & 0xFFFF);
+            if (mouseMsg == WmRButtonUp || mouseMsg == WmContextMenu)
+            {
+                DispatcherQueue.TryEnqueue(ShowTrayContextMenu);
+                return IntPtr.Zero;
+            }
+            if (mouseMsg == WmLButtonUp || mouseMsg == WmLButtonDblClk)
+            {
+                DispatcherQueue.TryEnqueue(RestoreMainWindow);
+                return IntPtr.Zero;
+            }
             return IntPtr.Zero;
         }
 
@@ -193,6 +427,18 @@ public sealed partial class MainWindow : Window
                 return IntPtr.Zero;
             }
         }
+
+        if (msg == WmGetMinMaxInfo)
+        {
+            var dpi = GetDpiForWindow(hWnd);
+            var scale = dpi > 0 ? (float)dpi / 96.0f : 1.0f;
+            var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
+            mmi.ptMinTrackSize.x = (int)(680 * scale);
+            mmi.ptMinTrackSize.y = (int)(420 * scale);
+            Marshal.StructureToPtr(mmi, lParam, false);
+            return IntPtr.Zero;
+        }
+
         return CallWindowProcW(_origWndProc, hWnd, msg, wParam, lParam);
     }
 
@@ -1618,11 +1864,9 @@ public sealed partial class MainWindow : Window
 
     private void OnWindowClosed(object sender, WindowEventArgs args)
     {
-        if (_hwnd != IntPtr.Zero)
-        {
-            UnregisterHotKey(_hwnd, HotkeyIdWinAltV);
-            UnregisterHotKey(_hwnd, HotkeyIdCtrlShiftV);
-        }
+        _isExplicitExit = true;
+        RemoveTrayIcon();
+        UnregisterGlobalHotkeys();
         try
         {
             _quickPasteWindow.Close();
@@ -1634,6 +1878,42 @@ public sealed partial class MainWindow : Window
         _pollTimer.Stop();
         _backend.Dispose();
     }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool Shell_NotifyIconW(uint dwMessage, ref NOTIFYICONDATAW lpData);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr CreatePopupMenu();
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool AppendMenuW(IntPtr hMenu, uint uFlags, UIntPtr uIDNewItem, string lpNewItem);
+
+    [DllImport("user32.dll")]
+    private static extern int TrackPopupMenuEx(IntPtr hMenu, uint uFlags, int x, int y, IntPtr hWnd, IntPtr lpTPMParams);
+
+    [DllImport("user32.dll")]
+    private static extern bool DestroyMenu(IntPtr hMenu);
+
+    [DllImport("user32.dll")]
+    private static extern bool PostMessageW(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out POINT lpPoint);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern IntPtr LoadImageW(IntPtr hInst, string lpszName, uint uType, int cxDesired, int cyDesired, uint fuLoad);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr LoadIconW(IntPtr hInstance, IntPtr lpIconName);
+
+    [DllImport("user32.dll")]
+    private static extern bool DestroyIcon(IntPtr hIcon);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     [DllImport("user32.dll")]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);

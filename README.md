@@ -11,7 +11,7 @@
 [![iOS](https://img.shields.io/badge/iOS-17.0%20--%2027+-0A0A0A?style=for-the-badge)](https://apple.com)
 [![Framework](https://img.shields.io/badge/.NET-10.0%20%7C%20WinUI%203-0A0A0A?style=for-the-badge)](https://dotnet.microsoft.com)
 [![Transport](https://img.shields.io/badge/Transport-Wi--Fi%20%26%20USB-0A0A0A?style=for-the-badge)](https://github.com/williamcachamwri/Relais)
-[![License](https://img.shields.io/badge/License-MIT-0A0A0A?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-GPL--3.0-0A0A0A?style=for-the-badge)](LICENSE)
 
 <br/>
 
@@ -190,7 +190,7 @@ wix build -arch x64 -o Relais.msi Package.wxs
 
 ## License
 
-Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.
+Distributed under the GNU General Public License v3.0 (GPL-3.0). See [`LICENSE`](LICENSE) for more information.
 
 <div align="center">
 <sub>Crafted with precision for seamless Apple and Windows interoperability.</sub>
