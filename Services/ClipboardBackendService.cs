@@ -91,6 +91,9 @@ public sealed class ClipboardHistoryItem
     [JsonPropertyName("transport")]
     public string Transport { get; set; } = "";
 
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = "iphone";
+
     [JsonPropertyName("device_model")]
     public string DeviceModel { get; set; } = "iPhone";
 
@@ -114,6 +117,8 @@ public sealed class ClipboardHistoryItem
 
     public bool IsImage => Kind == "image";
     public bool IsLink => Kind == "url";
+    public bool IsFromPc => string.Equals(Source, "pc", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(DeviceModel, "This device", StringComparison.OrdinalIgnoreCase);
     public bool IsRichText => Uti.Contains("html", StringComparison.OrdinalIgnoreCase)
                               || Uti.Contains("webarchive", StringComparison.OrdinalIgnoreCase)
                               || Uti.Contains("rtf", StringComparison.OrdinalIgnoreCase);
@@ -279,6 +284,19 @@ public sealed class ClipboardBackendService : IDisposable
         try
         {
             using var resp = await _http.PostAsync($"{BaseUrl}/api/history/{Uri.EscapeDataString(itemId)}/copy", null);
+            return resp.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> SendItemToIphoneAsync(string itemId)
+    {
+        try
+        {
+            using var resp = await _longHttp.PostAsync($"{BaseUrl}/api/history/{Uri.EscapeDataString(itemId)}/send", null);
             return resp.IsSuccessStatusCode;
         }
         catch

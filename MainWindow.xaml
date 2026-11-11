@@ -11,7 +11,7 @@
         </Grid.RowDefinitions>
 
         <!-- =================================================================== -->
-        <!-- TOP WINDOW BAR (Traffic Lights + Draggable Region + Search Pill)    -->
+        <!-- TOP WINDOW BAR (Clean Brand Title + Draggable Region + Search Pill) -->
         <!-- =================================================================== -->
         <Border
             Grid.Row="0"
@@ -20,43 +20,61 @@
             BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Left Traffic Light Dots -->
-                <StackPanel
-                    Grid.Column="0"
-                    Orientation="Horizontal"
-                    VerticalAlignment="Center"
-                    Margin="16,0,12,0"
-                    Spacing="8">
-                    <Ellipse Width="12" Height="12" Fill="#FF5F57" />
-                    <Ellipse Width="12" Height="12" Fill="#FEBC2E" />
-                    <Ellipse x:Name="TrafficGreenDot" Width="12" Height="12" Fill="#28C840" />
-                </StackPanel>
-
-                <!-- Center Draggable Region -->
-                <Border
+                <!-- Left & Center Draggable Title Region -->
+                <Grid
                     x:Name="TitleBarDragRegion"
-                    Grid.Column="1"
+                    Grid.Column="0"
                     Background="Transparent"
-                    VerticalAlignment="Stretch" />
+                    VerticalAlignment="Stretch"
+                    Padding="16,0">
+                    <StackPanel
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Spacing="10">
+                        <FontIcon
+                            Glyph="&#xE81E;"
+                            FontSize="13.5"
+                            Foreground="#8E8E96"
+                            VerticalAlignment="Center" />
+                        <TextBlock
+                            Text="Universal Clipboard"
+                            FontSize="12.5"
+                            FontWeight="SemiBold"
+                            Foreground="#D4D4DC"
+                            VerticalAlignment="Center" />
+                        <Border
+                            Width="4"
+                            Height="4"
+                            CornerRadius="2"
+                            Background="#3A3A42"
+                            VerticalAlignment="Center"
+                            Margin="2,0" />
+                        <TextBlock
+                            x:Name="TitleBarSyncHintText"
+                            Text="iPhone ⇄ Windows"
+                            FontSize="11.5"
+                            Foreground="#6E6E76"
+                            VerticalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
 
-                <!-- Right Search Pill (Padded right for native caption buttons) -->
+                <!-- Right Search Pill (Perfectly vertically aligned, padded right for native caption buttons) -->
                 <Border
-                    Grid.Column="2"
+                    Grid.Column="1"
                     Width="320"
-                    Height="28"
-                    Margin="0,0,144,0"
-                    Background="#212124"
-                    BorderBrush="#2B2B2F"
+                    Height="30"
+                    Margin="0,0,148,0"
+                    Background="#202024"
+                    BorderBrush="#2C2C32"
                     BorderThickness="1"
                     CornerRadius="7"
-                    Padding="10,0"
+                    Padding="11,0"
                     VerticalAlignment="Center">
-                    <Grid ColumnSpacing="8">
+                    <Grid ColumnSpacing="8" VerticalAlignment="Center">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -66,7 +84,7 @@
                         <FontIcon
                             Grid.Column="0"
                             Glyph="&#xE721;"
-                            FontSize="11.5"
+                            FontSize="12"
                             Foreground="#7C7C84"
                             VerticalAlignment="Center" />
 
@@ -77,10 +95,27 @@
                             TextChanged="OnSearchTextChanged"
                             Background="Transparent"
                             BorderThickness="0"
-                            Padding="0,3,0,0"
-                            FontSize="12"
+                            MinHeight="0"
+                            Height="26"
+                            Padding="0,3,0,3"
+                            FontSize="12.5"
                             Foreground="#ECECEF"
-                            VerticalAlignment="Center" />
+                            VerticalAlignment="Center"
+                            VerticalContentAlignment="Center">
+                            <TextBox.Resources>
+                                <x:Double x:Key="TextControlThemeMinHeight">24</x:Double>
+                                <x:Double x:Key="TextControlThemeMinWidth">0</x:Double>
+                                <Thickness x:Key="TextControlThemePadding">0,3,0,3</Thickness>
+                                <Thickness x:Key="TextControlBorderThemeThickness">0</Thickness>
+                                <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
+                                <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+                                <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+                                <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
+                                <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#7C7C84" />
+                                <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#8E8E96" />
+                                <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#6E6E76" />
+                            </TextBox.Resources>
+                        </TextBox>
 
                         <TextBlock
                             x:Name="SearchItemCountText"
@@ -644,20 +679,21 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Bottom Minimal Action Bar: Copy C · Favorite F · Delete D -->
+                    <!-- Bottom Minimal Action Bar: Copy C · Send to iPhone S · Favorite F · Delete D -->
                     <StackPanel
                         Grid.Row="2"
                         Orientation="Horizontal"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        Spacing="24">
+                        Spacing="20">
                         <Button
                             x:Name="ActionCopyBtn"
                             Click="OnInspectorCopyClick"
                             Background="Transparent"
                             BorderThickness="0"
                             Padding="10,6"
-                            CornerRadius="6">
+                            CornerRadius="6"
+                            ToolTipService.ToolTip="Copy to Windows clipboard (C)">
                             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                 <FontIcon Glyph="&#xE8C8;" FontSize="13" Foreground="#F2F2F5" />
                                 <TextBlock
@@ -675,12 +711,36 @@
                         </Button>
 
                         <Button
+                            x:Name="ActionSendIphoneBtn"
+                            Click="OnInspectorSendIphoneClick"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="10,6"
+                            CornerRadius="6"
+                            ToolTipService.ToolTip="Push this item to iPhone clipboard (S)">
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE8EA;" FontSize="13" Foreground="#9A9AA2" />
+                                <TextBlock
+                                    x:Name="ActionSendIphoneLabel"
+                                    Text="Send to iPhone"
+                                    FontSize="13"
+                                    Foreground="#9A9AA2" />
+                                <TextBlock
+                                    Text="S"
+                                    FontSize="12"
+                                    Foreground="#5A5A62"
+                                    Margin="2,0,0,0" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
                             x:Name="ActionFavoriteBtn"
                             Click="OnInspectorFavoriteClick"
                             Background="Transparent"
                             BorderThickness="0"
                             Padding="10,6"
-                            CornerRadius="6">
+                            CornerRadius="6"
+                            ToolTipService.ToolTip="Toggle Favorite (F)">
                             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                 <FontIcon
                                     x:Name="ActionFavoriteIcon"
@@ -706,7 +766,8 @@
                             Background="Transparent"
                             BorderThickness="0"
                             Padding="10,6"
-                            CornerRadius="6">
+                            CornerRadius="6"
+                            ToolTipService.ToolTip="Delete item (D)">
                             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                 <FontIcon Glyph="&#xE74D;" FontSize="13" Foreground="#9A9AA2" />
                                 <TextBlock

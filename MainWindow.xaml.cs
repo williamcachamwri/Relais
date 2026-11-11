@@ -30,7 +30,7 @@ public sealed partial class MainWindow : Window
     private string _timeFilter = "time:all";
     private string _searchQuery = "";
 
-    // Exact Carbon-Graphite Palette from Reference Image #2
+    // Carbon-Graphite Palette (Reference Image #2)
     private static readonly SolidColorBrush BrushTextPrimary = new(ColorHelper.FromArgb(0xFF, 0xF2, 0xF2, 0xF5));
     private static readonly SolidColorBrush BrushTextSecondary = new(ColorHelper.FromArgb(0xFF, 0x9A, 0x9A, 0xA2));
     private static readonly SolidColorBrush BrushTextMuted = new(ColorHelper.FromArgb(0xFF, 0x6E, 0x6E, 0x76));
@@ -60,11 +60,12 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
 
         ConfigureWindowChrome();
+        AttachGlobalAnimations();
         SidebarPcNameText.Text = Environment.MachineName;
 
         _pollTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromMilliseconds(750),
+            Interval = TimeSpan.FromMilliseconds(650),
         };
         _pollTimer.Tick += OnPollTimerTick;
 
@@ -81,7 +82,7 @@ public sealed partial class MainWindow : Window
         var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
         var appWindow = AppWindow.GetFromWindowId(windowId);
 
-        appWindow.Resize(new SizeInt32(1040, 680));
+        appWindow.Resize(new SizeInt32(1050, 680));
 
         if (appWindow.TitleBar is { } titleBar)
         {
@@ -91,6 +92,108 @@ public sealed partial class MainWindow : Window
             titleBar.ButtonInactiveForegroundColor = ColorHelper.FromArgb(0xFF, 0x5A, 0x5A, 0x62);
             titleBar.ButtonHoverBackgroundColor = ColorHelper.FromArgb(0xFF, 0x23, 0x23, 0x28);
             titleBar.ButtonHoverForegroundColor = Colors.White;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Smooth Composition Animations (Apple-Design / Emil-Design-Eng)
+    // -----------------------------------------------------------------------
+
+    private void AttachGlobalAnimations()
+    {
+        var interactiveButtons = new UIElement[]
+        {
+            RailClipboardBtn, RailDeviceBtn, RailSyncBtn, RailSettingsBtn,
+            NavTypeAllBtn, NavTypeFavBtn, NavTypeTextBtn, NavTypeRichBtn,
+            NavTypeImageBtn, NavTypeFileBtn, NavTagLinkBtn, NavTagCodeBtn,
+            NavTagImageBtn, NavSrcAllBtn, NavSrcPcBtn, NavSrcIphoneBtn,
+            NavTimeAllBtn, NavTimeTodayBtn,
+            ActionCopyBtn, ActionSendIphoneBtn, ActionFavoriteBtn, ActionDeleteBtn,
+            PairWifiBtn, TransportAutoBtn, TransportWifiBtn, TransportUsbBtn,
+        };
+
+        foreach (var btn in interactiveButtons)
+        {
+            AttachPressAnimation(btn, 0.965f);
+        }
+    }
+
+    private static void AttachPressAnimation(UIElement element, float pressedScale = 0.975f)
+    {
+        element.PointerPressed += (s, _) =>
+        {
+            if (s is FrameworkElement fe)
+            {
+                AnimateScale(fe, pressedScale, 95);
+            }
+        };
+        element.PointerReleased += (s, _) =>
+        {
+            if (s is FrameworkElement fe)
+            {
+                AnimateScale(fe, 1.0f, 150);
+            }
+        };
+        element.PointerExited += (s, _) =>
+        {
+            if (s is FrameworkElement fe)
+            {
+                AnimateScale(fe, 1.0f, 150);
+            }
+        };
+    }
+
+    private static void AnimateScale(FrameworkElement element, float targetScale, int durationMs)
+    {
+        try
+        {
+            var visual = ElementCompositionPreview.GetElementVisual(element);
+            var w = (float)element.ActualWidth;
+            var h = (float)element.ActualHeight;
+            if (w > 0 && h > 0)
+            {
+                visual.CenterPoint = new Vector3(w / 2f, h / 2f, 0f);
+            }
+
+            var compositor = visual.Compositor;
+            var easing = compositor.CreateCubicBezierEasingFunction(new Vector2(0.22f, 1.0f), new Vector2(0.36f, 1.0f));
+            var anim = compositor.CreateVector3KeyFrameAnimation();
+            anim.InsertKeyFrame(1.0f, new Vector3(targetScale, targetScale, 1.0f), easing);
+            anim.Duration = TimeSpan.FromMilliseconds(durationMs);
+            visual.StartAnimation("Scale", anim);
+        }
+        catch
+        {
+            // Ignore if visual tree not ready
+        }
+    }
+
+    private static void AnimateStageEntrance(FrameworkElement element, int delayMs = 0)
+    {
+        try
+        {
+            var visual = ElementCompositionPreview.GetElementVisual(element);
+            var compositor = visual.Compositor;
+            var easing = compositor.CreateCubicBezierEasingFunction(new Vector2(0.22f, 1.0f), new Vector2(0.36f, 1.0f));
+
+            var fade = compositor.CreateScalarKeyFrameAnimation();
+            fade.InsertKeyFrame(0.0f, 0.0f);
+            fade.InsertKeyFrame(1.0f, 1.0f, easing);
+            fade.Duration = TimeSpan.FromMilliseconds(175);
+            if (delayMs > 0) fade.DelayTime = TimeSpan.FromMilliseconds(delayMs);
+
+            var slide = compositor.CreateVector3KeyFrameAnimation();
+            slide.InsertKeyFrame(0.0f, new Vector3(0f, 6f, 0f));
+            slide.InsertKeyFrame(1.0f, Vector3.Zero, easing);
+            slide.Duration = TimeSpan.FromMilliseconds(175);
+            if (delayMs > 0) slide.DelayTime = TimeSpan.FromMilliseconds(delayMs);
+
+            visual.StartAnimation("Opacity", fade);
+            visual.StartAnimation("Offset", slide);
+        }
+        catch
+        {
+            // Ignore composition error
         }
     }
 
@@ -126,7 +229,7 @@ public sealed partial class MainWindow : Window
             {
                 _lastHistoryRevision = historyResp.Revision;
                 _allItems = historyResp.Items;
-                ApplyFiltersAndRenderFeed();
+                ApplyFiltersAndRenderFeed(animateRows: true);
             }
         }
     }
@@ -140,7 +243,7 @@ public sealed partial class MainWindow : Window
             SidebarIphoneNameText.Text = paren > 0 ? status.DeviceName[..paren].Trim() : status.DeviceName;
         }
 
-        // Inspector Top-Right Peer Status
+        // Inspector Top-Right Peer Status & Titlebar Hint
         if (status.Connected)
         {
             InspectorPeerText.Text = string.IsNullOrEmpty(status.ActiveTransport)
@@ -148,12 +251,14 @@ public sealed partial class MainWindow : Window
                 : $"Peer online · {status.ActiveTransport}";
             InspectorPeerIcon.Glyph = "\uE701";
             InspectorPeerIcon.Foreground = BrushStatusGreen;
+            TitleBarSyncHintText.Text = $"{SidebarIphoneNameText.Text} ⇄ Windows ({status.ActiveTransport})";
         }
         else
         {
             InspectorPeerText.Text = "Peer offline";
             InspectorPeerIcon.Glyph = "\uE701";
             InspectorPeerIcon.Foreground = BrushTextMuted;
+            TitleBarSyncHintText.Text = "Searching for iPhone...";
         }
 
         // Onboarding pane status
@@ -184,7 +289,7 @@ public sealed partial class MainWindow : Window
         TransportUsbBtn.Foreground = mode == "usb" ? BrushTextPrimary : BrushTextSecondary;
     }
 
-    private void ApplyFiltersAndRenderFeed()
+    private void ApplyFiltersAndRenderFeed(bool animateRows = false)
     {
         _filteredItems = _allItems.Where(item =>
         {
@@ -202,8 +307,8 @@ public sealed partial class MainWindow : Window
 
             var matchesSource = _sourceFilter switch
             {
-                "src:pc" => false, // Synced items originate from iPhone
-                "src:iphone" => true,
+                "src:pc" => item.IsFromPc,
+                "src:iphone" => !item.IsFromPc,
                 _ => true,
             };
             if (!matchesSource) return false;
@@ -228,22 +333,28 @@ public sealed partial class MainWindow : Window
         HistoryListPanel.Children.Clear();
         _rowBorders.Clear();
 
-        foreach (var item in _filteredItems)
+        for (var i = 0; i < _filteredItems.Count; i++)
         {
+            var item = _filteredItems[i];
             var row = BuildFeedRow(item);
             _rowBorders[item.Id] = row;
             HistoryListPanel.Children.Add(row);
+
+            if (animateRows && i < 8)
+            {
+                AnimateStageEntrance(row, delayMs: i * 16);
+            }
         }
 
         // Maintain selection or select newest item
         if (_selectedItem is not null)
         {
             var match = _filteredItems.FirstOrDefault(x => x.Id == _selectedItem.Id);
-            SelectItem(match ?? _filteredItems.FirstOrDefault());
+            SelectItem(match ?? _filteredItems.FirstOrDefault(), animateStage: false);
         }
         else
         {
-            SelectItem(_filteredItems.FirstOrDefault());
+            SelectItem(_filteredItems.FirstOrDefault(), animateStage: true);
         }
     }
 
@@ -257,6 +368,8 @@ public sealed partial class MainWindow : Window
             BorderThickness = new Thickness(0, 0, 0, 1),
             Padding = new Thickness(14, 12, 14, 12),
         };
+
+        AttachPressAnimation(rowBorder, 0.99f);
 
         rowBorder.PointerEntered += (_, _) =>
         {
@@ -275,11 +388,11 @@ public sealed partial class MainWindow : Window
         rowBorder.PointerPressed += (_, _) =>
         {
             ShowInspectorPane();
-            SelectItem(item);
+            SelectItem(item, animateStage: _selectedItem?.Id != item.Id);
         };
         rowBorder.DoubleTapped += async (_, _) =>
         {
-            SelectItem(item);
+            SelectItem(item, animateStage: false);
             await CopySelectedItemAsync();
         };
 
@@ -361,13 +474,14 @@ public sealed partial class MainWindow : Window
         };
         rightMeta.Children.Add(new FontIcon
         {
-            Glyph = "\uE8EA",
+            Glyph = item.IsFromPc ? "\uE7F8" : "\uE8EA",
             FontSize = 10.5,
             Foreground = BrushTextMuted,
         });
+        var srcName = item.IsFromPc ? "This device" : item.ShortDeviceName;
         var srcTimeText = new TextBlock
         {
-            Text = $"{item.ShortDeviceName} · {item.RelativeTime}",
+            Text = $"{srcName} · {item.RelativeTime}",
             FontSize = 11.5,
             Foreground = BrushTextMuted,
         };
@@ -483,7 +597,7 @@ public sealed partial class MainWindow : Window
         return rowBorder;
     }
 
-    private void SelectItem(ClipboardHistoryItem? item)
+    private void SelectItem(ClipboardHistoryItem? item, bool animateStage = true)
     {
         var previousId = _selectedItem?.Id;
         _selectedItem = item;
@@ -498,23 +612,24 @@ public sealed partial class MainWindow : Window
             newBorder.Background = BrushRowSelected;
         }
 
-        UpdateInspector(item);
+        UpdateInspector(item, animateStage);
     }
 
-    private void UpdateInspector(ClipboardHistoryItem? item)
+    private void UpdateInspector(ClipboardHistoryItem? item, bool animateStage)
     {
         if (item is null)
         {
             InspectorMetaLeftText.Text = "No item selected";
-            InspectorSourceText.Text = "iPhone";
+            InspectorSourceText.Text = "This device";
             InspectorImageStage.Visibility = Visibility.Collapsed;
             InspectorTextStage.Visibility = Visibility.Visible;
-            InspectorPreviewText.Text = "Select an item from the middle list or copy anything on your iPhone.";
+            InspectorPreviewText.Text = "Copy anything on your iPhone or Windows PC — both directions sync automatically.";
             InspectorTextSubtitle.Text = "";
             return;
         }
 
-        InspectorSourceText.Text = item.ShortDeviceName;
+        InspectorSourceIcon.Glyph = item.IsFromPc ? "\uE7F8" : "\uE8EA";
+        InspectorSourceText.Text = item.IsFromPc ? "This device" : item.ShortDeviceName;
         ActionFavoriteIcon.Glyph = item.Pinned ? "\uE735" : "\uE734";
         ActionFavoriteIcon.Foreground = item.Pinned ? BrushFileGold : BrushTextSecondary;
         ActionFavoriteLabel.Text = item.Pinned ? "Favorited" : "Favorite";
@@ -535,6 +650,7 @@ public sealed partial class MainWindow : Window
             }
 
             InspectorImageTitleText.Text = item.ImageDisplayName;
+            if (animateStage) AnimateStageEntrance(InspectorImageStage);
         }
         else
         {
@@ -543,7 +659,9 @@ public sealed partial class MainWindow : Window
             InspectorTextStage.Visibility = Visibility.Visible;
 
             InspectorPreviewText.Text = item.Text;
-            InspectorTextSubtitle.Text = $"{item.Uti}  ·  {item.FormattedSize}  ·  {item.Transport}  ·  {item.LatencyMs:F1} ms";
+            var direction = item.IsFromPc ? "Windows → iPhone" : "iPhone → Windows";
+            InspectorTextSubtitle.Text = $"{direction}  ·  {item.Uti}  ·  {item.FormattedSize}  ·  {item.Transport}  ·  {item.LatencyMs:F1} ms";
+            if (animateStage) AnimateStageEntrance(InspectorTextStage);
         }
     }
 
@@ -553,7 +671,7 @@ public sealed partial class MainWindow : Window
         var ok = await _backend.CopyItemToWindowsAsync(_selectedItem.Id);
         if (ok)
         {
-            ActionCopyLabel.Text = "Copied";
+            ActionCopyLabel.Text = "Copied ✓";
             ActionCopyLabel.Foreground = BrushStatusGreen;
             await Task.Delay(1100);
             ActionCopyLabel.Text = "Copy";
@@ -561,12 +679,37 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private async Task SendSelectedItemToIphoneAsync()
+    {
+        if (_selectedItem is null) return;
+        ActionSendIphoneLabel.Text = "Sending...";
+        var ok = await _backend.SendItemToIphoneAsync(_selectedItem.Id);
+        if (ok)
+        {
+            ActionSendIphoneLabel.Text = "Sent to iPhone ✓";
+            ActionSendIphoneLabel.Foreground = BrushStatusGreen;
+            await Task.Delay(1200);
+        }
+        else
+        {
+            ActionSendIphoneLabel.Text = "Send failed";
+            ActionSendIphoneLabel.Foreground = BrushStatusAmber;
+            await Task.Delay(1200);
+        }
+        ActionSendIphoneLabel.Text = "Send to iPhone";
+        ActionSendIphoneLabel.Foreground = BrushTextSecondary;
+    }
+
     private void ShowInspectorPane()
     {
-        OnboardingPane.Visibility = Visibility.Collapsed;
-        InspectorPane.Visibility = Visibility.Visible;
-        RailClipboardBtn.Background = BrushRailActive;
-        RailDeviceBtn.Background = BrushTransparent;
+        if (InspectorPane.Visibility != Visibility.Visible)
+        {
+            OnboardingPane.Visibility = Visibility.Collapsed;
+            InspectorPane.Visibility = Visibility.Visible;
+            RailClipboardBtn.Background = BrushRailActive;
+            RailDeviceBtn.Background = BrushTransparent;
+            AnimateStageEntrance(InspectorPane);
+        }
     }
 
     private void ShowOnboardingPane()
@@ -575,6 +718,7 @@ public sealed partial class MainWindow : Window
         OnboardingPane.Visibility = Visibility.Visible;
         RailDeviceBtn.Background = BrushRailActive;
         RailClipboardBtn.Background = BrushTransparent;
+        AnimateStageEntrance(OnboardingPane);
     }
 
     private void OnRailClipboardClick(object sender, RoutedEventArgs e)
@@ -606,7 +750,7 @@ public sealed partial class MainWindow : Window
         };
         UpdateSidebarButtonGroup(buttons, clicked);
         ShowInspectorPane();
-        ApplyFiltersAndRenderFeed();
+        ApplyFiltersAndRenderFeed(animateRows: true);
     }
 
     private void OnSourceFilterClick(object sender, RoutedEventArgs e)
@@ -616,7 +760,7 @@ public sealed partial class MainWindow : Window
 
         var buttons = new[] { NavSrcAllBtn, NavSrcPcBtn, NavSrcIphoneBtn };
         UpdateSidebarButtonGroup(buttons, clicked);
-        ApplyFiltersAndRenderFeed();
+        ApplyFiltersAndRenderFeed(animateRows: true);
     }
 
     private void OnTimeFilterClick(object sender, RoutedEventArgs e)
@@ -626,7 +770,7 @@ public sealed partial class MainWindow : Window
 
         var buttons = new[] { NavTimeAllBtn, NavTimeTodayBtn };
         UpdateSidebarButtonGroup(buttons, clicked);
-        ApplyFiltersAndRenderFeed();
+        ApplyFiltersAndRenderFeed(animateRows: true);
     }
 
     private static void UpdateSidebarButtonGroup(IEnumerable<Button> group, Button activeBtn)
@@ -658,12 +802,17 @@ public sealed partial class MainWindow : Window
     private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
     {
         _searchQuery = SearchBox.Text ?? "";
-        ApplyFiltersAndRenderFeed();
+        ApplyFiltersAndRenderFeed(animateRows: false);
     }
 
     private async void OnInspectorCopyClick(object sender, RoutedEventArgs e)
     {
         await CopySelectedItemAsync();
+    }
+
+    private async void OnInspectorSendIphoneClick(object sender, RoutedEventArgs e)
+    {
+        await SendSelectedItemToIphoneAsync();
     }
 
     private async void OnInspectorFavoriteClick(object sender, RoutedEventArgs e)
@@ -693,6 +842,11 @@ public sealed partial class MainWindow : Window
         if (e.Key == VirtualKey.C)
         {
             await CopySelectedItemAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == VirtualKey.S)
+        {
+            await SendSelectedItemToIphoneAsync();
             e.Handled = true;
         }
         else if (e.Key == VirtualKey.F && _selectedItem is not null)
