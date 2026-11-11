@@ -350,8 +350,57 @@ def build_cf_html_payload(html_fragment: str, source_url: Optional[str] = None) 
 
 CF_DIB = 8
 CF_UNICODETEXT = 13
+CF_HDROP = 15
 CF_DIBV5 = 17
 GMEM_MOVEABLE = 0x0002
+
+IMAGE_EXTENSIONS: set[str] = {
+    ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".heic", ".heif", ".tif", ".tiff"
+}
+TEXT_FILE_EXTENSIONS: set[str] = {
+    ".txt", ".md", ".json", ".py", ".cs", ".js", ".ts", ".tsx", ".jsx", ".html", ".htm",
+    ".css", ".xml", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".csv", ".log", ".sql",
+    ".sh", ".bat", ".ps1", ".c", ".cpp", ".h", ".hpp", ".java", ".go", ".rs",
+}
+FILE_EXT_TO_UTI: dict[str, str] = {
+    ".pdf": "com.adobe.pdf",
+    ".zip": "public.zip-archive",
+    ".rtf": "public.rtf",
+    ".html": "public.html",
+    ".htm": "public.html",
+    ".mp4": "public.mpeg-4",
+    ".m4v": "public.mpeg-4",
+    ".mov": "com.apple.quicktime-movie",
+    ".mp3": "public.mp3",
+    ".wav": "com.microsoft.waveform-audio",
+    ".doc": "com.microsoft.word.doc",
+    ".docx": "org.openxmlformats.wordprocessingml.document",
+    ".xls": "com.microsoft.excel.xls",
+    ".xlsx": "org.openxmlformats.spreadsheetml.sheet",
+    ".ppt": "com.microsoft.powerpoint.ppt",
+    ".pptx": "org.openxmlformats.presentationml.presentation",
+    ".json": "public.json",
+    ".xml": "public.xml",
+    ".csv": "public.comma-separated-values-text",
+}
+UTI_TO_FILE_EXT: dict[str, str] = {
+    "com.adobe.pdf": ".pdf",
+    "public.zip-archive": ".zip",
+    "com.pkware.zip-archive": ".zip",
+    "public.mpeg-4": ".mp4",
+    "com.apple.quicktime-movie": ".mov",
+    "public.mp3": ".mp3",
+    "com.microsoft.waveform-audio": ".wav",
+    "com.microsoft.word.doc": ".doc",
+    "org.openxmlformats.wordprocessingml.document": ".docx",
+    "com.microsoft.excel.xls": ".xls",
+    "org.openxmlformats.spreadsheetml.sheet": ".xlsx",
+    "com.microsoft.powerpoint.ppt": ".ppt",
+    "org.openxmlformats.presentationml.presentation": ".pptx",
+    "public.json": ".json",
+    "public.xml": ".xml",
+    "public.comma-separated-values-text": ".csv",
+}
 
 BI_RGB = 0
 BI_BITFIELDS = 3
@@ -396,6 +445,7 @@ class WindowsClipboardWriter:
         self.retry_delay_sec = retry_delay_sec
         self._user32 = ctypes.WinDLL("user32", use_last_error=True)
         self._kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        self._shell32 = ctypes.WinDLL("shell32", use_last_error=True)
         self._configure_win32_signatures()
         self.cf_html = self._user32.RegisterClipboardFormatW("HTML Format")
         self.cf_png = self._user32.RegisterClipboardFormatW("PNG")
@@ -442,12 +492,105 @@ class WindowsClipboardWriter:
         self._kernel32.GlobalFree.argtypes = [wintypes.HGLOBAL]
         self._kernel32.GlobalFree.restype = wintypes.HGLOBAL
 
+        self._shell32.DragQueryFileW.argtypes = [
+            wintypes.HANDLE,
+            wintypes.UINT,
+            wintypes.LPWSTR,
+            wintypes.UINT,
+        ]
+        self._shell32.DragQueryFileW.restype = wintypes.UINT
+
     def get_sequence_number(self) -> int:
         return int(self._user32.GetClipboardSequenceNumber())
 
+    def _read_hdrop_files(self) -> list[str]:
+        """Read copied file paths from Windows `CF_HDROP` clipboard format."""
+        if not self._user32.IsClipboardFormatAvailable(CF_HDROP):
+            return []
+        opened = False
+        for _ in range(5):
+            if self._user32.OpenClipboard(None):
+                opened = True
+                break
+            time.sleep(0.015)
+        if not opened:
+            return []
+        paths: list[str] = []
+        try:
+            handle = self._user32.GetClipboardData(CF_HDROP)
+            if handle:
+                count = int(self._shell32.DragQueryFileW(handle, 0xFFFFFFFF, None, 0))
+                for idx in range(count):
+                    length = int(self._shell32.DragQueryFileW(handle, idx, None, 0))
+                    if length > 0:
+                        buf = ctypes.create_unicode_buffer(length + 1)
+                        self._shell32.DragQueryFileW(handle, idx, buf, length + 1)
+                        if buf.value:
+                            paths.append(buf.value)
+        except Exception:
+            pass
+        finally:
+            self._user32.CloseClipboard()
+        return paths
+
     def read_payload(self) -> Optional[tuple["ExtractedPayload", Optional[tuple[int, int]]]]:
-        """Read current Windows clipboard content (Unicode text/URL or PNG/DIB image) for Windows -> iPhone sync."""
-        # 1. Check Unicode Text first
+        """Read current Windows clipboard content (Copied Files via CF_HDROP, Unicode text/URL, or PNG/DIB image)."""
+        # 0. Check CF_HDROP (Files copied in Windows File Explorer or Desktop)
+        hdrop_paths = self._read_hdrop_files()
+        for raw_path in hdrop_paths:
+            with contextlib.suppress(Exception):
+                p = Path(raw_path)
+                if not p.is_file():
+                    continue
+                fsize = p.stat().st_size
+                if fsize <= 0 or fsize > 40 * 1024 * 1024:
+                    continue
+                ext = p.suffix.lower()
+                raw_bytes = p.read_bytes()
+
+                if ext in IMAGE_EXTENSIONS:
+                    with Image.open(io.BytesIO(raw_bytes)) as img:
+                        img = ImageOps.exif_transpose(img)
+                        rgba = img.convert("RGBA")
+                        width, height = rgba.size
+                        buf = io.BytesIO()
+                        rgba.save(buf, format="PNG")
+                        png_bytes = buf.getvalue()
+                    return (
+                        ExtractedPayload(
+                            kind="image",
+                            uti="public.png",
+                            raw_size=len(raw_bytes),
+                            image_bytes=png_bytes,
+                            file_name=p.name,
+                            file_bytes=raw_bytes,
+                        ),
+                        (width, height),
+                    )
+
+                uti = FILE_EXT_TO_UTI.get(
+                    ext,
+                    UTI_UTF8_PLAIN_TEXT if ext in TEXT_FILE_EXTENSIONS else "public.data",
+                )
+                preview_text = p.name
+                if ext in TEXT_FILE_EXTENSIONS:
+                    with contextlib.suppress(UnicodeDecodeError):
+                        decoded = raw_bytes.decode("utf-8")
+                        if decoded.strip():
+                            preview_text = decoded
+                return (
+                    ExtractedPayload(
+                        kind="file",
+                        uti=uti,
+                        raw_size=len(raw_bytes),
+                        text=preview_text,
+                        file_name=p.name,
+                        file_bytes=raw_bytes,
+                    ),
+                    None,
+                )
+
+        # 1. Check Unicode Text
         if self._user32.IsClipboardFormatAvailable(CF_UNICODETEXT):
             opened = False
             for _ in range(5):
@@ -634,8 +777,36 @@ class WindowsClipboardWriter:
             dibv5_bytes = ctypes.string_at(ctypes.byref(hdr), ctypes.sizeof(hdr)) + bgra_bytes
             return dibv5_bytes, dib_bytes, png_bytes, (width, height)
 
-    def write_image(self, image_bytes: bytes, uti: str) -> tuple[list[str], tuple[int, int]]:
-        """Decode image (PNG, JPEG, HEIC, TIFF, GIF, WebP) and write `CF_DIBV5`, `CF_DIB`, and `PNG`."""
+    @staticmethod
+    def _build_hdrop_payload(file_paths: list[str]) -> bytes:
+        """Build a Win32 `DROPFILES` struct (20-byte header + UTF-16LE null-separated paths + double null)."""
+        header = struct.pack("<IiiII", 20, 0, 0, 0, 1)
+        body = b"".join(os.path.abspath(p).encode("utf-16-le") + b"\x00\x00" for p in file_paths) + b"\x00\x00"
+        return header + body
+
+    def write_file(self, file_path: str, text_fallback: Optional[str] = None) -> list[str]:
+        """Write `CF_HDROP` to the Windows clipboard so the file can be pasted into File Explorer (Ctrl+V)."""
+        hdrop_bytes = self._build_hdrop_payload([file_path])
+        formats_written: list[str] = []
+        with self._open_clipboard_locked():
+            if not self._user32.EmptyClipboard():
+                raise RuntimeError(f"EmptyClipboard failed (WinError={ctypes.get_last_error()})")
+            self._set_raw_format(CF_HDROP, hdrop_bytes)
+            formats_written.append("CF_HDROP")
+            if text_fallback:
+                utf16_bytes = text_fallback.encode("utf-16-le") + b"\x00\x00"
+                with contextlib.suppress(Exception):
+                    self._set_raw_format(CF_UNICODETEXT, utf16_bytes)
+                    formats_written.append("CF_UNICODETEXT")
+        return formats_written
+
+    def write_image(
+        self,
+        image_bytes: bytes,
+        uti: str,
+        file_path: Optional[str] = None,
+    ) -> tuple[list[str], tuple[int, int]]:
+        """Decode image (PNG, JPEG, HEIC, TIFF, GIF, WebP) and write `CF_DIBV5`, `CF_DIB`, `PNG`, and optional `CF_HDROP`."""
         if uti == "public.heic" and not HEIF_AVAILABLE:
             raise RuntimeError("HEIC image received but pillow-heif is not installed")
 
@@ -656,6 +827,11 @@ class WindowsClipboardWriter:
                 self._set_raw_format(self.cf_png, png_bytes)
                 formats_written.append("PNG")
 
+            if file_path and os.path.isfile(file_path):
+                with contextlib.suppress(Exception):
+                    self._set_raw_format(CF_HDROP, self._build_hdrop_payload([file_path]))
+                    formats_written.append("CF_HDROP")
+
         return formats_written, dimensions
 
 
@@ -666,12 +842,14 @@ class WindowsClipboardWriter:
 
 @dataclass(frozen=True)
 class ExtractedPayload:
-    kind: str  # "text", "url", "image"
+    kind: str  # "text", "url", "image", "file"
     uti: str
     raw_size: int
     text: Optional[str] = None
     html_bytes: Optional[bytes] = None
     image_bytes: Optional[bytes] = None
+    file_name: Optional[str] = None
+    file_bytes: Optional[bytes] = None
 
     @property
     def fingerprint(self) -> str:
@@ -679,8 +857,11 @@ class ExtractedPayload:
         h.update(self.kind.encode("utf-8"))
         if self.image_bytes is not None:
             h.update(self.image_bytes)
+        elif self.file_bytes is not None:
+            h.update(self.file_bytes)
         elif self.text is not None:
-            h.update(self.text.encode("utf-8"))
+            norm = self.text.replace("\r\n", "\n").replace("\r", "\n").strip()
+            h.update(norm.encode("utf-8"))
         return h.hexdigest()
 
 
@@ -826,6 +1007,22 @@ def extract_inline_payload(snapshot: dict[str, Any]) -> Optional[ExtractedPayloa
                     html_bytes=arch_html,
                 )
 
+    # Pass 4: Look for inline file representations (PDF, ZIP, Office docs, audio/video from iOS Files)
+    for item in items:
+        data_map = cast(dict[str, Any], item.get("data") or {})
+        for file_uti, ext in UTI_TO_FILE_EXT.items():
+            f_bytes = _inline_bytes(data_map, file_uti)
+            if f_bytes is not None:
+                fname = f"iPhone_File_{int(time.time())}{ext}"
+                return ExtractedPayload(
+                    kind="file",
+                    uti=file_uti,
+                    raw_size=len(f_bytes),
+                    text=fname,
+                    file_name=fname,
+                    file_bytes=f_bytes,
+                )
+
     return None
 
 
@@ -846,6 +1043,7 @@ def find_resolvable_Secondary_representation(
     items = cast(list[dict[str, Any]], snapshot.get("items", []) or [])
     candidate_utis = (
         *IMAGE_UTIS.keys(),
+        *UTI_TO_FILE_EXT.keys(),
         UTI_UTF8_PLAIN_TEXT,
         UTI_PLAIN_TEXT,
         UTI_TEXT,
@@ -1040,8 +1238,10 @@ class ClipboardHistoryStore:
         app_data = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local")))
         self.base_dir = app_data / "UniversalClipboard"
         self.images_dir = self.base_dir / "images"
+        self.files_dir = self.base_dir / "files"
         self.history_file = self.base_dir / "history.json"
         self.images_dir.mkdir(parents=True, exist_ok=True)
+        self.files_dir.mkdir(parents=True, exist_ok=True)
         self._items: list[dict[str, Any]] = []
         self._load()
 
@@ -1078,6 +1278,7 @@ class ClipboardHistoryStore:
         item_id = f"clip-{int(now * 1000)}-{change_count or 0}"
 
         image_file: Optional[str] = None
+        saved_file: Optional[str] = None
         width, height = dimensions or (0, 0)
         if payload.kind == "image" and payload.image_bytes is not None:
             image_file = f"{item_id}.png"
@@ -1087,6 +1288,13 @@ class ClipboardHistoryStore:
                     img = ImageOps.exif_transpose(img)
                     width, height = img.size
                     img.save(img_path, format="PNG")
+        elif payload.kind == "file" and payload.file_bytes is not None:
+            raw_name = os.path.basename(payload.file_name or "") or f"{item_id}.bin"
+            safe_name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", raw_name)
+            saved_file = f"{item_id}_{safe_name}"
+            file_path = self.files_dir / saved_file
+            with contextlib.suppress(Exception):
+                file_path.write_bytes(payload.file_bytes)
 
         html_b64: Optional[str] = None
         if payload.html_bytes:
@@ -1094,7 +1302,12 @@ class ClipboardHistoryStore:
 
         display_text = payload.text or ""
         if payload.kind == "image":
-            display_text = f"Image ({width} × {height} px)" if width and height else "Image"
+            if payload.file_name:
+                display_text = payload.file_name
+            else:
+                display_text = f"Image ({width} × {height} px)" if width and height else "Image"
+        elif payload.kind == "file":
+            display_text = payload.file_name or payload.text or "File"
 
         device_label = "This device" if source == "pc" else friendly_device_name(product_type)
 
@@ -1103,6 +1316,8 @@ class ClipboardHistoryStore:
             "kind": payload.kind,
             "uti": payload.uti,
             "text": display_text,
+            "file_name": payload.file_name or "",
+            "saved_file": saved_file,
             "html_base64": html_b64,
             "image_file": image_file,
             "width": width,
@@ -1122,16 +1337,29 @@ class ClipboardHistoryStore:
         }
 
         with self._lock:
-            # Deduplicate existing unpinned entry with identical fingerprint
+            # Deduplicate existing entry with identical fingerprint
             existing_pinned = False
             filtered: list[dict[str, Any]] = []
             for old in self._items:
                 if old.get("fingerprint") == fp:
                     existing_pinned = bool(old.get("pinned"))
+                    # If this exact payload was just recorded from PC within 15s, preserve PC source
+                    if (
+                        old.get("source") == "pc"
+                        and source != "pc"
+                        and (now - float(old.get("timestamp", 0.0))) < 15.0
+                    ):
+                        entry["source"] = "pc"
+                        entry["device_model"] = "This device"
+                        entry["product_type"] = "PC"
                     old_img = old.get("image_file")
                     if old_img and old_img != image_file:
                         with contextlib.suppress(Exception):
-                            (self.images_dir / old_img).unlink(missing_ok=True)
+                            (self.images_dir / str(old_img)).unlink(missing_ok=True)
+                    old_file = old.get("saved_file")
+                    if old_file and old_file != saved_file:
+                        with contextlib.suppress(Exception):
+                            (self.files_dir / str(old_file)).unlink(missing_ok=True)
                 else:
                     filtered.append(old)
             entry["pinned"] = existing_pinned
@@ -1172,6 +1400,22 @@ class ClipboardHistoryStore:
                 return img_path.read_bytes()
         return None
 
+    def get_file_path(self, item_id: str) -> Optional[Path]:
+        item = self.get_item(item_id)
+        if not item:
+            return None
+        saved_file = item.get("saved_file")
+        if saved_file:
+            p = self.files_dir / str(saved_file)
+            if p.exists():
+                return p
+        image_file = item.get("image_file")
+        if image_file:
+            p = self.images_dir / str(image_file)
+            if p.exists():
+                return p
+        return None
+
     def toggle_pin(self, item_id: str) -> Optional[bool]:
         with self._lock:
             for item in self._items:
@@ -1190,6 +1434,9 @@ class ClipboardHistoryStore:
                     if old.get("image_file"):
                         with contextlib.suppress(Exception):
                             (self.images_dir / str(old["image_file"])).unlink(missing_ok=True)
+                    if old.get("saved_file"):
+                        with contextlib.suppress(Exception):
+                            (self.files_dir / str(old["saved_file"])).unlink(missing_ok=True)
                     self.revision += 1
                     self._save_locked()
                     return True
@@ -1207,6 +1454,9 @@ class ClipboardHistoryStore:
                     if item.get("image_file"):
                         with contextlib.suppress(Exception):
                             (self.images_dir / str(item["image_file"])).unlink(missing_ok=True)
+                    if item.get("saved_file"):
+                        with contextlib.suppress(Exception):
+                            (self.files_dir / str(item["saved_file"])).unlink(missing_ok=True)
             self._items = kept
             self.revision += 1
             self._save_locked()
@@ -1236,7 +1486,8 @@ class UniversalClipboardCoordinator:
         self.history = ClipboardHistoryStore()
         self.last_change_id: Optional[tuple[Any, Optional[int]]] = None
         self.recent_fingerprints: dict[str, float] = {}
-        self.echo_window_sec = 5.0
+        self.echo_window_sec = 8.0
+        self._pasteboard_io_lock = asyncio.Lock()
 
         # Live runtime state for WinUI 3 desktop client
         self.loop: Optional[asyncio.AbstractEventLoop] = None
@@ -1306,11 +1557,23 @@ class UniversalClipboardCoordinator:
             self.recent_fingerprints[fp] = time.monotonic()
 
         kind = item.get("kind")
+        if kind == "file":
+            fpath = self.history.get_file_path(item_id)
+            if not fpath or not fpath.is_file():
+                raise RuntimeError("Saved file is missing on disk")
+            fallback_name = str(item.get("file_name") or item.get("text") or fpath.name)
+            return self.clipboard.write_file(str(fpath), text_fallback=fallback_name)
+
         if kind == "image":
             img_bytes = self.history.get_image_bytes(item_id)
             if not img_bytes:
                 raise RuntimeError("Saved image file is missing")
-            formats, _ = self.clipboard.write_image(img_bytes, "public.png")
+            fpath = self.history.get_file_path(item_id)
+            formats, _ = self.clipboard.write_image(
+                img_bytes,
+                "public.png",
+                file_path=str(fpath) if fpath else None,
+            )
             return formats
 
         text = str(item.get("text") or "")
@@ -1327,7 +1590,22 @@ class UniversalClipboardCoordinator:
             raise KeyError(f"History item {item_id} not found")
 
         kind = str(item.get("kind") or "text")
-        if kind == "image":
+        if kind == "file":
+            fpath = self.history.get_file_path(item_id)
+            if not fpath or not fpath.is_file():
+                raise RuntimeError("Saved file is missing on disk")
+            file_bytes = fpath.read_bytes()
+            fname = str(item.get("file_name") or item.get("text") or fpath.name)
+            payload = ExtractedPayload(
+                kind="file",
+                uti=str(item.get("uti") or "public.data"),
+                raw_size=len(file_bytes),
+                text=fname,
+                file_name=fname,
+                file_bytes=file_bytes,
+            )
+            dims = None
+        elif kind == "image":
             img_bytes = self.history.get_image_bytes(item_id)
             if not img_bytes:
                 raise RuntimeError("Saved image file is missing")
@@ -1336,6 +1614,7 @@ class UniversalClipboardCoordinator:
                 uti="public.png",
                 raw_size=len(img_bytes),
                 image_bytes=img_bytes,
+                file_name=str(item.get("file_name") or ""),
             )
             dims = (int(item.get("width") or 0), int(item.get("height") or 0))
         else:
@@ -1376,6 +1655,21 @@ class UniversalClipboardCoordinator:
 
         if payload.kind == "image" and payload.image_bytes is not None:
             items = [data_item("public.png", payload.image_bytes)]
+        elif payload.kind == "file" and payload.file_bytes is not None:
+            primary_uti = payload.uti or "public.data"
+            fname = payload.file_name or payload.text or "file"
+            name_bytes = fname.encode("utf-8")
+            type_list: list[str] = []
+            data_dict: dict[str, dict[str, Any]] = {}
+            for u in (primary_uti, "public.data", "public.content", "public.item"):
+                if u not in type_list:
+                    type_list.append(u)
+                    data_dict[u] = {"data": payload.file_bytes}
+            for txt_u in (UTI_UTF8_PLAIN_TEXT, UTI_PLAIN_TEXT):
+                if txt_u not in type_list:
+                    type_list.append(txt_u)
+                    data_dict[txt_u] = {"data": name_bytes}
+            items = [PasteboardItem(types=type_list, data=data_dict)]
         elif payload.text is not None:
             utis = [UTI_UTF8_PLAIN_TEXT, UTI_PLAIN_TEXT, UTI_TEXT]
             if payload.kind == "url":
@@ -1385,31 +1679,40 @@ class UniversalClipboardCoordinator:
             return False
 
         try:
-            async with PasteboardService(rsd) as pb_service:
-                reply = await asyncio.wait_for(
-                    pb_service.set(items, GENERAL_PASTEBOARD),
-                    timeout=10.0,
-                )
-            total_ms = (time.perf_counter() - t_start) * 1000.0
-            change_id = extract_change_info(reply) if isinstance(reply, dict) else (None, None)
-            if change_id[1] is not None:
-                self._own_change_ids.add(change_id)
-                self.last_change_id = change_id
-            self.recent_fingerprints[fp] = time.monotonic()
-            self.last_sync_ms = total_ms
-            self.total_synced += 1
+            async with self._pasteboard_io_lock:
+                async with PasteboardService(rsd) as pb_service:
+                    reply = await asyncio.wait_for(
+                        pb_service.set(items, GENERAL_PASTEBOARD),
+                        timeout=10.0,
+                    )
+                    change_id = extract_change_info(reply) if isinstance(reply, dict) else (None, None)
+                    if change_id[1] is None:
+                        with contextlib.suppress(Exception):
+                            meta_snap = await asyncio.wait_for(
+                                pb_service.get(GENERAL_PASTEBOARD, POLICY_ALL_PROMISED),
+                                timeout=4.0,
+                            )
+                            change_id = extract_change_info(meta_snap)
 
-            if record_history:
-                self.history.add_item(
-                    payload=payload,
-                    change_count=change_id[1],
-                    transport=active_transport,
-                    product_type="This device",
-                    ios_version="",
-                    latency_ms=total_ms,
-                    dimensions=dimensions,
-                    source="pc",
-                )
+                total_ms = (time.perf_counter() - t_start) * 1000.0
+                if change_id[1] is not None:
+                    self._own_change_ids.add(change_id)
+                    self.last_change_id = change_id
+                self.recent_fingerprints[fp] = time.monotonic()
+                self.last_sync_ms = total_ms
+                self.total_synced += 1
+
+                if record_history:
+                    self.history.add_item(
+                        payload=payload,
+                        change_count=change_id[1],
+                        transport=active_transport,
+                        product_type="This device",
+                        ios_version="",
+                        latency_ms=total_ms,
+                        dimensions=dimensions,
+                        source="pc",
+                    )
 
             logger.info(
                 "[CLIPBOARD_PUSHED] status=SUCCESS direction=Windows->iPhone transport=%s changeCount=%s "
@@ -1607,13 +1910,14 @@ class UniversalClipboardCoordinator:
                     # a follow-up pull without dropping the newest Copy.
                     pull_trigger.clear()
                     reason = pull_reason
-                    # Use a dedicated PasteboardService connection per pull so any slow or timed-out
-                    # secondary RESOLVE never corrupts or blocks subsequent pulls.
-                    async with PasteboardService(rsd) as pb_service:
-                        needs_retry = await self._pull_and_update_clipboard(
-                            rsd, pb_service, active_transport, reason
-                        )
-                        pending_locked_catchup = needs_retry
+                    # Acquire `_pasteboard_io_lock` so notifications triggered by a Windows->iPhone
+                    # `SET` wait until `_push_payload_to_iphone` records `change_id` and `source="pc"`.
+                    async with self._pasteboard_io_lock:
+                        async with PasteboardService(rsd) as pb_service:
+                            needs_retry = await self._pull_and_update_clipboard(
+                                rsd, pb_service, active_transport, reason
+                            )
+                            pending_locked_catchup = needs_retry
 
             async def _transport_switch_watcher() -> None:
                 await session_cancel.wait()
@@ -1759,6 +2063,17 @@ class UniversalClipboardCoordinator:
                             raw_size=len(resolved_bytes),
                             image_bytes=resolved_bytes,
                         )
+                    elif target_uti in UTI_TO_FILE_EXT:
+                        ext = UTI_TO_FILE_EXT[target_uti]
+                        fname = f"iPhone_File_{int(time.time())}{ext}"
+                        payload = ExtractedPayload(
+                            kind="file",
+                            uti=target_uti,
+                            raw_size=len(resolved_bytes),
+                            text=fname,
+                            file_name=fname,
+                            file_bytes=resolved_bytes,
+                        )
                     elif target_uti == UTI_WEB_ARCHIVE:
                         img_pair, arch_text, arch_html = _extract_from_webarchive(resolved_bytes)
                         if img_pair is not None:
@@ -1839,21 +2154,27 @@ class UniversalClipboardCoordinator:
         try:
             if payload.kind == "image" and payload.image_bytes is not None:
                 base_uti = payload.uti.split(":")[-1]
-                formats, (width, height) = self.clipboard.write_image(payload.image_bytes, base_uti)
-                write_ms = (time.perf_counter() - t_write) * 1000.0
                 total_ms = (time.perf_counter() - t_start) * 1000.0
-                self.recent_fingerprints[fp] = time.monotonic()
-                self.last_sync_ms = total_ms
-                self.total_synced += 1
-                self.history.add_item(
+                entry = self.history.add_item(
                     payload=payload,
                     change_count=change_count,
                     transport=active_transport,
                     product_type=rsd.product_type,
                     ios_version=rsd.product_version,
                     latency_ms=total_ms,
-                    dimensions=(width, height),
+                    source="iphone",
                 )
+                saved_img_path = self.history.get_file_path(str(entry["id"]))
+                formats, (width, height) = self.clipboard.write_image(
+                    payload.image_bytes,
+                    base_uti,
+                    file_path=str(saved_img_path) if saved_img_path else None,
+                )
+                write_ms = (time.perf_counter() - t_write) * 1000.0
+                total_ms = (time.perf_counter() - t_start) * 1000.0
+                self.recent_fingerprints[fp] = time.monotonic()
+                self.last_sync_ms = total_ms
+                self.total_synced += 1
                 logger.info(
                     "[CLIPBOARD_UPDATED] status=SUCCESS trigger=%s transport=%s changeCount=%s "
                     "type=image uti=%s size=%dB dimensions=%dx%d formats=%s pull_ms=%.1f write_ms=%.1f total_ms=%.1f",
@@ -1864,6 +2185,42 @@ class UniversalClipboardCoordinator:
                     payload.raw_size,
                     width,
                     height,
+                    "+".join(formats),
+                    pull_ms,
+                    write_ms,
+                    total_ms,
+                )
+            elif payload.kind == "file" and payload.file_bytes is not None:
+                total_ms = (time.perf_counter() - t_start) * 1000.0
+                entry = self.history.add_item(
+                    payload=payload,
+                    change_count=change_count,
+                    transport=active_transport,
+                    product_type=rsd.product_type,
+                    ios_version=rsd.product_version,
+                    latency_ms=total_ms,
+                    source="iphone",
+                )
+                saved_fpath = self.history.get_file_path(str(entry["id"]))
+                formats = []
+                if saved_fpath and saved_fpath.is_file():
+                    formats = self.clipboard.write_file(
+                        str(saved_fpath),
+                        text_fallback=payload.file_name or payload.text,
+                    )
+                write_ms = (time.perf_counter() - t_write) * 1000.0
+                total_ms = (time.perf_counter() - t_start) * 1000.0
+                self.recent_fingerprints[fp] = time.monotonic()
+                self.last_sync_ms = total_ms
+                self.total_synced += 1
+                logger.info(
+                    "[CLIPBOARD_UPDATED] status=SUCCESS trigger=%s transport=%s changeCount=%s "
+                    "type=file uti=%s size=%dB formats=%s pull_ms=%.1f write_ms=%.1f total_ms=%.1f",
+                    reason,
+                    active_transport,
+                    change_count,
+                    payload.uti,
+                    payload.raw_size,
                     "+".join(formats),
                     pull_ms,
                     write_ms,
@@ -1890,6 +2247,7 @@ class UniversalClipboardCoordinator:
                     product_type=rsd.product_type,
                     ios_version=rsd.product_version,
                     latency_ms=total_ms,
+                    source="iphone",
                 )
                 logger.info(
                     "[CLIPBOARD_UPDATED] status=SUCCESS trigger=%s transport=%s changeCount=%s "
@@ -2095,8 +2453,13 @@ def start_local_api_server(
         logger.info("[API] Local WinUI 3 backend server listening on http://%s:%d", host, port)
         return server
     except OSError as exc:
-        logger.warning("[API] Could not bind local API on %s:%d (%s)", host, port, exc)
-        return None
+        logger.warning(
+            "[API] Another Universal Clipboard daemon is already listening on %s:%d (%s); exiting duplicate instance.",
+            host,
+            port,
+            exc,
+        )
+        os._exit(0)
 
 
 # ---------------------------------------------------------------------------
