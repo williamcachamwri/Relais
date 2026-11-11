@@ -148,6 +148,17 @@
                 <ColumnDefinition x:Name="ColInspector" Width="*" />
             </Grid.ColumnDefinitions>
 
+            <!-- Global User Notification & Error InfoBar -->
+            <InfoBar
+                x:Name="GlobalNotificationInfoBar"
+                Grid.ColumnSpan="4"
+                IsOpen="False"
+                IsClosable="True"
+                Severity="Informational"
+                Margin="60,10,20,0"
+                VerticalAlignment="Top"
+                Canvas.ZIndex="1000" />
+
             <!-- =============================================================== -->
             <!-- COLUMN 0: FAR-LEFT ICON RAIL                                    -->
             <!-- =============================================================== -->

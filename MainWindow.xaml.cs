@@ -412,10 +412,17 @@ public sealed partial class MainWindow : Window
 
     private async void OnPollTimerTick(object? sender, object e)
     {
-        await RefreshStatusAndHistoryAsync();
-        if (LogsPane.Visibility == Visibility.Visible && ++_logPollCounter % 2 == 0)
+        try
         {
-            await RefreshBackendLogsAsync();
+            await RefreshStatusAndHistoryAsync();
+            if (LogsPane.Visibility == Visibility.Visible && ++_logPollCounter % 2 == 0)
+            {
+                await RefreshBackendLogsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[OnPollTimerTick Error] {ex.Message}");
         }
     }
 
@@ -1151,15 +1158,64 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private DispatcherTimer? _infoBarTimer;
+
+    public void ShowNotification(string message, InfoBarSeverity severity = InfoBarSeverity.Informational, string? title = null, int autoDismissMs = 4500)
+    {
+        try
+        {
+            GlobalNotificationInfoBar.Title = title ?? (severity switch
+            {
+                InfoBarSeverity.Error => "Lỗi",
+                InfoBarSeverity.Warning => "Cảnh báo",
+                InfoBarSeverity.Success => "Thành công",
+                _ => "Thông báo"
+            });
+            GlobalNotificationInfoBar.Message = message;
+            GlobalNotificationInfoBar.Severity = severity;
+            GlobalNotificationInfoBar.IsOpen = true;
+
+            _infoBarTimer?.Stop();
+            if (autoDismissMs > 0)
+            {
+                _infoBarTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(autoDismissMs) };
+                _infoBarTimer.Tick += (_, _) =>
+                {
+                    _infoBarTimer.Stop();
+                    GlobalNotificationInfoBar.IsOpen = false;
+                };
+                _infoBarTimer.Start();
+            }
+        }
+        catch
+        {
+            // Ignore
+        }
+    }
+
     private async void OnRefreshLogsClick(object sender, RoutedEventArgs e)
     {
-        await RefreshBackendLogsAsync();
+        try
+        {
+            await RefreshBackendLogsAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Không thể làm mới log: " + ex.Message, InfoBarSeverity.Warning);
+        }
     }
 
     private async void OnClearLogsClick(object sender, RoutedEventArgs e)
     {
-        await _backend.ClearBackendLogsAsync();
-        await RefreshBackendLogsAsync();
+        try
+        {
+            await _backend.ClearBackendLogsAsync();
+            await RefreshBackendLogsAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Không thể xóa log backend: " + ex.Message, InfoBarSeverity.Warning);
+        }
     }
 
     private void OnCopyLogsClick(object sender, RoutedEventArgs e)
@@ -1332,110 +1388,193 @@ public sealed partial class MainWindow : Window
 
     private async void OnInspectorCopyClick(object sender, RoutedEventArgs e)
     {
-        await CopySelectedItemAsync();
+        try
+        {
+            await CopySelectedItemAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Không thể sao chép mục đã chọn: " + ex.Message, InfoBarSeverity.Error);
+        }
     }
 
     private async void OnInspectorSendIphoneClick(object sender, RoutedEventArgs e)
     {
-        await SendSelectedItemToIphoneAsync();
+        try
+        {
+            await SendSelectedItemToIphoneAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Lỗi truyền nội dung sang iPhone: " + ex.Message, InfoBarSeverity.Error);
+        }
     }
 
     private async void OnInspectorFavoriteClick(object sender, RoutedEventArgs e)
     {
-        if (_selectedItem is null) return;
-        await _backend.TogglePinAsync(_selectedItem.Id);
-        _lastHistoryRevision = -1;
-        await RefreshStatusAndHistoryAsync();
+        try
+        {
+            if (_selectedItem is null) return;
+            await _backend.TogglePinAsync(_selectedItem.Id);
+            _lastHistoryRevision = -1;
+            await RefreshStatusAndHistoryAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Không thể ghim mục: " + ex.Message, InfoBarSeverity.Warning);
+        }
     }
 
     private async void OnInspectorDeleteClick(object sender, RoutedEventArgs e)
     {
-        if (_selectedItem is null) return;
-        await _backend.DeleteItemAsync(_selectedItem.Id);
-        _selectedItem = null;
-        _lastHistoryRevision = -1;
-        await RefreshStatusAndHistoryAsync();
-    }
-
-    private async void OnRootGridKeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (FocusManager.GetFocusedElement(RootGrid.XamlRoot) is TextBox)
+        try
         {
-            return;
-        }
-
-        if (e.Key == VirtualKey.C)
-        {
-            await CopySelectedItemAsync();
-            e.Handled = true;
-        }
-        else if (e.Key == VirtualKey.S)
-        {
-            await SendSelectedItemToIphoneAsync();
-            e.Handled = true;
-        }
-        else if (e.Key == VirtualKey.F && _selectedItem is not null)
-        {
-            await _backend.TogglePinAsync(_selectedItem.Id);
-            _lastHistoryRevision = -1;
-            await RefreshStatusAndHistoryAsync();
-            e.Handled = true;
-        }
-        else if (e.Key == VirtualKey.D && _selectedItem is not null)
-        {
+            if (_selectedItem is null) return;
             await _backend.DeleteItemAsync(_selectedItem.Id);
             _selectedItem = null;
             _lastHistoryRevision = -1;
             await RefreshStatusAndHistoryAsync();
-            e.Handled = true;
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Không thể xóa mục: " + ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    private async void OnRootGridKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        try
+        {
+            if (FocusManager.GetFocusedElement(RootGrid.XamlRoot) is TextBox)
+            {
+                return;
+            }
+
+            if (e.Key == VirtualKey.C)
+            {
+                await CopySelectedItemAsync();
+                e.Handled = true;
+            }
+            else if (e.Key == VirtualKey.S)
+            {
+                await SendSelectedItemToIphoneAsync();
+                e.Handled = true;
+            }
+            else if (e.Key == VirtualKey.F && _selectedItem is not null)
+            {
+                await _backend.TogglePinAsync(_selectedItem.Id);
+                _lastHistoryRevision = -1;
+                await RefreshStatusAndHistoryAsync();
+                e.Handled = true;
+            }
+            else if (e.Key == VirtualKey.D && _selectedItem is not null)
+            {
+                await _backend.DeleteItemAsync(_selectedItem.Id);
+                _selectedItem = null;
+                _lastHistoryRevision = -1;
+                await RefreshStatusAndHistoryAsync();
+                e.Handled = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[OnRootGridKeyDown Error] {ex.Message}");
         }
     }
 
     private async void OnSyncNowClick(object sender, RoutedEventArgs e)
     {
-        await _backend.TriggerSyncNowAsync();
-        await Task.Delay(250);
-        await RefreshStatusAndHistoryAsync();
+        try
+        {
+            await _backend.TriggerSyncNowAsync();
+            await Task.Delay(250);
+            await RefreshStatusAndHistoryAsync();
+            ShowNotification("Đã gửi tín hiệu đồng bộ tức thời tới iPhone.", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Không thể đồng bộ: " + ex.Message, InfoBarSeverity.Error);
+        }
     }
 
     private async void OnTransportAutoClick(object sender, RoutedEventArgs e)
     {
-        UpdateTransportButtons("auto");
-        await _backend.SetTransportModeAsync("auto");
+        try
+        {
+            UpdateTransportButtons("auto");
+            await _backend.SetTransportModeAsync("auto");
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Lỗi chuyển chế độ truyền: " + ex.Message, InfoBarSeverity.Warning);
+        }
     }
 
     private async void OnTransportWifiClick(object sender, RoutedEventArgs e)
     {
-        UpdateTransportButtons("wifi");
-        await _backend.SetTransportModeAsync("wifi");
+        try
+        {
+            UpdateTransportButtons("wifi");
+            await _backend.SetTransportModeAsync("wifi");
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Lỗi chuyển chế độ Wi-Fi: " + ex.Message, InfoBarSeverity.Warning);
+        }
     }
 
     private async void OnTransportUsbClick(object sender, RoutedEventArgs e)
     {
-        UpdateTransportButtons("usb");
-        await _backend.SetTransportModeAsync("usb");
+        try
+        {
+            UpdateTransportButtons("usb");
+            await _backend.SetTransportModeAsync("usb");
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Lỗi chuyển chế độ USB: " + ex.Message, InfoBarSeverity.Warning);
+        }
     }
 
     private async void OnClearHistoryClick(object sender, RoutedEventArgs e)
     {
-        await _backend.ClearHistoryAsync(includePinned: false);
-        _selectedItem = null;
-        _lastHistoryRevision = -1;
-        await RefreshStatusAndHistoryAsync();
+        try
+        {
+            await _backend.ClearHistoryAsync(includePinned: false);
+            _selectedItem = null;
+            _lastHistoryRevision = -1;
+            await RefreshStatusAndHistoryAsync();
+            ShowNotification("Đã dọn dẹp lịch sử clipboard.", InfoBarSeverity.Informational);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Lỗi xóa lịch sử: " + ex.Message, InfoBarSeverity.Error);
+        }
     }
 
     private async void OnPairWifiClick(object sender, RoutedEventArgs e)
     {
-        PairWifiBtn.IsEnabled = false;
-        PairWifiBtnText.Text = "Pairing over USB...";
-        OnboardingFeedbackText.Text = "Establishing RemotePairing record over USB...";
+        try
+        {
+            PairWifiBtn.IsEnabled = false;
+            PairWifiBtnText.Text = "Pairing over USB...";
+            OnboardingFeedbackText.Text = "Establishing RemotePairing record over USB...";
 
-        var (ok, message) = await _backend.PairWifiOverUsbAsync();
-        PairWifiBtn.IsEnabled = true;
-        PairWifiBtnText.Text = ok ? "Paired Wireless Sync" : "Pair Wireless Over USB";
-        OnboardingFeedbackText.Text = message;
+            var (ok, message) = await _backend.PairWifiOverUsbAsync();
+            PairWifiBtn.IsEnabled = true;
+            PairWifiBtnText.Text = ok ? "Paired Wireless Sync" : "Pair Wireless Over USB";
+            OnboardingFeedbackText.Text = message;
+            ShowNotification(message, ok ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
 
-        await RefreshStatusAndHistoryAsync();
+            await RefreshStatusAndHistoryAsync();
+        }
+        catch (Exception ex)
+        {
+            PairWifiBtn.IsEnabled = true;
+            PairWifiBtnText.Text = "Pair Wireless Over USB";
+            OnboardingFeedbackText.Text = "Pairing error: " + ex.Message;
+            ShowNotification("Lỗi ghép đôi không dây: " + ex.Message, InfoBarSeverity.Error);
+        }
     }
 
     private void OnWindowClosed(object sender, WindowEventArgs args)

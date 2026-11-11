@@ -658,6 +658,25 @@ class WindowsClipboardWriter:
             self._user32.CloseClipboard()
             self.last_sequence_number = int(self._user32.GetClipboardSequenceNumber())
 
+    @contextlib.contextmanager
+    def _open_and_empty_clipboard(self):
+        """Acquire Win32 clipboard lock and empty it atomically with backoff retries to prevent WinError 1418."""
+        last_err = 0
+        for attempt in range(self.max_retries):
+            if self._user32.OpenClipboard(None):
+                try:
+                    if self._user32.EmptyClipboard():
+                        yield
+                        return
+                    last_err = ctypes.get_last_error()
+                finally:
+                    self._user32.CloseClipboard()
+                    self.last_sequence_number = int(self._user32.GetClipboardSequenceNumber())
+            else:
+                last_err = ctypes.get_last_error()
+            time.sleep(self.retry_delay_sec * (1.0 + 0.3 * attempt))
+        raise RuntimeError(f"Open/Empty clipboard failed after {self.max_retries} attempts (WinError={last_err})")
+
     def _set_raw_format(self, fmt: int, payload: bytes) -> None:
         """Allocate moveable global memory, copy `payload`, and hand ownership to SetClipboardData."""
         hmem = self._kernel32.GlobalAlloc(GMEM_MOVEABLE, len(payload))
@@ -701,10 +720,7 @@ class WindowsClipboardWriter:
             cf_html_data = build_cf_html_payload(f'<a href="{escaped_url}">{escaped_url}</a>', source_url=text)
 
         formats_written: list[str] = []
-        with self._open_clipboard_locked():
-            if not self._user32.EmptyClipboard():
-                raise RuntimeError(f"EmptyClipboard failed (WinError={ctypes.get_last_error()})")
-
+        with self._open_and_empty_clipboard():
             self._set_raw_format(CF_UNICODETEXT, utf16_bytes)
             formats_written.append("CF_UNICODETEXT")
 
@@ -800,10 +816,7 @@ class WindowsClipboardWriter:
         dibv5_bytes, dib_bytes, png_bytes, dimensions = self._encode_dibv5_and_dib_and_png(image_bytes)
         formats_written: list[str] = []
 
-        with self._open_clipboard_locked():
-            if not self._user32.EmptyClipboard():
-                raise RuntimeError(f"EmptyClipboard failed (WinError={ctypes.get_last_error()})")
-
+        with self._open_and_empty_clipboard():
             self._set_raw_format(CF_DIBV5, dibv5_bytes)
             formats_written.append("CF_DIBV5")
 
@@ -2701,7 +2714,31 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def setup_global_exception_handlers(loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
+    """Register top-level sys, threading, and asyncio unhandled exception handlers."""
+
+    def _handle_sys_exception(exc_type, exc_value, exc_traceback) -> None:
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+        logger.error("[UNHANDLED_EXCEPTION] Uncaught top-level exception: %s", exc_value, exc_info=(exc_type, exc_value, exc_traceback))
+
+    def _handle_thread_exception(args: threading.ExceptHookArgs) -> None:
+        logger.error("[THREAD_EXCEPTION] Thread '%s' uncaught exception: %s", args.thread.name, args.exc_value, exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
+
+    def _handle_asyncio_exception(active_loop: asyncio.AbstractEventLoop, context: dict[str, Any]) -> None:
+        msg = context.get("message", "Unhandled asyncio exception")
+        exc = context.get("exception")
+        logger.error("[ASYNCIO_EXCEPTION] %s: %s", msg, exc, exc_info=exc)
+
+    sys.excepthook = _handle_sys_exception
+    threading.excepthook = _handle_thread_exception
+    if loop is not None:
+        loop.set_exception_handler(_handle_asyncio_exception)
+
+
 async def _async_main(args: argparse.Namespace) -> int:
+    setup_global_exception_handlers(asyncio.get_running_loop())
     if args.pair_wifi:
         logger.info("[PAIR_WIFI] Establishing RemotePairing record over USB...")
         paired_udid = await pair_device_for_wifi_over_usb(args.udid)
@@ -2735,6 +2772,7 @@ def main() -> int:
     )
     GLOBAL_LOG_HANDLER.setFormatter(formatter)
     logging.getLogger().addHandler(GLOBAL_LOG_HANDLER)
+    setup_global_exception_handlers()
     # Keep underlying libraries quiet at INFO level
     logging.getLogger("pymobiledevice3").setLevel(logging.WARNING)
     logging.getLogger("pmd_pytcp").setLevel(logging.WARNING)

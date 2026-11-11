@@ -701,12 +701,26 @@ public sealed partial class QuickPasteWindow : Window
 
     private async void OnSearchBoxPreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (await HandleNavigationKeyAsync(e.Key)) e.Handled = true;
+        try
+        {
+            if (await HandleNavigationKeyAsync(e.Key)) e.Handled = true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[QuickPaste Navigation Error] {ex.Message}");
+        }
     }
 
     private async void OnRootKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (await HandleNavigationKeyAsync(e.Key)) e.Handled = true;
+        try
+        {
+            if (await HandleNavigationKeyAsync(e.Key)) e.Handled = true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[QuickPaste RootKey Error] {ex.Message}");
+        }
     }
 
     private async Task<bool> HandleNavigationKeyAsync(VirtualKey key)
@@ -727,7 +741,7 @@ public sealed partial class QuickPasteWindow : Window
                 return true;
             case VirtualKey.Tab:
             {
-                var order = new[] { "all", "text", "richtext", "image", "file" };
+                var order = new[] { "all", "text", "richtext", "image" };
                 var idx = Array.IndexOf(order, _activeTab);
                 SetActiveTab(order[(idx + 1) % order.Length]);
                 return true;
