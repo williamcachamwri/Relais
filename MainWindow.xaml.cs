@@ -1,6 +1,5 @@
 using System.Numerics;
 using Microsoft.UI;
-using Microsoft.UI.Composition;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -10,6 +9,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using UniversalClipboard.Services;
 using Windows.Graphics;
+using Windows.System;
 using Windows.UI;
 
 namespace UniversalClipboard;
@@ -20,44 +20,47 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer _pollTimer;
 
     private List<ClipboardHistoryItem> _allItems = [];
+    private List<ClipboardHistoryItem> _filteredItems = [];
+    private ClipboardHistoryItem? _selectedItem;
+    private BackendStatus? _lastStatus;
     private int _lastHistoryRevision = -1;
-    private string _activeFilter = "all";
+
+    private string _typeOrTagFilter = "type:all";
+    private string _sourceFilter = "src:all";
+    private string _timeFilter = "time:all";
     private string _searchQuery = "";
-    private bool _hasAutoSelectedInitialView;
 
-    // Apple-Design System Palette (Dark Mode)
-    private static readonly SolidColorBrush BrushAppleBlue = new(ColorHelper.FromArgb(0xFF, 0x0A, 0x84, 0xFF));
-    private static readonly SolidColorBrush BrushAppleGreen = new(ColorHelper.FromArgb(0xFF, 0x30, 0xD1, 0x58));
-    private static readonly SolidColorBrush BrushAppleAmber = new(ColorHelper.FromArgb(0xFF, 0xFF, 0x9F, 0x0A));
-    private static readonly SolidColorBrush BrushApplePurple = new(ColorHelper.FromArgb(0xFF, 0xBF, 0x5A, 0xF2));
-    private static readonly SolidColorBrush BrushAppleGold = new(ColorHelper.FromArgb(0xFF, 0xFF, 0xD6, 0x0A));
-    private static readonly SolidColorBrush BrushAppleRed = new(ColorHelper.FromArgb(0xFF, 0xFF, 0x45, 0x3A));
+    // Exact Carbon-Graphite Palette from Reference Image #2
+    private static readonly SolidColorBrush BrushTextPrimary = new(ColorHelper.FromArgb(0xFF, 0xF2, 0xF2, 0xF5));
+    private static readonly SolidColorBrush BrushTextSecondary = new(ColorHelper.FromArgb(0xFF, 0x9A, 0x9A, 0xA2));
+    private static readonly SolidColorBrush BrushTextMuted = new(ColorHelper.FromArgb(0xFF, 0x6E, 0x6E, 0x76));
+    private static readonly SolidColorBrush BrushTextDim = new(ColorHelper.FromArgb(0xFF, 0x5E, 0x5E, 0x66));
 
-    private static readonly SolidColorBrush BrushGreenTint = new(ColorHelper.FromArgb(0x22, 0x30, 0xD1, 0x58));
-    private static readonly SolidColorBrush BrushGreenBorder = new(ColorHelper.FromArgb(0x55, 0x30, 0xD1, 0x58));
-    private static readonly SolidColorBrush BrushBlueTint = new(ColorHelper.FromArgb(0x22, 0x0A, 0x84, 0xFF));
-    private static readonly SolidColorBrush BrushBlueBorder = new(ColorHelper.FromArgb(0x55, 0x0A, 0x84, 0xFF));
-    private static readonly SolidColorBrush BrushAmberTint = new(ColorHelper.FromArgb(0x22, 0xFF, 0x9F, 0x0A));
-    private static readonly SolidColorBrush BrushAmberBorder = new(ColorHelper.FromArgb(0x55, 0xFF, 0x9F, 0x0A));
-    private static readonly SolidColorBrush BrushPurpleTint = new(ColorHelper.FromArgb(0x22, 0xBF, 0x5A, 0xF2));
+    private static readonly SolidColorBrush BrushFileGold = new(ColorHelper.FromArgb(0xFF, 0xD4, 0xA3, 0x59));
+    private static readonly SolidColorBrush BrushLinkBlueText = new(ColorHelper.FromArgb(0xFF, 0x58, 0xA6, 0xFF));
+    private static readonly SolidColorBrush BrushLinkBlueBg = new(ColorHelper.FromArgb(0xFF, 0x17, 0x2A, 0x3A));
+    private static readonly SolidColorBrush BrushCodePurpleText = new(ColorHelper.FromArgb(0xFF, 0xA3, 0x71, 0xF7));
+    private static readonly SolidColorBrush BrushCodePurpleBg = new(ColorHelper.FromArgb(0xFF, 0x23, 0x1C, 0x35));
+    private static readonly SolidColorBrush BrushStatusGreen = new(ColorHelper.FromArgb(0xFF, 0x28, 0xC8, 0x40));
+    private static readonly SolidColorBrush BrushStatusAmber = new(ColorHelper.FromArgb(0xFF, 0xFE, 0xBC, 0x2E));
 
-    private static readonly SolidColorBrush BrushTextPrimary = new(ColorHelper.FromArgb(0xFF, 0xF5, 0xF5, 0xF7));
-    private static readonly SolidColorBrush BrushTextSecondary = new(ColorHelper.FromArgb(0xFF, 0x98, 0x98, 0x9F));
-    private static readonly SolidColorBrush BrushTextMuted = new(ColorHelper.FromArgb(0xFF, 0x6E, 0x6E, 0x77));
-
-    private static readonly SolidColorBrush BrushCardSurface = new(ColorHelper.FromArgb(0xFF, 0x15, 0x18, 0x21));
-    private static readonly SolidColorBrush BrushCardHover = new(ColorHelper.FromArgb(0xFF, 0x1B, 0x1F, 0x2B));
-    private static readonly SolidColorBrush BrushCardBorder = new(ColorHelper.FromArgb(0x1E, 0xFF, 0xFF, 0xFF));
-    private static readonly SolidColorBrush BrushPillInactive = new(ColorHelper.FromArgb(0xFF, 0x17, 0x1A, 0x24));
-    private static readonly SolidColorBrush BrushNavActive = new(ColorHelper.FromArgb(0xFF, 0x2C, 0x31, 0x40));
+    private static readonly SolidColorBrush BrushSidebarActive = new(ColorHelper.FromArgb(0xFF, 0x28, 0x28, 0x2D));
+    private static readonly SolidColorBrush BrushRailActive = new(ColorHelper.FromArgb(0xFF, 0x2A, 0x2A, 0x2E));
+    private static readonly SolidColorBrush BrushRowSelected = new(ColorHelper.FromArgb(0xFF, 0x1F, 0x1F, 0x24));
+    private static readonly SolidColorBrush BrushRowHover = new(ColorHelper.FromArgb(0xFF, 0x1A, 0x1A, 0x1E));
+    private static readonly SolidColorBrush BrushRowDivider = new(ColorHelper.FromArgb(0xFF, 0x22, 0x22, 0x25));
+    private static readonly SolidColorBrush BrushThumbBorder = new(ColorHelper.FromArgb(0xFF, 0x2C, 0x2C, 0x30));
+    private static readonly SolidColorBrush BrushThumbBg = new(ColorHelper.FromArgb(0xFF, 0x0E, 0x0E, 0x10));
     private static readonly SolidColorBrush BrushTransparent = new(Colors.Transparent);
+
+    private readonly Dictionary<string, Border> _rowBorders = [];
 
     public MainWindow()
     {
         InitializeComponent();
 
         ConfigureWindowChrome();
-        AttachInteractivePressStates();
+        SidebarPcNameText.Text = Environment.MachineName;
 
         _pollTimer = new DispatcherTimer
         {
@@ -71,15 +74,6 @@ public sealed partial class MainWindow : Window
 
     private void ConfigureWindowChrome()
     {
-        try
-        {
-            SystemBackdrop = new MicaBackdrop();
-        }
-        catch
-        {
-            // Fallback to solid dark surface
-        }
-
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
 
@@ -87,108 +81,16 @@ public sealed partial class MainWindow : Window
         var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
         var appWindow = AppWindow.GetFromWindowId(windowId);
 
-        appWindow.Resize(new SizeInt32(980, 740));
+        appWindow.Resize(new SizeInt32(1040, 680));
 
         if (appWindow.TitleBar is { } titleBar)
         {
             titleBar.ButtonBackgroundColor = Colors.Transparent;
             titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-            titleBar.ButtonForegroundColor = ColorHelper.FromArgb(0xFF, 0xF5, 0xF5, 0xF7);
-            titleBar.ButtonInactiveForegroundColor = ColorHelper.FromArgb(0xFF, 0x6E, 0x6E, 0x77);
-            titleBar.ButtonHoverBackgroundColor = ColorHelper.FromArgb(0x20, 0xFF, 0xFF, 0xFF);
+            titleBar.ButtonForegroundColor = ColorHelper.FromArgb(0xFF, 0x8A, 0x8A, 0x92);
+            titleBar.ButtonInactiveForegroundColor = ColorHelper.FromArgb(0xFF, 0x5A, 0x5A, 0x62);
+            titleBar.ButtonHoverBackgroundColor = ColorHelper.FromArgb(0xFF, 0x23, 0x23, 0x28);
             titleBar.ButtonHoverForegroundColor = Colors.White;
-        }
-    }
-
-    private void AttachInteractivePressStates()
-    {
-        AttachPressFeedback(NavClipboardBtn, 0.96f);
-        AttachPressFeedback(NavOnboardingBtn, 0.96f);
-        AttachPressFeedback(SyncNowBtn, 0.96f);
-        AttachPressFeedback(FinishOnboardingBtn, 0.97f);
-        AttachPressFeedback(PairWifiBtn, 0.97f);
-        AttachPressFeedback(ClearHistoryBtn, 0.96f);
-        AttachPressFeedback(FilterAllBtn, 0.96f);
-        AttachPressFeedback(FilterTextBtn, 0.96f);
-        AttachPressFeedback(FilterUrlBtn, 0.96f);
-        AttachPressFeedback(FilterImageBtn, 0.96f);
-        AttachPressFeedback(FilterPinnedBtn, 0.96f);
-    }
-
-    private static void AttachPressFeedback(UIElement element, float pressedScale = 0.98f)
-    {
-        element.PointerPressed += (s, _) =>
-        {
-            if (s is FrameworkElement fe)
-            {
-                AnimateElementScale(fe, pressedScale, 105);
-            }
-        };
-        element.PointerReleased += (s, _) =>
-        {
-            if (s is FrameworkElement fe)
-            {
-                AnimateElementScale(fe, 1.0f, 155);
-            }
-        };
-        element.PointerExited += (s, _) =>
-        {
-            if (s is FrameworkElement fe)
-            {
-                AnimateElementScale(fe, 1.0f, 155);
-            }
-        };
-    }
-
-    private static void AnimateElementScale(FrameworkElement element, float targetScale, int durationMs)
-    {
-        try
-        {
-            var visual = ElementCompositionPreview.GetElementVisual(element);
-            var width = (float)element.ActualWidth;
-            var height = (float)element.ActualHeight;
-            if (width > 0 && height > 0)
-            {
-                visual.CenterPoint = new Vector3(width / 2f, height / 2f, 0f);
-            }
-
-            var compositor = visual.Compositor;
-            var easing = compositor.CreateCubicBezierEasingFunction(new Vector2(0.23f, 1.0f), new Vector2(0.32f, 1.0f));
-            var anim = compositor.CreateVector3KeyFrameAnimation();
-            anim.InsertKeyFrame(1.0f, new Vector3(targetScale, targetScale, 1.0f), easing);
-            anim.Duration = TimeSpan.FromMilliseconds(durationMs);
-            visual.StartAnimation("Scale", anim);
-        }
-        catch
-        {
-            // Ignore composition error if visual tree not ready
-        }
-    }
-
-    private static void AnimateViewTransition(FrameworkElement targetView)
-    {
-        try
-        {
-            var visual = ElementCompositionPreview.GetElementVisual(targetView);
-            var compositor = visual.Compositor;
-            var easing = compositor.CreateCubicBezierEasingFunction(new Vector2(0.23f, 1.0f), new Vector2(0.32f, 1.0f));
-
-            var fadeAnim = compositor.CreateScalarKeyFrameAnimation();
-            fadeAnim.InsertKeyFrame(0.0f, 0.0f);
-            fadeAnim.InsertKeyFrame(1.0f, 1.0f, easing);
-            fadeAnim.Duration = TimeSpan.FromMilliseconds(180);
-
-            var offsetAnim = compositor.CreateVector3KeyFrameAnimation();
-            offsetAnim.InsertKeyFrame(0.0f, new Vector3(0f, 8f, 0f));
-            offsetAnim.InsertKeyFrame(1.0f, Vector3.Zero, easing);
-            offsetAnim.Duration = TimeSpan.FromMilliseconds(180);
-
-            visual.StartAnimation("Opacity", fadeAnim);
-            visual.StartAnimation("Offset", offsetAnim);
-        }
-        catch
-        {
-            // Ignore composition error
         }
     }
 
@@ -209,21 +111,13 @@ public sealed partial class MainWindow : Window
         var status = await _backend.GetStatusAsync();
         if (status is null)
         {
-            HeaderStatusDot.Fill = BrushAppleAmber;
-            HeaderDeviceText.Text = "Starting CoreDevice service...";
+            InspectorPeerText.Text = "Peer offline";
+            InspectorPeerIcon.Foreground = BrushTextMuted;
             return;
         }
 
+        _lastStatus = status;
         UpdateStatusUi(status);
-
-        if (!_hasAutoSelectedInitialView)
-        {
-            _hasAutoSelectedInitialView = true;
-            if (!status.Connected && !status.WifiPaired && !status.UsbConnected)
-            {
-                SwitchView(showOnboarding: true);
-            }
-        }
 
         if (status.HistoryRevision != _lastHistoryRevision)
         {
@@ -232,404 +126,590 @@ public sealed partial class MainWindow : Window
             {
                 _lastHistoryRevision = historyResp.Revision;
                 _allItems = historyResp.Items;
-                NavCountText.Text = _allItems.Count.ToString();
-                RenderHistoryCards();
+                ApplyFiltersAndRenderFeed();
             }
         }
     }
 
     private void UpdateStatusUi(BackendStatus status)
     {
-        // Header Status Pill
+        // Sidebar iPhone Name
+        if (!string.IsNullOrWhiteSpace(status.DeviceName))
+        {
+            var paren = status.DeviceName.IndexOf('(');
+            SidebarIphoneNameText.Text = paren > 0 ? status.DeviceName[..paren].Trim() : status.DeviceName;
+        }
+
+        // Inspector Top-Right Peer Status
         if (status.Connected)
         {
-            HeaderStatusDot.Fill = BrushAppleGreen;
-            var iosPart = string.IsNullOrEmpty(status.IosVersion) ? "" : $" · iOS {status.IosVersion}";
-            var transportPart = string.IsNullOrEmpty(status.ActiveTransport) ? "" : $" · {status.ActiveTransport}";
-            HeaderDeviceText.Text = $"{status.DeviceName}{iosPart}{transportPart}";
-
-            BannerHeadlineText.Text = $"{status.DeviceName} Connected";
-            BannerTransportPill.Background = BrushGreenTint;
-            BannerTransportPill.BorderBrush = BrushGreenBorder;
-            BannerTransportText.Foreground = BrushAppleGreen;
-            BannerTransportText.Text = string.IsNullOrEmpty(status.ActiveTransport) ? "ACTIVE" : status.ActiveTransport.ToUpperInvariant();
-            BannerSubtext.Text = "Listening to com.apple.pasteboard.notify.changed — copy anything on iPhone and press Ctrl + V on Windows.";
+            InspectorPeerText.Text = string.IsNullOrEmpty(status.ActiveTransport)
+                ? "Peer online"
+                : $"Peer online · {status.ActiveTransport}";
+            InspectorPeerIcon.Glyph = "\uE701";
+            InspectorPeerIcon.Foreground = BrushStatusGreen;
         }
         else
         {
-            HeaderStatusDot.Fill = BrushAppleAmber;
-            HeaderDeviceText.Text = status.StateMessage;
-
-            BannerHeadlineText.Text = "Connecting to iPhone...";
-            BannerTransportPill.Background = BrushAmberTint;
-            BannerTransportPill.BorderBrush = BrushAmberBorder;
-            BannerTransportText.Foreground = BrushAppleAmber;
-            BannerTransportText.Text = status.State.ToUpperInvariant();
-            BannerSubtext.Text = status.StateMessage;
+            InspectorPeerText.Text = "Peer offline";
+            InspectorPeerIcon.Glyph = "\uE701";
+            InspectorPeerIcon.Foreground = BrushTextMuted;
         }
 
-        MetricLatencyText.Text = status.LastSyncMs.HasValue ? $"{status.LastSyncMs.Value:F1} ms" : "— ms";
-        MetricChangeCountText.Text = status.LastChangeCount.HasValue ? $"#{status.LastChangeCount.Value}" : "#—";
-
-        FooterUdidText.Text = string.IsNullOrEmpty(status.Udid) ? "" : $"UDID {status.Udid}";
-        FooterStatusText.Text = status.DdiMounted
-            ? "CoreDevice PasteboardService · Cryptex1 Mounted · POLICY_PROMISE_SECONDARY"
-            : "CoreDevice PasteboardService · Waiting for Developer Disk Image";
-
-        // Transport Mode Buttons
-        UpdateTransportSelectorUi(status.TransportMode);
-
-        // Onboarding Step Cards Live Status
+        // Onboarding pane status
         var step1Ready = status.UsbConnected || status.WifiPaired || status.Connected;
-        Step1StatusBadge.Background = step1Ready ? BrushGreenTint : BrushAmberTint;
-        Step1StatusBadge.BorderBrush = step1Ready ? BrushGreenBorder : BrushAmberBorder;
-        Step1StatusText.Foreground = step1Ready ? BrushAppleGreen : BrushAppleAmber;
-        Step1StatusText.Text = step1Ready ? "✓ Trusted" : "Connect USB";
+        Step1StatusText.Text = step1Ready ? "Trusted" : "Connect USB";
+        Step1StatusText.Foreground = step1Ready ? BrushStatusGreen : BrushStatusAmber;
         if (step1Ready && !string.IsNullOrEmpty(status.Udid))
         {
-            Step1DetailText.Text = $"Detected {status.DeviceName} (UDID {status.Udid}). CoreDevice lockdown pairing verified.";
+            Step1DetailText.Text = $"{status.DeviceName} · iOS {status.IosVersion} ({status.Udid})";
         }
 
-        var step2Ready = status.WifiPaired;
-        Step2StatusBadge.Background = step2Ready ? BrushGreenTint : BrushBlueTint;
-        Step2StatusBadge.BorderBrush = step2Ready ? BrushGreenBorder : BrushBlueBorder;
-        Step2StatusText.Foreground = step2Ready ? BrushAppleGreen : BrushAppleBlue;
-        Step2StatusText.Text = step2Ready ? "✓ Wi-Fi Ready" : "Optional";
+        Step2StatusText.Text = status.WifiPaired ? "Paired" : "Not paired";
+        Step2StatusText.Foreground = status.WifiPaired ? BrushStatusGreen : BrushTextMuted;
 
-        var step3Ready = status.Connected && status.DdiMounted;
-        Step3StatusBadge.Background = step3Ready ? BrushGreenTint : BrushAmberTint;
-        Step3StatusBadge.BorderBrush = step3Ready ? BrushGreenBorder : BrushAmberBorder;
-        Step3StatusText.Foreground = step3Ready ? BrushAppleGreen : BrushAppleAmber;
-        Step3StatusText.Text = step3Ready ? $"✓ Live ({status.ActiveTransport})" : "Connecting...";
+        UpdateTransportButtons(status.TransportMode);
     }
 
-    private void UpdateTransportSelectorUi(string mode)
+    private void UpdateTransportButtons(string mode)
     {
         mode = (mode ?? "auto").ToLowerInvariant();
-        TransportAutoBtn.Background = mode == "auto" ? BrushAppleBlue : BrushTransparent;
+        TransportAutoBtn.Background = mode == "auto" ? BrushSidebarActive : BrushTransparent;
         TransportAutoBtn.Foreground = mode == "auto" ? BrushTextPrimary : BrushTextSecondary;
 
-        TransportWifiBtn.Background = mode == "wifi" ? BrushAppleBlue : BrushTransparent;
+        TransportWifiBtn.Background = mode == "wifi" ? BrushSidebarActive : BrushTransparent;
         TransportWifiBtn.Foreground = mode == "wifi" ? BrushTextPrimary : BrushTextSecondary;
 
-        TransportUsbBtn.Background = mode == "usb" ? BrushAppleBlue : BrushTransparent;
+        TransportUsbBtn.Background = mode == "usb" ? BrushSidebarActive : BrushTransparent;
         TransportUsbBtn.Foreground = mode == "usb" ? BrushTextPrimary : BrushTextSecondary;
     }
 
-    private void SwitchView(bool showOnboarding)
+    private void ApplyFiltersAndRenderFeed()
     {
-        if (showOnboarding)
+        _filteredItems = _allItems.Where(item =>
         {
-            ClipboardManagerView.Visibility = Visibility.Collapsed;
-            OnboardingView.Visibility = Visibility.Visible;
-            NavOnboardingBtn.Background = BrushNavActive;
-            NavClipboardBtn.Background = BrushTransparent;
-            NavOnboardingText.Foreground = BrushTextPrimary;
-            AnimateViewTransition(OnboardingView);
-        }
-        else
-        {
-            OnboardingView.Visibility = Visibility.Collapsed;
-            ClipboardManagerView.Visibility = Visibility.Visible;
-            NavClipboardBtn.Background = BrushNavActive;
-            NavOnboardingBtn.Background = BrushTransparent;
-            NavOnboardingText.Foreground = BrushTextSecondary;
-            AnimateViewTransition(ClipboardManagerView);
-        }
-    }
-
-    private void RenderHistoryCards()
-    {
-        HistoryListPanel.Children.Clear();
-
-        var filtered = _allItems.Where(item =>
-        {
-            var matchesFilter = _activeFilter switch
+            var matchesTypeOrTag = _typeOrTagFilter switch
             {
-                "text" => item.Kind == "text",
-                "url" => item.Kind == "url",
-                "image" => item.Kind == "image",
-                "pinned" => item.Pinned,
+                "type:favorites" => item.Pinned,
+                "type:text" => !item.IsImage,
+                "type:richtext" => item.IsRichText,
+                "type:image" or "tag:image" or "type:file" => item.IsImage,
+                "tag:link" => item.IsLink,
+                "tag:code" => item.IsCode,
                 _ => true,
             };
-            if (!matchesFilter) return false;
+            if (!matchesTypeOrTag) return false;
+
+            var matchesSource = _sourceFilter switch
+            {
+                "src:pc" => false, // Synced items originate from iPhone
+                "src:iphone" => true,
+                _ => true,
+            };
+            if (!matchesSource) return false;
+
+            var matchesTime = _timeFilter switch
+            {
+                "time:today" => item.IsToday,
+                _ => true,
+            };
+            if (!matchesTime) return false;
 
             if (string.IsNullOrWhiteSpace(_searchQuery)) return true;
             var q = _searchQuery.Trim();
             return item.Text.Contains(q, StringComparison.OrdinalIgnoreCase)
                    || item.Uti.Contains(q, StringComparison.OrdinalIgnoreCase)
-                   || item.Transport.Contains(q, StringComparison.OrdinalIgnoreCase);
+                   || item.ImageDisplayName.Contains(q, StringComparison.OrdinalIgnoreCase);
         }).ToList();
 
-        EmptyStateCard.Visibility = filtered.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        SearchItemCountText.Text = $"{_filteredItems.Count} items";
+        EmptyFeedState.Visibility = _filteredItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        foreach (var item in filtered)
+        HistoryListPanel.Children.Clear();
+        _rowBorders.Clear();
+
+        foreach (var item in _filteredItems)
         {
-            HistoryListPanel.Children.Add(BuildClipboardCard(item));
+            var row = BuildFeedRow(item);
+            _rowBorders[item.Id] = row;
+            HistoryListPanel.Children.Add(row);
+        }
+
+        // Maintain selection or select newest item
+        if (_selectedItem is not null)
+        {
+            var match = _filteredItems.FirstOrDefault(x => x.Id == _selectedItem.Id);
+            SelectItem(match ?? _filteredItems.FirstOrDefault());
+        }
+        else
+        {
+            SelectItem(_filteredItems.FirstOrDefault());
         }
     }
 
-    private UIElement BuildClipboardCard(ClipboardHistoryItem item)
+    private Border BuildFeedRow(ClipboardHistoryItem item)
     {
-        var card = new Border
+        var isSelected = _selectedItem?.Id == item.Id;
+        var rowBorder = new Border
         {
-            Background = BrushCardSurface,
-            BorderBrush = item.Pinned ? BrushBlueBorder : BrushCardBorder,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(13),
-            Padding = new Thickness(18, 14, 18, 14),
+            Background = isSelected ? BrushRowSelected : BrushTransparent,
+            BorderBrush = BrushRowDivider,
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(14, 12, 14, 12),
         };
 
-        card.PointerEntered += (_, _) => card.Background = BrushCardHover;
-        card.PointerExited += (_, _) => card.Background = BrushCardSurface;
-        AttachPressFeedback(card, 0.99f);
-
-        var outerStack = new StackPanel { Spacing = 10 };
-
-        // Top Row: Type Badge + Metadata + Action Buttons
-        var topGrid = new Grid();
-        topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var metaRow = new StackPanel
+        rowBorder.PointerEntered += (_, _) =>
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-
-        // Kind Pill
-        var (kindLabel, kindFg, kindBg) = item.Kind switch
-        {
-            "image" => ("IMAGE", BrushAppleGreen, BrushGreenTint),
-            "url" => ("LINK", BrushApplePurple, BrushPurpleTint),
-            _ => ("TEXT", BrushAppleBlue, BrushBlueTint),
-        };
-
-        var kindPill = new Border
-        {
-            Background = kindBg,
-            CornerRadius = new CornerRadius(5),
-            Padding = new Thickness(7, 2, 7, 2),
-            Child = new TextBlock
+            if (_selectedItem?.Id != item.Id)
             {
-                Text = kindLabel,
-                FontSize = 10.5,
-                FontWeight = Microsoft.UI.Text.FontWeights.Bold,
-                Foreground = kindFg,
-            },
+                rowBorder.Background = BrushRowHover;
+            }
         };
-        metaRow.Children.Add(kindPill);
-
-        if (item.Pinned)
+        rowBorder.PointerExited += (_, _) =>
         {
-            metaRow.Children.Add(new Border
+            if (_selectedItem?.Id != item.Id)
             {
-                Background = BrushAmberTint,
-                CornerRadius = new CornerRadius(5),
-                Padding = new Thickness(6, 2, 6, 2),
-                Child = new TextBlock
-                {
-                    Text = "★ PINNED",
-                    FontSize = 10,
-                    FontWeight = Microsoft.UI.Text.FontWeights.Bold,
-                    Foreground = BrushAppleGold,
-                },
-            });
-        }
-
-        var metaText = new TextBlock
-        {
-            Text = $"{item.Uti}  ·  {item.FormattedSize}  ·  {item.Transport}  ·  {item.LatencyMs:F1} ms  ·  {item.TimeLabel}",
-            FontSize = 11.5,
-            Foreground = BrushTextMuted,
-            VerticalAlignment = VerticalAlignment.Center,
+                rowBorder.Background = BrushTransparent;
+            }
         };
-        Microsoft.UI.Xaml.Documents.Typography.SetNumeralAlignment(metaText, FontNumeralAlignment.Tabular);
-        metaRow.Children.Add(metaText);
+        rowBorder.PointerPressed += (_, _) =>
+        {
+            ShowInspectorPane();
+            SelectItem(item);
+        };
+        rowBorder.DoubleTapped += async (_, _) =>
+        {
+            SelectItem(item);
+            await CopySelectedItemAsync();
+        };
 
-        Grid.SetColumn(metaRow, 0);
-        topGrid.Children.Add(metaRow);
+        var rowStack = new StackPanel { Spacing = 6 };
 
-        // Action Buttons (Copy, Open URL if Link, Pin, Delete)
-        var actionsRow = new StackPanel
+        // 1. Top Metadata Line: [Icon] [Type] [Chars]  ...  [Device Icon] [Source · RelativeTime]
+        var metaGrid = new Grid();
+        metaGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        metaGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var leftMeta = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 6,
             VerticalAlignment = VerticalAlignment.Center,
         };
 
-        var copyBtnText = new TextBlock
+        if (item.IsImage)
         {
-            Text = "Copy",
-            FontSize = 12,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Foreground = BrushTextPrimary,
-        };
-
-        var copyBtn = new Button
-        {
-            Background = BrushBlueTint,
-            BorderBrush = BrushBlueBorder,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(7),
-            Padding = new Thickness(12, 4, 12, 4),
-            Content = copyBtnText,
-        };
-        AttachPressFeedback(copyBtn, 0.95f);
-
-        async Task CopyAndIndicateAsync()
-        {
-            var ok = await _backend.CopyItemToWindowsAsync(item.Id);
-            if (ok)
+            leftMeta.Children.Add(new FontIcon
             {
-                copyBtn.Background = BrushGreenTint;
-                copyBtn.BorderBrush = BrushGreenBorder;
-                copyBtnText.Foreground = BrushAppleGreen;
-                copyBtnText.Text = "✓ Copied";
-                await Task.Delay(1300);
-                copyBtn.Background = BrushBlueTint;
-                copyBtn.BorderBrush = BrushBlueBorder;
-                copyBtnText.Foreground = BrushTextPrimary;
-                copyBtnText.Text = "Copy";
-            }
-        }
-
-        copyBtn.Click += async (_, _) => await CopyAndIndicateAsync();
-        actionsRow.Children.Add(copyBtn);
-
-        if (item.Kind == "url" && Uri.TryCreate(item.Text.Trim(), UriKind.Absolute, out var targetUri))
-        {
-            var openBtn = new Button
-            {
-                Content = "Open ↗",
+                Glyph = "\uE7C3",
                 FontSize = 11.5,
-                Background = BrushPillInactive,
-                Foreground = BrushTextSecondary,
-                BorderBrush = BrushCardBorder,
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(7),
-                Padding = new Thickness(10, 4, 10, 4),
-            };
-            openBtn.Click += async (_, _) => await Windows.System.Launcher.LaunchUriAsync(targetUri);
-            actionsRow.Children.Add(openBtn);
-        }
-
-        var pinBtn = new Button
-        {
-            Content = item.Pinned ? "★" : "☆",
-            FontSize = 12.5,
-            Background = BrushPillInactive,
-            Foreground = item.Pinned ? BrushAppleGold : BrushTextSecondary,
-            BorderBrush = BrushCardBorder,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(7),
-            Padding = new Thickness(9, 3, 9, 3),
-        };
-        pinBtn.Click += async (_, _) =>
-        {
-            await _backend.TogglePinAsync(item.Id);
-            _lastHistoryRevision = -1;
-            await RefreshStatusAndHistoryAsync();
-        };
-        actionsRow.Children.Add(pinBtn);
-
-        var deleteBtn = new Button
-        {
-            Content = "✕",
-            FontSize = 11.5,
-            Background = BrushPillInactive,
-            Foreground = BrushTextMuted,
-            BorderBrush = BrushCardBorder,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(7),
-            Padding = new Thickness(9, 4, 9, 4),
-        };
-        deleteBtn.Click += async (_, _) =>
-        {
-            await _backend.DeleteItemAsync(item.Id);
-            _lastHistoryRevision = -1;
-            await RefreshStatusAndHistoryAsync();
-        };
-        actionsRow.Children.Add(deleteBtn);
-
-        Grid.SetColumn(actionsRow, 1);
-        topGrid.Children.Add(actionsRow);
-        outerStack.Children.Add(topGrid);
-
-        // Content Body (Image Thumbnail or Text/URL Preview)
-        if (item.Kind == "image")
-        {
-            var imgContainer = new Border
+                Foreground = BrushFileGold,
+            });
+            leftMeta.Children.Add(new TextBlock
             {
-                Background = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x0E, 0x10, 0x17)),
-                BorderBrush = BrushCardBorder,
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(8),
-                HorizontalAlignment = HorizontalAlignment.Left,
-            };
-
-            var imgStack = new StackPanel { Spacing = 6 };
-            try
-            {
-                var bitmap = new BitmapImage(new Uri(_backend.GetImageUrl(item.Id)));
-                var imgControl = new Image
-                {
-                    Source = bitmap,
-                    MaxHeight = 210,
-                    MaxWidth = 520,
-                    Stretch = Stretch.Uniform,
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                };
-                imgStack.Children.Add(imgControl);
-            }
-            catch
-            {
-                // Fallback if image stream not ready
-            }
-
-            var dimText = new TextBlock
-            {
-                Text = item.Width > 0 && item.Height > 0
-                    ? $"{item.Width} × {item.Height} px  ·  Click Copy or press Ctrl + V to paste image"
-                    : "Synced image from iPhone",
+                Text = "File",
                 FontSize = 12,
-                Foreground = BrushTextSecondary,
-            };
-            Microsoft.UI.Xaml.Documents.Typography.SetNumeralAlignment(dimText, FontNumeralAlignment.Tabular);
-            imgStack.Children.Add(dimText);
-
-            imgContainer.Child = imgStack;
-            outerStack.Children.Add(imgContainer);
+                FontWeight = Microsoft.UI.Text.FontWeights.Medium,
+                Foreground = BrushFileGold,
+            });
         }
         else
         {
-            var bodyText = new TextBlock
+            leftMeta.Children.Add(new FontIcon
             {
-                Text = item.Text,
-                FontSize = 13.5,
-                Foreground = item.Kind == "url" ? BrushAppleBlue : BrushTextPrimary,
-                TextWrapping = TextWrapping.Wrap,
-                MaxLines = 5,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                IsTextSelectionEnabled = true,
+                Glyph = "\uE8A5",
+                FontSize = 11.5,
+                Foreground = BrushTextSecondary,
+            });
+            leftMeta.Children.Add(new TextBlock
+            {
+                Text = "Text",
+                FontSize = 12,
+                FontWeight = Microsoft.UI.Text.FontWeights.Medium,
+                Foreground = BrushTextSecondary,
+            });
+            var charsBlock = new TextBlock
+            {
+                Text = $"{item.Text.Length} chars",
+                FontSize = 11.5,
+                Foreground = BrushTextDim,
+                Margin = new Thickness(4, 0, 0, 0),
             };
-            outerStack.Children.Add(bodyText);
+            Microsoft.UI.Xaml.Documents.Typography.SetNumeralAlignment(charsBlock, FontNumeralAlignment.Tabular);
+            leftMeta.Children.Add(charsBlock);
         }
 
-        card.Child = outerStack;
-        return card;
+        if (item.Pinned)
+        {
+            leftMeta.Children.Add(new FontIcon
+            {
+                Glyph = "\uE735",
+                FontSize = 11,
+                Foreground = BrushFileGold,
+                Margin = new Thickness(4, 0, 0, 0),
+            });
+        }
+
+        Grid.SetColumn(leftMeta, 0);
+        metaGrid.Children.Add(leftMeta);
+
+        var rightMeta = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 5,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        rightMeta.Children.Add(new FontIcon
+        {
+            Glyph = "\uE8EA",
+            FontSize = 10.5,
+            Foreground = BrushTextMuted,
+        });
+        var srcTimeText = new TextBlock
+        {
+            Text = $"{item.ShortDeviceName} · {item.RelativeTime}",
+            FontSize = 11.5,
+            Foreground = BrushTextMuted,
+        };
+        Microsoft.UI.Xaml.Documents.Typography.SetNumeralAlignment(srcTimeText, FontNumeralAlignment.Tabular);
+        rightMeta.Children.Add(srcTimeText);
+
+        Grid.SetColumn(rightMeta, 1);
+        metaGrid.Children.Add(rightMeta);
+        rowStack.Children.Add(metaGrid);
+
+        // 2. Main Content Line (Thumbnail + Filename for Image, or Bold Text for Text/URL)
+        if (item.IsImage)
+        {
+            var imgRow = new Grid { ColumnSpacing = 12, Margin = new Thickness(0, 2, 0, 0) };
+            imgRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            imgRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var thumbBorder = new Border
+            {
+                Width = 42,
+                Height = 42,
+                CornerRadius = new CornerRadius(6),
+                Background = BrushThumbBg,
+                BorderBrush = BrushThumbBorder,
+                BorderThickness = new Thickness(1),
+            };
+
+            try
+            {
+                thumbBorder.Child = new Image
+                {
+                    Source = new BitmapImage(new Uri(_backend.GetImageUrl(item.Id))),
+                    Stretch = Stretch.UniformToFill,
+                };
+            }
+            catch
+            {
+                // Ignore thumbnail load error
+            }
+
+            Grid.SetColumn(thumbBorder, 0);
+            imgRow.Children.Add(thumbBorder);
+
+            var titleBlock = new TextBlock
+            {
+                Text = item.ImageDisplayName,
+                FontSize = 13.5,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Foreground = BrushTextPrimary,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxLines = 1,
+            };
+            Grid.SetColumn(titleBlock, 1);
+            imgRow.Children.Add(titleBlock);
+
+            rowStack.Children.Add(imgRow);
+        }
+        else
+        {
+            rowStack.Children.Add(new TextBlock
+            {
+                Text = item.Text.Replace("\r\n", "\n").Trim(),
+                FontSize = 13.5,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Foreground = BrushTextPrimary,
+                MaxLines = 2,
+                LineHeight = 19,
+                TextWrapping = TextWrapping.Wrap,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            });
+
+            // 3. Optional Subtle Tag Pill (Link or Code)
+            if (item.IsLink)
+            {
+                rowStack.Children.Add(new Border
+                {
+                    Background = BrushLinkBlueBg,
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(6, 1, 6, 2),
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    Margin = new Thickness(0, 2, 0, 0),
+                    Child = new TextBlock
+                    {
+                        Text = "Link",
+                        FontSize = 11,
+                        FontWeight = Microsoft.UI.Text.FontWeights.Medium,
+                        Foreground = BrushLinkBlueText,
+                    },
+                });
+            }
+            else if (item.IsCode)
+            {
+                rowStack.Children.Add(new Border
+                {
+                    Background = BrushCodePurpleBg,
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(6, 1, 6, 2),
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    Margin = new Thickness(0, 2, 0, 0),
+                    Child = new TextBlock
+                    {
+                        Text = "Code",
+                        FontSize = 11,
+                        FontWeight = Microsoft.UI.Text.FontWeights.Medium,
+                        Foreground = BrushCodePurpleText,
+                    },
+                });
+            }
+        }
+
+        rowBorder.Child = rowStack;
+        return rowBorder;
     }
 
-    private void OnNavClipboardClick(object sender, RoutedEventArgs e)
+    private void SelectItem(ClipboardHistoryItem? item)
     {
-        SwitchView(showOnboarding: false);
+        var previousId = _selectedItem?.Id;
+        _selectedItem = item;
+
+        if (previousId is not null && _rowBorders.TryGetValue(previousId, out var prevBorder))
+        {
+            prevBorder.Background = BrushTransparent;
+        }
+
+        if (item is not null && _rowBorders.TryGetValue(item.Id, out var newBorder))
+        {
+            newBorder.Background = BrushRowSelected;
+        }
+
+        UpdateInspector(item);
     }
 
-    private void OnNavOnboardingClick(object sender, RoutedEventArgs e)
+    private void UpdateInspector(ClipboardHistoryItem? item)
     {
-        SwitchView(showOnboarding: true);
+        if (item is null)
+        {
+            InspectorMetaLeftText.Text = "No item selected";
+            InspectorSourceText.Text = "iPhone";
+            InspectorImageStage.Visibility = Visibility.Collapsed;
+            InspectorTextStage.Visibility = Visibility.Visible;
+            InspectorPreviewText.Text = "Select an item from the middle list or copy anything on your iPhone.";
+            InspectorTextSubtitle.Text = "";
+            return;
+        }
+
+        InspectorSourceText.Text = item.ShortDeviceName;
+        ActionFavoriteIcon.Glyph = item.Pinned ? "\uE735" : "\uE734";
+        ActionFavoriteIcon.Foreground = item.Pinned ? BrushFileGold : BrushTextSecondary;
+        ActionFavoriteLabel.Text = item.Pinned ? "Favorited" : "Favorite";
+
+        if (item.IsImage)
+        {
+            InspectorMetaLeftText.Text = "File  ·  1 files";
+            InspectorTextStage.Visibility = Visibility.Collapsed;
+            InspectorImageStage.Visibility = Visibility.Visible;
+
+            try
+            {
+                InspectorPreviewImage.Source = new BitmapImage(new Uri(_backend.GetImageUrl(item.Id)));
+            }
+            catch
+            {
+                InspectorPreviewImage.Source = null;
+            }
+
+            InspectorImageTitleText.Text = item.ImageDisplayName;
+        }
+        else
+        {
+            InspectorMetaLeftText.Text = $"Text  ·  {item.Text.Length} chars";
+            InspectorImageStage.Visibility = Visibility.Collapsed;
+            InspectorTextStage.Visibility = Visibility.Visible;
+
+            InspectorPreviewText.Text = item.Text;
+            InspectorTextSubtitle.Text = $"{item.Uti}  ·  {item.FormattedSize}  ·  {item.Transport}  ·  {item.LatencyMs:F1} ms";
+        }
+    }
+
+    private async Task CopySelectedItemAsync()
+    {
+        if (_selectedItem is null) return;
+        var ok = await _backend.CopyItemToWindowsAsync(_selectedItem.Id);
+        if (ok)
+        {
+            ActionCopyLabel.Text = "Copied";
+            ActionCopyLabel.Foreground = BrushStatusGreen;
+            await Task.Delay(1100);
+            ActionCopyLabel.Text = "Copy";
+            ActionCopyLabel.Foreground = BrushTextPrimary;
+        }
+    }
+
+    private void ShowInspectorPane()
+    {
+        OnboardingPane.Visibility = Visibility.Collapsed;
+        InspectorPane.Visibility = Visibility.Visible;
+        RailClipboardBtn.Background = BrushRailActive;
+        RailDeviceBtn.Background = BrushTransparent;
+    }
+
+    private void ShowOnboardingPane()
+    {
+        InspectorPane.Visibility = Visibility.Collapsed;
+        OnboardingPane.Visibility = Visibility.Visible;
+        RailDeviceBtn.Background = BrushRailActive;
+        RailClipboardBtn.Background = BrushTransparent;
+    }
+
+    private void OnRailClipboardClick(object sender, RoutedEventArgs e)
+    {
+        ShowInspectorPane();
+    }
+
+    private void OnRailDeviceClick(object sender, RoutedEventArgs e)
+    {
+        if (OnboardingPane.Visibility == Visibility.Visible)
+        {
+            ShowInspectorPane();
+        }
+        else
+        {
+            ShowOnboardingPane();
+        }
+    }
+
+    private void OnSidebarFilterClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button clicked || clicked.Tag is not string tag) return;
+        _typeOrTagFilter = tag;
+
+        var buttons = new[]
+        {
+            NavTypeAllBtn, NavTypeFavBtn, NavTypeTextBtn, NavTypeRichBtn,
+            NavTypeImageBtn, NavTypeFileBtn, NavTagLinkBtn, NavTagCodeBtn, NavTagImageBtn
+        };
+        UpdateSidebarButtonGroup(buttons, clicked);
+        ShowInspectorPane();
+        ApplyFiltersAndRenderFeed();
+    }
+
+    private void OnSourceFilterClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button clicked || clicked.Tag is not string tag) return;
+        _sourceFilter = tag;
+
+        var buttons = new[] { NavSrcAllBtn, NavSrcPcBtn, NavSrcIphoneBtn };
+        UpdateSidebarButtonGroup(buttons, clicked);
+        ApplyFiltersAndRenderFeed();
+    }
+
+    private void OnTimeFilterClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button clicked || clicked.Tag is not string tag) return;
+        _timeFilter = tag;
+
+        var buttons = new[] { NavTimeAllBtn, NavTimeTodayBtn };
+        UpdateSidebarButtonGroup(buttons, clicked);
+        ApplyFiltersAndRenderFeed();
+    }
+
+    private static void UpdateSidebarButtonGroup(IEnumerable<Button> group, Button activeBtn)
+    {
+        foreach (var btn in group)
+        {
+            var isActive = ReferenceEquals(btn, activeBtn);
+            btn.Background = isActive ? BrushSidebarActive : BrushTransparent;
+            if (btn.Content is StackPanel sp)
+            {
+                foreach (var child in sp.Children)
+                {
+                    if (child is FontIcon fi)
+                    {
+                        fi.Foreground = isActive ? BrushTextPrimary : BrushTextSecondary;
+                    }
+                    else if (child is TextBlock tb)
+                    {
+                        tb.Foreground = isActive ? BrushTextPrimary : BrushTextSecondary;
+                        tb.FontWeight = isActive
+                            ? Microsoft.UI.Text.FontWeights.SemiBold
+                            : Microsoft.UI.Text.FontWeights.Normal;
+                    }
+                }
+            }
+        }
+    }
+
+    private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
+    {
+        _searchQuery = SearchBox.Text ?? "";
+        ApplyFiltersAndRenderFeed();
+    }
+
+    private async void OnInspectorCopyClick(object sender, RoutedEventArgs e)
+    {
+        await CopySelectedItemAsync();
+    }
+
+    private async void OnInspectorFavoriteClick(object sender, RoutedEventArgs e)
+    {
+        if (_selectedItem is null) return;
+        await _backend.TogglePinAsync(_selectedItem.Id);
+        _lastHistoryRevision = -1;
+        await RefreshStatusAndHistoryAsync();
+    }
+
+    private async void OnInspectorDeleteClick(object sender, RoutedEventArgs e)
+    {
+        if (_selectedItem is null) return;
+        await _backend.DeleteItemAsync(_selectedItem.Id);
+        _selectedItem = null;
+        _lastHistoryRevision = -1;
+        await RefreshStatusAndHistoryAsync();
+    }
+
+    private async void OnRootGridKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (FocusManager.GetFocusedElement(RootGrid.XamlRoot) is TextBox)
+        {
+            return;
+        }
+
+        if (e.Key == VirtualKey.C)
+        {
+            await CopySelectedItemAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == VirtualKey.F && _selectedItem is not null)
+        {
+            await _backend.TogglePinAsync(_selectedItem.Id);
+            _lastHistoryRevision = -1;
+            await RefreshStatusAndHistoryAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == VirtualKey.D && _selectedItem is not null)
+        {
+            await _backend.DeleteItemAsync(_selectedItem.Id);
+            _selectedItem = null;
+            _lastHistoryRevision = -1;
+            await RefreshStatusAndHistoryAsync();
+            e.Handled = true;
+        }
     }
 
     private async void OnSyncNowClick(object sender, RoutedEventArgs e)
@@ -641,51 +721,26 @@ public sealed partial class MainWindow : Window
 
     private async void OnTransportAutoClick(object sender, RoutedEventArgs e)
     {
-        UpdateTransportSelectorUi("auto");
+        UpdateTransportButtons("auto");
         await _backend.SetTransportModeAsync("auto");
     }
 
     private async void OnTransportWifiClick(object sender, RoutedEventArgs e)
     {
-        UpdateTransportSelectorUi("wifi");
+        UpdateTransportButtons("wifi");
         await _backend.SetTransportModeAsync("wifi");
     }
 
     private async void OnTransportUsbClick(object sender, RoutedEventArgs e)
     {
-        UpdateTransportSelectorUi("usb");
+        UpdateTransportButtons("usb");
         await _backend.SetTransportModeAsync("usb");
-    }
-
-    private void OnFilterPillClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button clicked || clicked.Tag is not string filterTag)
-        {
-            return;
-        }
-
-        _activeFilter = filterTag;
-        var buttons = new[] { FilterAllBtn, FilterTextBtn, FilterUrlBtn, FilterImageBtn, FilterPinnedBtn };
-        foreach (var btn in buttons)
-        {
-            var isActive = ReferenceEquals(btn, clicked);
-            btn.Background = isActive ? BrushAppleBlue : BrushPillInactive;
-            btn.Foreground = isActive ? BrushTextPrimary : BrushTextSecondary;
-            btn.BorderThickness = new Thickness(isActive ? 0 : 1);
-        }
-
-        RenderHistoryCards();
-    }
-
-    private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
-    {
-        _searchQuery = SearchBox.Text ?? "";
-        RenderHistoryCards();
     }
 
     private async void OnClearHistoryClick(object sender, RoutedEventArgs e)
     {
         await _backend.ClearHistoryAsync(includePinned: false);
+        _selectedItem = null;
         _lastHistoryRevision = -1;
         await RefreshStatusAndHistoryAsync();
     }
@@ -694,12 +749,11 @@ public sealed partial class MainWindow : Window
     {
         PairWifiBtn.IsEnabled = false;
         PairWifiBtnText.Text = "Pairing over USB...";
-        OnboardingFeedbackText.Text = "Establishing wireless RemotePairing record over USB...";
+        OnboardingFeedbackText.Text = "Establishing RemotePairing record over USB...";
 
         var (ok, message) = await _backend.PairWifiOverUsbAsync();
         PairWifiBtn.IsEnabled = true;
-        PairWifiBtnText.Text = ok ? "✓ Paired Wireless Sync" : "Retry Wireless Pairing";
-        OnboardingFeedbackText.Foreground = ok ? BrushAppleGreen : BrushAppleRed;
+        PairWifiBtnText.Text = ok ? "Paired Wireless Sync" : "Pair Wireless Over USB";
         OnboardingFeedbackText.Text = message;
 
         await RefreshStatusAndHistoryAsync();

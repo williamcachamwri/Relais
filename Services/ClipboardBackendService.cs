@@ -94,6 +94,9 @@ public sealed class ClipboardHistoryItem
     [JsonPropertyName("device_model")]
     public string DeviceModel { get; set; } = "iPhone";
 
+    [JsonPropertyName("product_type")]
+    public string ProductType { get; set; } = "iPhone";
+
     [JsonPropertyName("ios_version")]
     public string IosVersion { get; set; } = "";
 
@@ -108,6 +111,67 @@ public sealed class ClipboardHistoryItem
 
     [JsonPropertyName("pinned")]
     public bool Pinned { get; set; }
+
+    public bool IsImage => Kind == "image";
+    public bool IsLink => Kind == "url";
+    public bool IsRichText => Uti.Contains("html", StringComparison.OrdinalIgnoreCase)
+                              || Uti.Contains("webarchive", StringComparison.OrdinalIgnoreCase)
+                              || Uti.Contains("rtf", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsCode => !IsImage && !IsLink && (
+        Text.Contains("function ", StringComparison.Ordinal)
+        || Text.Contains("const ", StringComparison.Ordinal)
+        || Text.Contains("import ", StringComparison.Ordinal)
+        || Text.Contains("class ", StringComparison.Ordinal)
+        || Text.Contains("def ", StringComparison.Ordinal)
+        || Text.StartsWith("sk-", StringComparison.Ordinal)
+        || Text.StartsWith("/tmp/", StringComparison.Ordinal)
+        || (Text.Contains('{') && Text.Contains('}')));
+
+    public string ShortDeviceName
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(DeviceModel)) return "iPhone";
+            var parenIdx = DeviceModel.IndexOf('(');
+            return parenIdx > 0 ? DeviceModel[..parenIdx].Trim() : DeviceModel;
+        }
+    }
+
+    public string ImageDisplayName
+    {
+        get
+        {
+            var dt = Timestamp > 0
+                ? DateTimeOffset.FromUnixTimeSeconds((long)Timestamp).ToLocalTime()
+                : DateTimeOffset.Now;
+            return $"Clipboard_{dt:yyyy-MM-dd_HH-mm-ss}.png";
+        }
+    }
+
+    public string RelativeTime
+    {
+        get
+        {
+            if (Timestamp <= 0) return TimeLabel;
+            var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var diff = Math.Max(0, now - (long)Timestamp);
+            if (diff < 60) return "Just now";
+            if (diff < 3600) return $"{diff / 60}m ago";
+            if (diff < 86400) return $"{diff / 3600}h ago";
+            return $"{diff / 86400}d ago";
+        }
+    }
+
+    public bool IsToday
+    {
+        get
+        {
+            if (Timestamp <= 0) return true;
+            var dt = DateTimeOffset.FromUnixTimeSeconds((long)Timestamp).ToLocalTime();
+            return dt.Date == DateTimeOffset.Now.Date;
+        }
+    }
 
     public string FormattedSize
     {

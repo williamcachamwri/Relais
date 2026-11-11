@@ -4,782 +4,949 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Universal Clipboard">
 
-    <Grid x:Name="RootGrid" Background="#0B0C10">
+    <Grid x:Name="RootGrid" Background="#141416" KeyDown="OnRootGridKeyDown">
         <Grid.RowDefinitions>
-            <RowDefinition Height="64" />
+            <RowDefinition Height="44" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="36" />
         </Grid.RowDefinitions>
 
-        <!-- Top Translucent Navigation & Title Bar -->
+        <!-- =================================================================== -->
+        <!-- TOP WINDOW BAR (Traffic Lights + Draggable Region + Search Pill)    -->
+        <!-- =================================================================== -->
         <Border
             Grid.Row="0"
-            Background="#12141C"
-            BorderBrush="#18FFFFFF"
-            BorderThickness="0,0,0,1"
-            Padding="20,0">
+            Background="#151517"
+            BorderBrush="#232326"
+            BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Left: App Brand + Live iPhone Connection Pill (Draggable TitleBar Region) -->
+                <!-- Left Traffic Light Dots -->
                 <StackPanel
-                    x:Name="TitleBarDragRegion"
                     Grid.Column="0"
                     Orientation="Horizontal"
                     VerticalAlignment="Center"
-                    Spacing="12">
-                    <Border
-                        Width="32"
-                        Height="32"
-                        CornerRadius="8"
-                        Background="#0A84FF"
-                        BorderBrush="#40FFFFFF"
-                        BorderThickness="1">
-                        <FontIcon
-                            Glyph="&#xE8C8;"
-                            FontSize="15"
-                            Foreground="#FFFFFF"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center" />
-                    </Border>
-
-                    <StackPanel VerticalAlignment="Center" Spacing="1">
-                        <TextBlock
-                            Text="Universal Clipboard"
-                            FontSize="14"
-                            FontWeight="SemiBold"
-                            Foreground="#F5F5F7" />
-                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                            <Ellipse
-                                x:Name="HeaderStatusDot"
-                                Width="7"
-                                Height="7"
-                                Fill="#FF9F0A"
-                                VerticalAlignment="Center" />
-                            <TextBlock
-                                x:Name="HeaderDeviceText"
-                                Text="Searching for iPhone..."
-                                FontSize="11.5"
-                                Foreground="#98989F"
-                                Typography.NumeralAlignment="Tabular"
-                                VerticalAlignment="Center" />
-                        </StackPanel>
-                    </StackPanel>
+                    Margin="16,0,12,0"
+                    Spacing="8">
+                    <Ellipse Width="12" Height="12" Fill="#FF5F57" />
+                    <Ellipse Width="12" Height="12" Fill="#FEBC2E" />
+                    <Ellipse x:Name="TrafficGreenDot" Width="12" Height="12" Fill="#28C840" />
                 </StackPanel>
 
-                <!-- Center: Segmented View Switcher (Clipboard Manager vs Onboarding Setup) -->
+                <!-- Center Draggable Region -->
                 <Border
+                    x:Name="TitleBarDragRegion"
                     Grid.Column="1"
-                    Background="#1B1E28"
-                    BorderBrush="#16FFFFFF"
-                    BorderThickness="1"
-                    CornerRadius="10"
-                    Padding="3"
-                    VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Spacing="2">
-                        <Button
-                            x:Name="NavClipboardBtn"
-                            Click="OnNavClipboardClick"
-                            Background="#2C3140"
-                            BorderThickness="0"
-                            CornerRadius="7"
-                            Padding="14,6">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
-                                <FontIcon Glyph="&#xF0E3;" FontSize="12" Foreground="#F5F5F7" />
-                                <TextBlock
-                                    Text="Clipboard"
-                                    FontSize="12.5"
-                                    FontWeight="SemiBold"
-                                    Foreground="#F5F5F7" />
-                                <Border
-                                    x:Name="NavCountBadge"
-                                    Background="#260A84FF"
-                                    CornerRadius="5"
-                                    Padding="5,1"
-                                    VerticalAlignment="Center">
-                                    <TextBlock
-                                        x:Name="NavCountText"
-                                        Text="0"
-                                        FontSize="11"
-                                        FontWeight="SemiBold"
-                                        Foreground="#64D2FF"
-                                        Typography.NumeralAlignment="Tabular" />
-                                </Border>
-                            </StackPanel>
-                        </Button>
+                    Background="Transparent"
+                    VerticalAlignment="Stretch" />
 
-                        <Button
-                            x:Name="NavOnboardingBtn"
-                            Click="OnNavOnboardingClick"
+                <!-- Right Search Pill (Padded right for native caption buttons) -->
+                <Border
+                    Grid.Column="2"
+                    Width="320"
+                    Height="28"
+                    Margin="0,0,144,0"
+                    Background="#212124"
+                    BorderBrush="#2B2B2F"
+                    BorderThickness="1"
+                    CornerRadius="7"
+                    Padding="10,0"
+                    VerticalAlignment="Center">
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <FontIcon
+                            Grid.Column="0"
+                            Glyph="&#xE721;"
+                            FontSize="11.5"
+                            Foreground="#7C7C84"
+                            VerticalAlignment="Center" />
+
+                        <TextBox
+                            x:Name="SearchBox"
+                            Grid.Column="1"
+                            PlaceholderText="Search clipboard..."
+                            TextChanged="OnSearchTextChanged"
                             Background="Transparent"
                             BorderThickness="0"
-                            CornerRadius="7"
-                            Padding="14,6">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
-                                <FontIcon Glyph="&#xE895;" FontSize="12" Foreground="#98989F" />
-                                <TextBlock
-                                    x:Name="NavOnboardingText"
-                                    Text="Onboarding"
-                                    FontSize="12.5"
-                                    FontWeight="Medium"
-                                    Foreground="#98989F" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
+                            Padding="0,3,0,0"
+                            FontSize="12"
+                            Foreground="#ECECEF"
+                            VerticalAlignment="Center" />
+
+                        <TextBlock
+                            x:Name="SearchItemCountText"
+                            Grid.Column="2"
+                            Text="0 items"
+                            FontSize="11.5"
+                            Foreground="#6E6E76"
+                            Typography.NumeralAlignment="Tabular"
+                            VerticalAlignment="Center" />
+                    </Grid>
                 </Border>
-
-                <!-- Right: Transport Mode Selector & Sync Now Button (padded right for system caption buttons) -->
-                <StackPanel
-                    Grid.Column="2"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    Margin="0,0,138,0"
-                    Spacing="8">
-                    <Border
-                        Background="#1B1E28"
-                        BorderBrush="#16FFFFFF"
-                        BorderThickness="1"
-                        CornerRadius="8"
-                        Padding="2">
-                        <StackPanel Orientation="Horizontal" Spacing="2">
-                            <Button
-                                x:Name="TransportAutoBtn"
-                                Content="Auto"
-                                Click="OnTransportAutoClick"
-                                FontSize="11.5"
-                                Padding="9,4"
-                                CornerRadius="6"
-                                BorderThickness="0"
-                                Background="#0A84FF"
-                                Foreground="#FFFFFF" />
-                            <Button
-                                x:Name="TransportWifiBtn"
-                                Content="Wi-Fi"
-                                Click="OnTransportWifiClick"
-                                FontSize="11.5"
-                                Padding="9,4"
-                                CornerRadius="6"
-                                BorderThickness="0"
-                                Background="Transparent"
-                                Foreground="#98989F" />
-                            <Button
-                                x:Name="TransportUsbBtn"
-                                Content="USB"
-                                Click="OnTransportUsbClick"
-                                FontSize="11.5"
-                                Padding="9,4"
-                                CornerRadius="6"
-                                BorderThickness="0"
-                                Background="Transparent"
-                                Foreground="#98989F" />
-                        </StackPanel>
-                    </Border>
-
-                    <Button
-                        x:Name="SyncNowBtn"
-                        Click="OnSyncNowClick"
-                        Background="#1E222D"
-                        BorderBrush="#22FFFFFF"
-                        BorderThickness="1"
-                        CornerRadius="8"
-                        Padding="11,6"
-                        ToolTipService.ToolTip="Pull current iPhone clipboard immediately">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE72C;" FontSize="12" Foreground="#F5F5F7" />
-                            <TextBlock Text="Sync" FontSize="12" FontWeight="Medium" Foreground="#F5F5F7" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
             </Grid>
         </Border>
 
         <!-- =================================================================== -->
-        <!-- VIEW 1: CLIPBOARD MANAGER VIEW                                      -->
+        <!-- MAIN 4-COLUMN SPLIT WORKSPACE                                       -->
         <!-- =================================================================== -->
-        <Grid x:Name="ClipboardManagerView" Grid.Row="1" Padding="28,20,28,12">
-            <Grid MaxWidth="860" HorizontalAlignment="Stretch">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="50" />
+                <ColumnDefinition Width="184" />
+                <ColumnDefinition Width="320" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-                <!-- Live Continuity Banner Card -->
-                <Border
-                    Grid.Row="0"
-                    Background="#151821"
-                    BorderBrush="#1AFFFFFF"
-                    BorderThickness="1"
-                    CornerRadius="14"
-                    Padding="18,14"
-                    Margin="0,0,0,16">
-                    <Grid>
+            <!-- =============================================================== -->
+            <!-- COLUMN 0: FAR-LEFT ICON RAIL                                    -->
+            <!-- =============================================================== -->
+            <Border
+                Grid.Column="0"
+                Background="#151517"
+                BorderBrush="#232326"
+                BorderThickness="0,0,1,0"
+                Padding="0,10">
+                <Grid>
+                    <StackPanel VerticalAlignment="Top" HorizontalAlignment="Center" Spacing="6">
+                        <Button
+                            x:Name="RailClipboardBtn"
+                            Click="OnRailClipboardClick"
+                            Width="34"
+                            Height="34"
+                            Padding="0"
+                            CornerRadius="8"
+                            Background="#2A2A2E"
+                            BorderThickness="0"
+                            ToolTipService.ToolTip="Clipboard History">
+                            <FontIcon Glyph="&#xE81E;" FontSize="15" Foreground="#F2F2F5" />
+                        </Button>
+
+                        <Button
+                            x:Name="RailDeviceBtn"
+                            Click="OnRailDeviceClick"
+                            Width="34"
+                            Height="34"
+                            Padding="0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ToolTipService.ToolTip="Continuity &amp; Onboarding Setup">
+                            <FontIcon x:Name="RailDeviceIcon" Glyph="&#xE7F4;" FontSize="15" Foreground="#8A8A92" />
+                        </Button>
+                    </StackPanel>
+
+                    <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Center" Spacing="6">
+                        <Button
+                            x:Name="RailSyncBtn"
+                            Click="OnSyncNowClick"
+                            Width="34"
+                            Height="34"
+                            Padding="0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ToolTipService.ToolTip="Pull iPhone Clipboard Now">
+                            <FontIcon Glyph="&#xE8F2;" FontSize="14" Foreground="#8A8A92" />
+                        </Button>
+
+                        <Button
+                            x:Name="RailSettingsBtn"
+                            Click="OnRailDeviceClick"
+                            Width="34"
+                            Height="34"
+                            Padding="0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ToolTipService.ToolTip="Device Pairing &amp; Settings">
+                            <FontIcon Glyph="&#xE713;" FontSize="15" Foreground="#8A8A92" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- =============================================================== -->
+            <!-- COLUMN 1: FILTER SIDEBAR (All, Favorites, TYPE, TAG, SOURCE)    -->
+            <!-- =============================================================== -->
+            <Border
+                Grid.Column="1"
+                Background="#17171A"
+                BorderBrush="#232326"
+                BorderThickness="0,0,1,0">
+                <ScrollViewer VerticalScrollBarVisibility="Hidden" Padding="10,10">
+                    <StackPanel Spacing="2">
+                        <!-- All & Favorites -->
+                        <Button
+                            x:Name="NavTypeAllBtn"
+                            Tag="type:all"
+                            Click="OnSidebarFilterClick"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Height="32"
+                            Padding="10,0"
+                            CornerRadius="8"
+                            Background="#28282D"
+                            BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xF0E2;" FontSize="13" Foreground="#F2F2F5" />
+                                <TextBlock Text="All" FontSize="13" FontWeight="SemiBold" Foreground="#F2F2F5" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
+                            x:Name="NavTypeFavBtn"
+                            Tag="type:favorites"
+                            Click="OnSidebarFilterClick"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Height="32"
+                            Padding="10,0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE734;" FontSize="13" Foreground="#9A9AA2" />
+                                <TextBlock Text="Favorites" FontSize="13" Foreground="#9A9AA2" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- TYPE Section -->
+                        <TextBlock
+                            Text="TYPE"
+                            FontSize="10.5"
+                            FontWeight="SemiBold"
+                            Foreground="#5A5A62"
+                            Margin="10,14,0,4" />
+
+                        <Button
+                            x:Name="NavTypeTextBtn"
+                            Tag="type:text"
+                            Click="OnSidebarFilterClick"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Height="32"
+                            Padding="10,0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE8A5;" FontSize="13" Foreground="#9A9AA2" />
+                                <TextBlock Text="Text" FontSize="13" Foreground="#9A9AA2" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
+                            x:Name="NavTypeRichBtn"
+                            Tag="type:richtext"
+                            Click="OnSidebarFilterClick"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Height="32"
+                            Padding="10,0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE8A5;" FontSize="13" Foreground="#9A9AA2" />
+                                <TextBlock Text="Rich Text" FontSize="13" Foreground="#9A9AA2" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
+                            x:Name="NavTypeImageBtn"
+                            Tag="type:image"
+                            Click="OnSidebarFilterClick"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Height="32"
+                            Padding="10,0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xEB9F;" FontSize="13" Foreground="#9A9AA2" />
+                                <TextBlock Text="Image" FontSize="13" Foreground="#9A9AA2" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
+                            x:Name="NavTypeFileBtn"
+                            Tag="type:file"
+                            Click="OnSidebarFilterClick"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Height="32"
+                            Padding="10,0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE7C3;" FontSize="13" Foreground="#9A9AA2" />
+                                <TextBlock Text="File" FontSize="13" Foreground="#9A9AA2" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- TAG Section -->
+                        <TextBlock
+                            Text="TAG"
+                            FontSize="10.5"
+                            FontWeight="SemiBold"
+                            Foreground="#5A5A62"
+                            Margin="10,14,0,4" />
+
+                        <Button
+                            x:Name="NavTagLinkBtn"
+                            Tag="tag:link"
+                            Click="OnSidebarFilterClick"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Height="32"
+                            Padding="10,0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE71B;" FontSize="13" Foreground="#9A9AA2" />
+                                <TextBlock Text="Link" FontSize="13" Foreground="#9A9AA2" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
+                            x:Name="NavTagCodeBtn"
+                            Tag="tag:code"
+                            Click="OnSidebarFilterClick"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Height="32"
+                            Padding="10,0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE943;" FontSize="13" Foreground="#9A9AA2" />
+                                <TextBlock Text="Code" FontSize="13" Foreground="#9A9AA2" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
+                            x:Name="NavTagImageBtn"
+                            Tag="tag:image"
+                            Click="OnSidebarFilterClick"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Height="32"
+                            Padding="10,0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xEB9F;" FontSize="13" Foreground="#9A9AA2" />
+                                <TextBlock Text="Image" FontSize="13" Foreground="#9A9AA2" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- SOURCE Section -->
+                        <TextBlock
+                            Text="SOURCE"
+                            FontSize="10.5"
+                            FontWeight="SemiBold"
+                            Foreground="#5A5A62"
+                            Margin="10,14,0,4" />
+
+                        <Button
+                            x:Name="NavSrcAllBtn"
+                            Tag="src:all"
+                            Click="OnSourceFilterClick"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Height="32"
+                            Padding="10,0"
+                            CornerRadius="8"
+                            Background="#28282D"
+                            BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE8E5;" FontSize="13" Foreground="#F2F2F5" />
+                                <TextBlock Text="All sources" FontSize="13" FontWeight="SemiBold" Foreground="#F2F2F5" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
+                            x:Name="NavSrcPcBtn"
+                            Tag="src:pc"
+                            Click="OnSourceFilterClick"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Height="32"
+                            Padding="10,0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE7F8;" FontSize="13" Foreground="#9A9AA2" />
+                                <TextBlock
+                                    x:Name="SidebarPcNameText"
+                                    Text="This device"
+                                    FontSize="13"
+                                    Foreground="#9A9AA2"
+                                    TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
+                            x:Name="NavSrcIphoneBtn"
+                            Tag="src:iphone"
+                            Click="OnSourceFilterClick"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Height="32"
+                            Padding="10,0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE8EA;" FontSize="13" Foreground="#9A9AA2" />
+                                <TextBlock
+                                    x:Name="SidebarIphoneNameText"
+                                    Text="iPhone 16e"
+                                    FontSize="13"
+                                    Foreground="#9A9AA2"
+                                    TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- TIME Section -->
+                        <TextBlock
+                            Text="TIME"
+                            FontSize="10.5"
+                            FontWeight="SemiBold"
+                            Foreground="#5A5A62"
+                            Margin="10,14,0,4" />
+
+                        <Button
+                            x:Name="NavTimeAllBtn"
+                            Tag="time:all"
+                            Click="OnTimeFilterClick"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Height="32"
+                            Padding="10,0"
+                            CornerRadius="8"
+                            Background="#28282D"
+                            BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE823;" FontSize="13" Foreground="#F2F2F5" />
+                                <TextBlock Text="All time" FontSize="13" FontWeight="SemiBold" Foreground="#F2F2F5" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
+                            x:Name="NavTimeTodayBtn"
+                            Tag="time:today"
+                            Click="OnTimeFilterClick"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Height="32"
+                            Padding="10,0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE823;" FontSize="13" Foreground="#9A9AA2" />
+                                <TextBlock Text="Today" FontSize="13" Foreground="#9A9AA2" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- =============================================================== -->
+            <!-- COLUMN 2: MIDDLE CLIPBOARD FEED LIST                            -->
+            <!-- =============================================================== -->
+            <Border
+                Grid.Column="2"
+                Background="#151517"
+                BorderBrush="#232326"
+                BorderThickness="0,0,1,0">
+                <Grid>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="HistoryListPanel" Spacing="0" />
+                    </ScrollViewer>
+
+                    <StackPanel
+                        x:Name="EmptyFeedState"
+                        Visibility="Collapsed"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Spacing="8"
+                        Padding="24">
+                        <TextBlock
+                            Text="No clipboard items"
+                            FontSize="13.5"
+                            FontWeight="SemiBold"
+                            Foreground="#8E8E96"
+                            HorizontalAlignment="Center" />
+                        <TextBlock
+                            Text="Copy anything on your iPhone to sync automatically."
+                            FontSize="12"
+                            Foreground="#5A5A62"
+                            TextAlignment="Center"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- =============================================================== -->
+            <!-- COLUMN 3: RIGHT INSPECTOR / PREVIEW PANE                        -->
+            <!-- =============================================================== -->
+            <Grid Grid.Column="3" Background="#131315">
+
+                <!-- LAYER A: CLIPBOARD ITEM INSPECTOR (Matches Image #2 Right Pane) -->
+                <Grid x:Name="InspectorPane">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="44" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="56" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Top Inspector Metadata Bar -->
+                    <Grid Grid.Row="0" Padding="24,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="0" Spacing="4">
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <TextBlock
-                                    x:Name="BannerHeadlineText"
-                                    Text="Continuity Pasteboard Active"
-                                    FontSize="15"
-                                    FontWeight="SemiBold"
-                                    Foreground="#F5F5F7" />
-                                <Border
-                                    x:Name="BannerTransportPill"
-                                    Background="#1F30D158"
-                                    BorderBrush="#4030D158"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Padding="8,2">
-                                    <TextBlock
-                                        x:Name="BannerTransportText"
-                                        Text="USB"
-                                        FontSize="11"
-                                        FontWeight="SemiBold"
-                                        Foreground="#30D158" />
-                                </Border>
-                            </StackPanel>
-                            <TextBlock
-                                x:Name="BannerSubtext"
-                                Text="Copy anything on your iPhone — Windows clipboard updates automatically for instant Ctrl + V."
-                                FontSize="12.5"
-                                Foreground="#98989F"
-                                TextWrapping="Wrap" />
-                        </StackPanel>
+                        <TextBlock
+                            x:Name="InspectorMetaLeftText"
+                            Grid.Column="0"
+                            Text="Text  ·  0 chars"
+                            FontSize="12.5"
+                            Foreground="#8A8A92"
+                            Typography.NumeralAlignment="Tabular"
+                            VerticalAlignment="Center" />
 
                         <StackPanel
                             Grid.Column="1"
                             Orientation="Horizontal"
-                            VerticalAlignment="Center"
-                            Spacing="16">
-                            <StackPanel HorizontalAlignment="Right" Spacing="1">
-                                <TextBlock
-                                    Text="LAST LATENCY"
-                                    FontSize="10"
-                                    FontWeight="SemiBold"
-                                    Foreground="#6E6E77" />
-                                <TextBlock
-                                    x:Name="MetricLatencyText"
-                                    Text="— ms"
-                                    FontSize="14"
-                                    FontWeight="SemiBold"
-                                    Foreground="#F5F5F7"
-                                    Typography.NumeralAlignment="Tabular"
-                                    HorizontalAlignment="Right" />
-                            </StackPanel>
-
-                            <Border Width="1" Height="26" Background="#1AFFFFFF" />
-
-                            <StackPanel HorizontalAlignment="Right" Spacing="1">
-                                <TextBlock
-                                    Text="CHANGE COUNT"
-                                    FontSize="10"
-                                    FontWeight="SemiBold"
-                                    Foreground="#6E6E77" />
-                                <TextBlock
-                                    x:Name="MetricChangeCountText"
-                                    Text="#—"
-                                    FontSize="14"
-                                    FontWeight="SemiBold"
-                                    Foreground="#64D2FF"
-                                    Typography.NumeralAlignment="Tabular"
-                                    HorizontalAlignment="Right" />
-                            </StackPanel>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-                <!-- Filter Pills + Instant Search Bar -->
-                <Grid Grid.Row="1" Margin="0,0,0,14">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Category Filter Pills -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                        <Button
-                            x:Name="FilterAllBtn"
-                            Content="All"
-                            Tag="all"
-                            Click="OnFilterPillClick"
-                            CornerRadius="8"
-                            Padding="12,6"
-                            FontSize="12.5"
-                            FontWeight="SemiBold"
-                            Background="#0A84FF"
-                            Foreground="#FFFFFF"
-                            BorderThickness="0" />
-                        <Button
-                            x:Name="FilterTextBtn"
-                            Content="Text"
-                            Tag="text"
-                            Click="OnFilterPillClick"
-                            CornerRadius="8"
-                            Padding="12,6"
-                            FontSize="12.5"
-                            Background="#171A24"
-                            Foreground="#98989F"
-                            BorderBrush="#16FFFFFF"
-                            BorderThickness="1" />
-                        <Button
-                            x:Name="FilterUrlBtn"
-                            Content="Links"
-                            Tag="url"
-                            Click="OnFilterPillClick"
-                            CornerRadius="8"
-                            Padding="12,6"
-                            FontSize="12.5"
-                            Background="#171A24"
-                            Foreground="#98989F"
-                            BorderBrush="#16FFFFFF"
-                            BorderThickness="1" />
-                        <Button
-                            x:Name="FilterImageBtn"
-                            Content="Images"
-                            Tag="image"
-                            Click="OnFilterPillClick"
-                            CornerRadius="8"
-                            Padding="12,6"
-                            FontSize="12.5"
-                            Background="#171A24"
-                            Foreground="#98989F"
-                            BorderBrush="#16FFFFFF"
-                            BorderThickness="1" />
-                        <Button
-                            x:Name="FilterPinnedBtn"
-                            Content="Pinned ★"
-                            Tag="pinned"
-                            Click="OnFilterPillClick"
-                            CornerRadius="8"
-                            Padding="12,6"
-                            FontSize="12.5"
-                            Background="#171A24"
-                            Foreground="#98989F"
-                            BorderBrush="#16FFFFFF"
-                            BorderThickness="1" />
-                    </StackPanel>
-
-                    <!-- Search Box -->
-                    <TextBox
-                        x:Name="SearchBox"
-                        Grid.Column="1"
-                        Margin="12,0"
-                        PlaceholderText="Filter copied text, URLs, or UTI formats..."
-                        TextChanged="OnSearchTextChanged"
-                        Background="#151821"
-                        BorderBrush="#1EFFFFFF"
-                        CornerRadius="8"
-                        FontSize="12.5"
-                        VerticalAlignment="Center" />
-
-                    <!-- Clear Unpinned Button -->
-                    <Button
-                        x:Name="ClearHistoryBtn"
-                        Grid.Column="2"
-                        Click="OnClearHistoryClick"
-                        Background="#171A24"
-                        BorderBrush="#16FFFFFF"
-                        BorderThickness="1"
-                        CornerRadius="8"
-                        Padding="12,6"
-                        FontSize="12"
-                        Foreground="#98989F">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE74D;" FontSize="12" />
-                            <TextBlock Text="Clear" />
-                        </StackPanel>
-                    </Button>
-                </Grid>
-
-                <!-- Scrollable Clipboard History Cards -->
-                <Grid Grid.Row="2">
-                    <ScrollViewer
-                        x:Name="HistoryScrollViewer"
-                        VerticalScrollBarVisibility="Auto"
-                        Padding="0,0,4,12">
-                        <StackPanel x:Name="HistoryListPanel" Spacing="10" />
-                    </ScrollViewer>
-
-                    <!-- Empty State Card -->
-                    <Border
-                        x:Name="EmptyStateCard"
-                        Visibility="Collapsed"
-                        Background="#13161F"
-                        BorderBrush="#16FFFFFF"
-                        BorderThickness="1"
-                        CornerRadius="16"
-                        Padding="36"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        MaxWidth="460">
-                        <StackPanel Spacing="12" HorizontalAlignment="Center">
-                            <Border
-                                Width="48"
-                                Height="48"
-                                CornerRadius="14"
-                                Background="#1A0A84FF"
-                                BorderBrush="#330A84FF"
-                                BorderThickness="1"
-                                HorizontalAlignment="Center">
+                            Spacing="16"
+                            VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                 <FontIcon
-                                    Glyph="&#xE8C8;"
-                                    FontSize="22"
-                                    Foreground="#0A84FF"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center" />
-                            </Border>
-                            <TextBlock
-                                Text="Ready for iPhone Copy"
-                                FontSize="17"
-                                FontWeight="SemiBold"
-                                Foreground="#F5F5F7"
-                                HorizontalAlignment="Center" />
-                            <TextBlock
-                                Text="Copy any text, link, or photo on your iPhone. It will appear here automatically and be ready to paste on Windows with Ctrl + V."
-                                FontSize="13"
-                                Foreground="#98989F"
-                                TextAlignment="Center"
-                                TextWrapping="Wrap" />
+                                    x:Name="InspectorSourceIcon"
+                                    Glyph="&#xE8EA;"
+                                    FontSize="12"
+                                    Foreground="#8A8A92" />
+                                <TextBlock
+                                    x:Name="InspectorSourceText"
+                                    Text="iPhone 16e"
+                                    FontSize="12.5"
+                                    Foreground="#8A8A92" />
+                            </StackPanel>
+
                             <Button
-                                Click="OnSyncNowClick"
-                                Margin="0,6,0,0"
-                                Background="#0A84FF"
-                                Foreground="#FFFFFF"
+                                x:Name="InspectorPeerBtn"
+                                Click="OnRailDeviceClick"
+                                Background="Transparent"
                                 BorderThickness="0"
-                                CornerRadius="8"
-                                Padding="16,8"
-                                HorizontalAlignment="Center">
-                                <TextBlock Text="Pull Current iPhone Clipboard" FontSize="12.5" FontWeight="SemiBold" />
+                                Padding="6,4"
+                                CornerRadius="6"
+                                ToolTipService.ToolTip="Click to configure Continuity transport or wireless pairing">
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <FontIcon
+                                        x:Name="InspectorPeerIcon"
+                                        Glyph="&#xE701;"
+                                        FontSize="12"
+                                        Foreground="#8A8A92" />
+                                    <TextBlock
+                                        x:Name="InspectorPeerText"
+                                        Text="Peer online"
+                                        FontSize="12.5"
+                                        Foreground="#8A8A92" />
+                                </StackPanel>
                             </Button>
                         </StackPanel>
-                    </Border>
+                    </Grid>
+
+                    <!-- Center Preview Stage -->
+                    <Grid Grid.Row="1" Padding="32,16">
+                        <!-- Image Preview Stage -->
+                        <StackPanel
+                            x:Name="InspectorImageStage"
+                            Visibility="Collapsed"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Spacing="18">
+                            <Border
+                                Background="#0D0D0F"
+                                BorderBrush="#2C2C30"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="6"
+                                HorizontalAlignment="Center">
+                                <Image
+                                    x:Name="InspectorPreviewImage"
+                                    MaxHeight="340"
+                                    MaxWidth="520"
+                                    Stretch="Uniform" />
+                            </Border>
+
+                            <TextBlock
+                                x:Name="InspectorImageTitleText"
+                                Text="Clipboard.png"
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Foreground="#F2F2F5"
+                                HorizontalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Text / Link / Code Preview Stage -->
+                        <StackPanel
+                            x:Name="InspectorTextStage"
+                            Visibility="Visible"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Stretch"
+                            MaxWidth="560"
+                            Spacing="16">
+                            <Border
+                                Background="#18181B"
+                                BorderBrush="#252529"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="22,20"
+                                MaxHeight="360">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <TextBlock
+                                        x:Name="InspectorPreviewText"
+                                        Text=""
+                                        FontSize="14"
+                                        Foreground="#F2F2F5"
+                                        LineHeight="22"
+                                        TextWrapping="Wrap"
+                                        IsTextSelectionEnabled="True" />
+                                </ScrollViewer>
+                            </Border>
+
+                            <TextBlock
+                                x:Name="InspectorTextSubtitle"
+                                Text=""
+                                FontSize="12.5"
+                                Foreground="#6E6E76"
+                                Typography.NumeralAlignment="Tabular"
+                                HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Bottom Minimal Action Bar: Copy C · Favorite F · Delete D -->
+                    <StackPanel
+                        Grid.Row="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="24">
+                        <Button
+                            x:Name="ActionCopyBtn"
+                            Click="OnInspectorCopyClick"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="10,6"
+                            CornerRadius="6">
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE8C8;" FontSize="13" Foreground="#F2F2F5" />
+                                <TextBlock
+                                    x:Name="ActionCopyLabel"
+                                    Text="Copy"
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    Foreground="#F2F2F5" />
+                                <TextBlock
+                                    Text="C"
+                                    FontSize="12"
+                                    Foreground="#5A5A62"
+                                    Margin="2,0,0,0" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
+                            x:Name="ActionFavoriteBtn"
+                            Click="OnInspectorFavoriteClick"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="10,6"
+                            CornerRadius="6">
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <FontIcon
+                                    x:Name="ActionFavoriteIcon"
+                                    Glyph="&#xE734;"
+                                    FontSize="13"
+                                    Foreground="#9A9AA2" />
+                                <TextBlock
+                                    x:Name="ActionFavoriteLabel"
+                                    Text="Favorite"
+                                    FontSize="13"
+                                    Foreground="#9A9AA2" />
+                                <TextBlock
+                                    Text="F"
+                                    FontSize="12"
+                                    Foreground="#5A5A62"
+                                    Margin="2,0,0,0" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
+                            x:Name="ActionDeleteBtn"
+                            Click="OnInspectorDeleteClick"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="10,6"
+                            CornerRadius="6">
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE74D;" FontSize="13" Foreground="#9A9AA2" />
+                                <TextBlock
+                                    Text="Delete"
+                                    FontSize="13"
+                                    Foreground="#9A9AA2" />
+                                <TextBlock
+                                    Text="D"
+                                    FontSize="12"
+                                    Foreground="#5A5A62"
+                                    Margin="2,0,0,0" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
                 </Grid>
+
+                <!-- LAYER B: CONTINUITY & ONBOARDING PANE (Same neutral #18181B palette) -->
+                <ScrollViewer
+                    x:Name="OnboardingPane"
+                    Visibility="Collapsed"
+                    VerticalScrollBarVisibility="Auto"
+                    Padding="36,28">
+                    <StackPanel MaxWidth="520" HorizontalAlignment="Center" Spacing="18">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="4">
+                                <TextBlock
+                                    Text="Continuity Setup"
+                                    FontSize="19"
+                                    FontWeight="SemiBold"
+                                    Foreground="#F2F2F5" />
+                                <TextBlock
+                                    Text="Automatic iPhone to Windows clipboard synchronization via CoreDevice."
+                                    FontSize="12.5"
+                                    Foreground="#8A8A92" />
+                            </StackPanel>
+
+                            <Button
+                                Grid.Column="1"
+                                Click="OnRailClipboardClick"
+                                Background="#212125"
+                                BorderBrush="#2C2C30"
+                                BorderThickness="1"
+                                CornerRadius="7"
+                                Padding="12,5"
+                                VerticalAlignment="Top">
+                                <TextBlock Text="Done" FontSize="12" FontWeight="SemiBold" Foreground="#F2F2F5" />
+                            </Button>
+                        </Grid>
+
+                        <!-- Step 1 -->
+                        <Border
+                            Background="#18181B"
+                            BorderBrush="#242428"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,14">
+                            <Grid ColumnSpacing="14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Text="01"
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    Foreground="#6E6E76"
+                                    Typography.NumeralAlignment="Tabular"
+                                    VerticalAlignment="Top"
+                                    Margin="0,2,0,0" />
+                                <StackPanel Grid.Column="1" Spacing="3">
+                                    <TextBlock
+                                        Text="USB Trust &amp; Device Pairing"
+                                        FontSize="13.5"
+                                        FontWeight="SemiBold"
+                                        Foreground="#F2F2F5" />
+                                    <TextBlock
+                                        x:Name="Step1DetailText"
+                                        Text="Connect iPhone over USB once and tap Trust This Computer."
+                                        FontSize="12"
+                                        Foreground="#8A8A92"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                                <TextBlock
+                                    x:Name="Step1StatusText"
+                                    Grid.Column="2"
+                                    Text="Trusted"
+                                    FontSize="12"
+                                    Foreground="#28C840"
+                                    VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Step 2 -->
+                        <Border
+                            Background="#18181B"
+                            BorderBrush="#242428"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,14">
+                            <Grid ColumnSpacing="14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Text="02"
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    Foreground="#6E6E76"
+                                    Typography.NumeralAlignment="Tabular"
+                                    VerticalAlignment="Top"
+                                    Margin="0,2,0,0" />
+                                <StackPanel Grid.Column="1" Spacing="8">
+                                    <TextBlock
+                                        Text="Wireless Continuity (_remotepairing._tcp)"
+                                        FontSize="13.5"
+                                        FontWeight="SemiBold"
+                                        Foreground="#F2F2F5" />
+                                    <TextBlock
+                                        Text="Create a RemotePairing record over USB so clipboard sync works over local Wi-Fi without cables."
+                                        FontSize="12"
+                                        Foreground="#8A8A92"
+                                        TextWrapping="Wrap" />
+                                    <Button
+                                        x:Name="PairWifiBtn"
+                                        Click="OnPairWifiClick"
+                                        Background="#232328"
+                                        BorderBrush="#2E2E34"
+                                        BorderThickness="1"
+                                        CornerRadius="7"
+                                        Padding="12,5">
+                                        <TextBlock
+                                            x:Name="PairWifiBtnText"
+                                            Text="Pair Wireless Over USB"
+                                            FontSize="12"
+                                            Foreground="#F2F2F5" />
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock
+                                    x:Name="Step2StatusText"
+                                    Grid.Column="2"
+                                    Text="Paired"
+                                    FontSize="12"
+                                    Foreground="#28C840"
+                                    VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Step 3: Transport Mode & Clear -->
+                        <Border
+                            Background="#18181B"
+                            BorderBrush="#242428"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,14">
+                            <Grid ColumnSpacing="14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Text="03"
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    Foreground="#6E6E76"
+                                    Typography.NumeralAlignment="Tabular"
+                                    VerticalAlignment="Top"
+                                    Margin="0,2,0,0" />
+                                <StackPanel Grid.Column="1" Spacing="8">
+                                    <TextBlock
+                                        Text="Transport Preference"
+                                        FontSize="13.5"
+                                        FontWeight="SemiBold"
+                                        Foreground="#F2F2F5" />
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Button
+                                            x:Name="TransportAutoBtn"
+                                            Content="Auto"
+                                            Click="OnTransportAutoClick"
+                                            FontSize="12"
+                                            Padding="12,4"
+                                            CornerRadius="6"
+                                            Background="#2A2A30"
+                                            BorderBrush="#3A3A42"
+                                            BorderThickness="1"
+                                            Foreground="#F2F2F5" />
+                                        <Button
+                                            x:Name="TransportWifiBtn"
+                                            Content="Wi-Fi"
+                                            Click="OnTransportWifiClick"
+                                            FontSize="12"
+                                            Padding="12,4"
+                                            CornerRadius="6"
+                                            Background="Transparent"
+                                            BorderBrush="#2A2A30"
+                                            BorderThickness="1"
+                                            Foreground="#8A8A92" />
+                                        <Button
+                                            x:Name="TransportUsbBtn"
+                                            Content="USB"
+                                            Click="OnTransportUsbClick"
+                                            FontSize="12"
+                                            Padding="12,4"
+                                            CornerRadius="6"
+                                            Background="Transparent"
+                                            BorderBrush="#2A2A30"
+                                            BorderThickness="1"
+                                            Foreground="#8A8A92" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <Button
+                                    Click="OnClearHistoryClick"
+                                    Grid.Column="2"
+                                    Background="#232328"
+                                    BorderBrush="#2E2E34"
+                                    BorderThickness="1"
+                                    CornerRadius="7"
+                                    Padding="10,5"
+                                    VerticalAlignment="Center">
+                                    <TextBlock Text="Clear History" FontSize="12" Foreground="#9A9AA2" />
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock
+                            x:Name="OnboardingFeedbackText"
+                            Text=""
+                            FontSize="12"
+                            Foreground="#8A8A92" />
+                    </StackPanel>
+                </ScrollViewer>
             </Grid>
         </Grid>
-
-        <!-- =================================================================== -->
-        <!-- VIEW 2: SIMPLE APPLE-STYLE ONBOARDING VIEW                          -->
-        <!-- =================================================================== -->
-        <ScrollViewer
-            x:Name="OnboardingView"
-            Grid.Row="1"
-            Visibility="Collapsed"
-            VerticalScrollBarVisibility="Auto"
-            Padding="28,24">
-            <StackPanel MaxWidth="640" HorizontalAlignment="Center" Spacing="20">
-
-                <!-- Hero Header -->
-                <StackPanel Spacing="8" Margin="0,4,0,4">
-                    <Border
-                        Background="#1F0A84FF"
-                        BorderBrush="#400A84FF"
-                        BorderThickness="1"
-                        CornerRadius="999"
-                        Padding="12,4"
-                        HorizontalAlignment="Left">
-                        <TextBlock
-                            Text="APPLE COREDEVICE CONTINUITY"
-                            FontSize="10.5"
-                            FontWeight="Bold"
-                            Foreground="#64D2FF" />
-                    </Border>
-                    <TextBlock
-                        Text="Universal Clipboard for Windows"
-                        FontSize="28"
-                        FontWeight="SemiBold"
-                        Foreground="#F5F5F7" />
-                    <TextBlock
-                        Text="Copy text, links, or images on your iPhone and press Ctrl + V directly on Windows. No Shortcuts, Back Tap, or manual Share Sheet required."
-                        FontSize="14"
-                        Foreground="#98989F"
-                        TextWrapping="Wrap" />
-                </StackPanel>
-
-                <!-- Step 1 Card: USB Trust & CoreDevice Discovery -->
-                <Border
-                    Background="#151821"
-                    BorderBrush="#1AFFFFFF"
-                    BorderThickness="1"
-                    CornerRadius="14"
-                    Padding="20,18">
-                    <Grid ColumnSpacing="16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-
-                        <Border
-                            x:Name="Step1IconBox"
-                            Grid.Column="0"
-                            Width="38"
-                            Height="38"
-                            CornerRadius="10"
-                            Background="#1F30D158"
-                            VerticalAlignment="Top">
-                            <TextBlock
-                                x:Name="Step1NumberText"
-                                Text="1"
-                                FontSize="15"
-                                FontWeight="Bold"
-                                Foreground="#30D158"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center" />
-                        </Border>
-
-                        <StackPanel Grid.Column="1" Spacing="4">
-                            <TextBlock
-                                Text="Connect iPhone &amp; Trust This PC"
-                                FontSize="15"
-                                FontWeight="SemiBold"
-                                Foreground="#F5F5F7" />
-                            <TextBlock
-                                x:Name="Step1DetailText"
-                                Text="Plug in your iPhone via USB once and tap 'Trust This Computer' to authorize Apple CoreDevice services."
-                                FontSize="12.5"
-                                Foreground="#98989F"
-                                TextWrapping="Wrap" />
-                        </StackPanel>
-
-                        <Border
-                            x:Name="Step1StatusBadge"
-                            Grid.Column="2"
-                            Background="#1F30D158"
-                            BorderBrush="#4030D158"
-                            BorderThickness="1"
-                            CornerRadius="7"
-                            Padding="10,4"
-                            VerticalAlignment="Center">
-                            <TextBlock
-                                x:Name="Step1StatusText"
-                                Text="✓ Trusted"
-                                FontSize="11.5"
-                                FontWeight="SemiBold"
-                                Foreground="#30D158" />
-                        </Border>
-                    </Grid>
-                </Border>
-
-                <!-- Step 2 Card: Wireless Continuity Pairing -->
-                <Border
-                    Background="#151821"
-                    BorderBrush="#1AFFFFFF"
-                    BorderThickness="1"
-                    CornerRadius="14"
-                    Padding="20,18">
-                    <Grid ColumnSpacing="16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-
-                        <Border
-                            x:Name="Step2IconBox"
-                            Grid.Column="0"
-                            Width="38"
-                            Height="38"
-                            CornerRadius="10"
-                            Background="#1F0A84FF"
-                            VerticalAlignment="Top">
-                            <TextBlock
-                                x:Name="Step2NumberText"
-                                Text="2"
-                                FontSize="15"
-                                FontWeight="Bold"
-                                Foreground="#64D2FF"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center" />
-                        </Border>
-
-                        <StackPanel Grid.Column="1" Spacing="8">
-                            <TextBlock
-                                Text="Enable Cable-Free Wi-Fi Sync"
-                                FontSize="15"
-                                FontWeight="SemiBold"
-                                Foreground="#F5F5F7" />
-                            <TextBlock
-                                x:Name="Step2DetailText"
-                                Text="Creates a RemotePairing record over USB so your iPhone syncs clipboard changes wirelessly over local Wi-Fi (_remotepairing._tcp)."
-                                FontSize="12.5"
-                                Foreground="#98989F"
-                                TextWrapping="Wrap" />
-                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,2,0,0">
-                                <Button
-                                    x:Name="PairWifiBtn"
-                                    Click="OnPairWifiClick"
-                                    Background="#222634"
-                                    BorderBrush="#24FFFFFF"
-                                    BorderThickness="1"
-                                    CornerRadius="8"
-                                    Padding="12,6">
-                                    <TextBlock
-                                        x:Name="PairWifiBtnText"
-                                        Text="Pair Wireless Over USB"
-                                        FontSize="12"
-                                        FontWeight="SemiBold"
-                                        Foreground="#F5F5F7" />
-                                </Button>
-                            </StackPanel>
-                        </StackPanel>
-
-                        <Border
-                            x:Name="Step2StatusBadge"
-                            Grid.Column="2"
-                            Background="#1F30D158"
-                            BorderBrush="#4030D158"
-                            BorderThickness="1"
-                            CornerRadius="7"
-                            Padding="10,4"
-                            VerticalAlignment="Center">
-                            <TextBlock
-                                x:Name="Step2StatusText"
-                                Text="✓ Paired"
-                                FontSize="11.5"
-                                FontWeight="SemiBold"
-                                Foreground="#30D158" />
-                        </Border>
-                    </Grid>
-                </Border>
-
-                <!-- Step 3 Card: Real-Time Pasteboard Stream -->
-                <Border
-                    Background="#151821"
-                    BorderBrush="#1AFFFFFF"
-                    BorderThickness="1"
-                    CornerRadius="14"
-                    Padding="20,18">
-                    <Grid ColumnSpacing="16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-
-                        <Border
-                            x:Name="Step3IconBox"
-                            Grid.Column="0"
-                            Width="38"
-                            Height="38"
-                            CornerRadius="10"
-                            Background="#1F30D158"
-                            VerticalAlignment="Top">
-                            <TextBlock
-                                x:Name="Step3NumberText"
-                                Text="3"
-                                FontSize="15"
-                                FontWeight="Bold"
-                                Foreground="#30D158"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center" />
-                        </Border>
-
-                        <StackPanel Grid.Column="1" Spacing="4">
-                            <TextBlock
-                                Text="Copy on iPhone, Press Ctrl + V on Windows"
-                                FontSize="15"
-                                FontWeight="SemiBold"
-                                Foreground="#F5F5F7" />
-                            <TextBlock
-                                x:Name="Step3DetailText"
-                                Text="Listening to com.apple.pasteboard.notify.changed. Text, Unicode, URLs, and Photos (HEIC/JPEG/PNG) are written directly to the Windows clipboard."
-                                FontSize="12.5"
-                                Foreground="#98989F"
-                                TextWrapping="Wrap" />
-                        </StackPanel>
-
-                        <Border
-                            x:Name="Step3StatusBadge"
-                            Grid.Column="2"
-                            Background="#1F30D158"
-                            BorderBrush="#4030D158"
-                            BorderThickness="1"
-                            CornerRadius="7"
-                            Padding="10,4"
-                            VerticalAlignment="Center">
-                            <TextBlock
-                                x:Name="Step3StatusText"
-                                Text="✓ Live"
-                                FontSize="11.5"
-                                FontWeight="SemiBold"
-                                Foreground="#30D158" />
-                        </Border>
-                    </Grid>
-                </Border>
-
-                <!-- Bottom Action CTA -->
-                <Grid Margin="0,4,0,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock
-                        x:Name="OnboardingFeedbackText"
-                        Grid.Column="0"
-                        Text="All Continuity services are ready."
-                        FontSize="12.5"
-                        Foreground="#98989F"
-                        VerticalAlignment="Center" />
-
-                    <Button
-                        x:Name="FinishOnboardingBtn"
-                        Grid.Column="1"
-                        Click="OnNavClipboardClick"
-                        Background="#0A84FF"
-                        Foreground="#FFFFFF"
-                        BorderThickness="0"
-                        CornerRadius="10"
-                        Padding="20,10">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="Open Clipboard Manager" FontSize="13.5" FontWeight="SemiBold" />
-                            <FontIcon Glyph="&#xE72A;" FontSize="12" />
-                        </StackPanel>
-                    </Button>
-                </Grid>
-            </StackPanel>
-        </ScrollViewer>
-
-        <!-- Bottom Subtle Status Footer -->
-        <Border
-            Grid.Row="2"
-            Background="#0E1017"
-            BorderBrush="#12FFFFFF"
-            BorderThickness="0,1,0,0"
-            Padding="20,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <TextBlock
-                    x:Name="FooterStatusText"
-                    Grid.Column="0"
-                    Text="CoreDevice PasteboardService · POLICY_PROMISE_SECONDARY"
-                    FontSize="11"
-                    Foreground="#6E6E77"
-                    VerticalAlignment="Center" />
-
-                <TextBlock
-                    x:Name="FooterUdidText"
-                    Grid.Column="1"
-                    Text=""
-                    FontSize="11"
-                    Foreground="#6E6E77"
-                    Typography.NumeralAlignment="Tabular"
-                    VerticalAlignment="Center" />
-            </Grid>
-        </Border>
     </Grid>
 </Window>
