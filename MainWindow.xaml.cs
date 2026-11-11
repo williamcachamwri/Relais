@@ -51,7 +51,6 @@ public sealed partial class MainWindow : Window
     private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
     private readonly ClipboardBackendService _backend = new();
-    private readonly AirDropBleService _airDropBle = new();
     private readonly DispatcherTimer _pollTimer;
     private readonly QuickPasteWindow _quickPasteWindow;
     private IntPtr _hwnd;
@@ -62,11 +61,6 @@ public sealed partial class MainWindow : Window
     private List<ClipboardHistoryItem> _filteredItems = [];
     private ClipboardHistoryItem? _selectedItem;
     private BackendStatus? _lastStatus;
-    private AirDropStatus? _airDropStatus;
-    private string? _currentPendingTransferId;
-    private bool _isAirDropReceivingActive = true;
-    private bool _isInitializing = true;
-    private bool _isUpdatingAirDropUi;
     private int _lastHistoryRevision = -1;
 
     private string _typeOrTagFilter = "type:all";
@@ -79,33 +73,33 @@ public sealed partial class MainWindow : Window
     private string _renderedItemIdsKey = "";
 
     // Carbon-Graphite Palette (Reference Image #2)
-    private static readonly SolidColorBrush BrushTextPrimary = new(ColorHelper.FromArgb(0xFF, 0xF2, 0xF2, 0xF5));
-    private static readonly SolidColorBrush BrushTextSecondary = new(ColorHelper.FromArgb(0xFF, 0x9A, 0x9A, 0xA2));
-    private static readonly SolidColorBrush BrushTextMuted = new(ColorHelper.FromArgb(0xFF, 0x6E, 0x6E, 0x76));
-    private static readonly SolidColorBrush BrushTextDim = new(ColorHelper.FromArgb(0xFF, 0x5E, 0x5E, 0x66));
+    private static readonly SolidColorBrush BrushTextPrimary = new(ColorHelper.FromArgb(0xFF, 0xF2, 0xF2, 0xF2));
+    private static readonly SolidColorBrush BrushTextSecondary = new(ColorHelper.FromArgb(0xFF, 0x9B, 0x9B, 0x9B));
+    private static readonly SolidColorBrush BrushTextMuted = new(ColorHelper.FromArgb(0xFF, 0x6F, 0x6F, 0x6F));
+    private static readonly SolidColorBrush BrushTextDim = new(ColorHelper.FromArgb(0xFF, 0x5F, 0x5F, 0x5F));
     private static readonly SolidColorBrush BrushWhite = new(Colors.White);
 
-    private static readonly SolidColorBrush BrushNeutralAccent = new(ColorHelper.FromArgb(0xFF, 0xDC, 0xDC, 0xE4));
-    private static readonly SolidColorBrush BrushFileBadgeBg = new(ColorHelper.FromArgb(0xFF, 0x25, 0x25, 0x2C));
-    private static readonly SolidColorBrush BrushLinkBlueText = new(ColorHelper.FromArgb(0xFF, 0x60, 0xA5, 0xFA));
-    private static readonly SolidColorBrush BrushLinkBlueBg = new(ColorHelper.FromArgb(0xFF, 0x17, 0x2A, 0x3A));
-    private static readonly SolidColorBrush BrushLinkBorder = new(ColorHelper.FromArgb(0xFF, 0x24, 0x48, 0x66));
-    private static readonly SolidColorBrush BrushCodePurpleText = new(ColorHelper.FromArgb(0xFF, 0xA7, 0x8B, 0xFA));
-    private static readonly SolidColorBrush BrushCodePurpleBg = new(ColorHelper.FromArgb(0xFF, 0x23, 0x1C, 0x35));
-    private static readonly SolidColorBrush BrushCodeBorder = new(ColorHelper.FromArgb(0xFF, 0x3A, 0x2A, 0x56));
-    private static readonly SolidColorBrush BrushTextBg = new(ColorHelper.FromArgb(0xFF, 0x22, 0x22, 0x2E));
-    private static readonly SolidColorBrush BrushTextBorder = new(ColorHelper.FromArgb(0xFF, 0x32, 0x32, 0x42));
-    private static readonly SolidColorBrush BrushStatusGreen = new(ColorHelper.FromArgb(0xFF, 0x34, 0xD3, 0x99));
-    private static readonly SolidColorBrush BrushStatusAmber = new(ColorHelper.FromArgb(0xFF, 0xFE, 0xBC, 0x2E));
+    private static readonly SolidColorBrush BrushNeutralAccent = new(ColorHelper.FromArgb(0xFF, 0xDD, 0xDD, 0xDD));
+    private static readonly SolidColorBrush BrushFileBadgeBg = new(ColorHelper.FromArgb(0xFF, 0x1B, 0x1B, 0x1B));
+    private static readonly SolidColorBrush BrushLinkBlueText = new(ColorHelper.FromArgb(0xFF, 0xEC, 0xEC, 0xEC));
+    private static readonly SolidColorBrush BrushLinkBlueBg = new(ColorHelper.FromArgb(0xFF, 0x1B, 0x1B, 0x1B));
+    private static readonly SolidColorBrush BrushLinkBorder = new(ColorHelper.FromArgb(0xFF, 0x41, 0x41, 0x41));
+    private static readonly SolidColorBrush BrushCodePurpleText = new(ColorHelper.FromArgb(0xFF, 0xA0, 0xA0, 0xA0));
+    private static readonly SolidColorBrush BrushCodePurpleBg = new(ColorHelper.FromArgb(0xFF, 0x18, 0x18, 0x18));
+    private static readonly SolidColorBrush BrushCodeBorder = new(ColorHelper.FromArgb(0xFF, 0x25, 0x25, 0x25));
+    private static readonly SolidColorBrush BrushTextBg = new(ColorHelper.FromArgb(0xFF, 0x19, 0x19, 0x19));
+    private static readonly SolidColorBrush BrushTextBorder = new(ColorHelper.FromArgb(0xFF, 0x25, 0x25, 0x25));
+    private static readonly SolidColorBrush BrushStatusGreen = new(ColorHelper.FromArgb(0xFF, 0xF5, 0xF5, 0xF5));
+    private static readonly SolidColorBrush BrushStatusAmber = new(ColorHelper.FromArgb(0xFF, 0xC0, 0xC0, 0xC0));
 
-    private static readonly SolidColorBrush BrushSidebarActive = new(ColorHelper.FromArgb(0xFF, 0x28, 0x28, 0x2D));
-    private static readonly SolidColorBrush BrushRailActive = new(ColorHelper.FromArgb(0xFF, 0x2A, 0x2A, 0x2E));
-    private static readonly SolidColorBrush BrushRowSelected = new(ColorHelper.FromArgb(0xFF, 0x22, 0x22, 0x28));
-    private static readonly SolidColorBrush BrushRowSelectedEdge = new(ColorHelper.FromArgb(0xFF, 0x2E, 0x2E, 0x36));
-    private static readonly SolidColorBrush BrushRowHover = new(ColorHelper.FromArgb(0xFF, 0x1A, 0x1A, 0x1E));
-    private static readonly SolidColorBrush BrushRowDivider = new(ColorHelper.FromArgb(0xFF, 0x22, 0x22, 0x25));
-    private static readonly SolidColorBrush BrushThumbBorder = new(ColorHelper.FromArgb(0xFF, 0x2C, 0x2C, 0x30));
-    private static readonly SolidColorBrush BrushThumbBg = new(ColorHelper.FromArgb(0xFF, 0x0E, 0x0E, 0x10));
+    private static readonly SolidColorBrush BrushSidebarActive = new(ColorHelper.FromArgb(0xFF, 0x1E, 0x1E, 0x1E));
+    private static readonly SolidColorBrush BrushRailActive = new(ColorHelper.FromArgb(0xFF, 0x1E, 0x1E, 0x1E));
+    private static readonly SolidColorBrush BrushRowSelected = new(ColorHelper.FromArgb(0xFF, 0x1E, 0x1E, 0x24));
+    private static readonly SolidColorBrush BrushRowSelectedEdge = new(ColorHelper.FromArgb(0xFF, 0xFF, 0xFF, 0xFF));
+    private static readonly SolidColorBrush BrushRowHover = new(ColorHelper.FromArgb(0xFF, 0x14, 0x14, 0x18));
+    private static readonly SolidColorBrush BrushRowDivider = new(ColorHelper.FromArgb(0xFF, 0x18, 0x18, 0x18));
+    private static readonly SolidColorBrush BrushThumbBorder = new(ColorHelper.FromArgb(0xFF, 0x20, 0x20, 0x20));
+    private static readonly SolidColorBrush BrushThumbBg = new(ColorHelper.FromArgb(0xFF, 0x0A, 0x0A, 0x0A));
     private static readonly SolidColorBrush BrushTransparent = new(Colors.Transparent);
 
     private readonly Dictionary<string, Border> _rowBorders = [];
@@ -132,8 +126,6 @@ public sealed partial class MainWindow : Window
 
         Closed += OnWindowClosed;
         _ = InitializeBackendAsync();
-        _ = InitializeAirDropAsync();
-        _isInitializing = false;
     }
 
     private void ConfigureWindowChrome()
@@ -147,13 +139,19 @@ public sealed partial class MainWindow : Window
 
         appWindow.Resize(new SizeInt32(1050, 680));
 
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
+        if (File.Exists(iconPath))
+        {
+            appWindow.SetIcon(iconPath);
+        }
+
         if (appWindow.TitleBar is { } titleBar)
         {
             titleBar.ButtonBackgroundColor = Colors.Transparent;
             titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-            titleBar.ButtonForegroundColor = ColorHelper.FromArgb(0xFF, 0x8A, 0x8A, 0x92);
-            titleBar.ButtonInactiveForegroundColor = ColorHelper.FromArgb(0xFF, 0x5A, 0x5A, 0x62);
-            titleBar.ButtonHoverBackgroundColor = ColorHelper.FromArgb(0xFF, 0x23, 0x23, 0x28);
+            titleBar.ButtonForegroundColor = ColorHelper.FromArgb(0xFF, 0x8B, 0x8B, 0x8B);
+            titleBar.ButtonInactiveForegroundColor = ColorHelper.FromArgb(0xFF, 0x5B, 0x5B, 0x5B);
+            titleBar.ButtonHoverBackgroundColor = ColorHelper.FromArgb(0xFF, 0x1A, 0x1A, 0x1A);
             titleBar.ButtonHoverForegroundColor = Colors.White;
         }
     }
@@ -218,7 +216,7 @@ public sealed partial class MainWindow : Window
     {
         var interactiveButtons = new UIElement[]
         {
-            RailClipboardBtn, RailAirDropBtn, RailAboutBtn, RailSettingsBtn,
+            RailClipboardBtn, RailAboutBtn, RailSettingsBtn,
             NavTypeAllBtn, NavTypeFavBtn, NavTypeTextBtn, NavTypeRichBtn,
             NavTypeImageBtn, NavTypeFileBtn, NavTagLinkBtn, NavTagCodeBtn,
             NavTagImageBtn, NavSrcAllBtn, NavSrcPcBtn, NavSrcIphoneBtn,
@@ -390,7 +388,6 @@ public sealed partial class MainWindow : Window
         try
         {
             await RefreshStatusAndHistoryAsync();
-            await RefreshAirDropStatusAsync();
             if (LogsPane.Visibility == Visibility.Visible && ++_logPollCounter % 2 == 0)
             {
                 await RefreshBackendLogsAsync();
@@ -577,9 +574,9 @@ public sealed partial class MainWindow : Window
         {
             Background = isSelected ? BrushRowSelected : BrushTransparent,
             BorderBrush = isSelected ? BrushRowSelectedEdge : BrushTransparent,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
-            Margin = new Thickness(6, 1, 6, 1),
+            BorderThickness = new Thickness(isSelected ? 3 : 0, 0, 0, 0),
+            CornerRadius = new CornerRadius(6),
+            Margin = new Thickness(8, 2, 8, 2),
             Padding = new Thickness(12, 10, 12, 10),
         };
 
@@ -864,44 +861,6 @@ public sealed partial class MainWindow : Window
                 TextWrapping = TextWrapping.Wrap,
                 TextTrimming = TextTrimming.CharacterEllipsis,
             });
-
-            // 3. Optional Subtle Tag Pill (Link or Code)
-            if (item.IsLink)
-            {
-                rowStack.Children.Add(new Border
-                {
-                    Background = BrushLinkBlueBg,
-                    CornerRadius = new CornerRadius(4),
-                    Padding = new Thickness(6, 1, 6, 2),
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    Margin = new Thickness(0, 2, 0, 0),
-                    Child = new TextBlock
-                    {
-                        Text = "Link",
-                        FontSize = 11,
-                        FontWeight = Microsoft.UI.Text.FontWeights.Medium,
-                        Foreground = BrushLinkBlueText,
-                    },
-                });
-            }
-            else if (item.IsCode)
-            {
-                rowStack.Children.Add(new Border
-                {
-                    Background = BrushCodePurpleBg,
-                    CornerRadius = new CornerRadius(4),
-                    Padding = new Thickness(6, 1, 6, 2),
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    Margin = new Thickness(0, 2, 0, 0),
-                    Child = new TextBlock
-                    {
-                        Text = "Code",
-                        FontSize = 11,
-                        FontWeight = Microsoft.UI.Text.FontWeights.Medium,
-                        Foreground = BrushCodePurpleText,
-                    },
-                });
-            }
         }
 
         rowBorder.Child = rowStack;
@@ -935,6 +894,7 @@ public sealed partial class MainWindow : Window
             var isSelected = _selectedItem?.Id == id;
             border.Background = isSelected ? BrushRowSelected : BrushTransparent;
             border.BorderBrush = isSelected ? BrushRowSelectedEdge : BrushTransparent;
+            border.BorderThickness = new Thickness(isSelected ? 3 : 0, 0, 0, 0);
         }
     }
 
@@ -988,13 +948,11 @@ public sealed partial class MainWindow : Window
                 InspectorPreviewImage.Source = null;
             }
 
-            InspectorImageMetaHeader.Text = item.Width > 0 && item.Height > 0
+            InspectorImageScrollViewer?.ChangeView(0, 0, 1.0f, true);
+            InspectorImageMetaText.Text = item.Width > 0 && item.Height > 0
                 ? $"{item.Width} × {item.Height} px  ·  {item.FormattedSize}"
                 : item.FormattedSize;
-            InspectorImageTitleText.Text = item.ImageDisplayName;
-            InspectorImageDirText.Text = direction;
-            InspectorImageUtiText.Text = item.Uti;
-            InspectorImageTransportText.Text = $"{item.Transport}  ·  {item.LatencyMs:F1} ms";
+            InspectorImageTransportText.Text = $"{direction}  ·  {item.Transport}  ·  {item.LatencyMs:F1} ms";
 
             if (animateStage) AnimateStageEntrance(InspectorImageStage);
         }
@@ -1027,7 +985,7 @@ public sealed partial class MainWindow : Window
                 InspectorTypeBadge.BorderBrush = BrushLinkBorder;
                 InspectorTypeBadgeText.Foreground = BrushLinkBlueText;
                 InspectorTypeBadgeIcon.Foreground = BrushLinkBlueText;
-                InspectorCardHeaderTitle.Text = item.ExtractedDomain ?? $"{item.Text.Length} characters";
+                InspectorCardHeaderTitle.Text = item.ExtractedDomain ?? "Web Link";
                 InspectorOpenLinkBtn.Visibility = item.ExtractedUrl != null ? Visibility.Visible : Visibility.Collapsed;
             }
             else if (item.IsCode)
@@ -1039,7 +997,7 @@ public sealed partial class MainWindow : Window
                 InspectorTypeBadge.BorderBrush = BrushCodeBorder;
                 InspectorTypeBadgeText.Foreground = BrushCodePurpleText;
                 InspectorTypeBadgeIcon.Foreground = BrushCodePurpleText;
-                InspectorCardHeaderTitle.Text = $"{item.Text.Length} characters";
+                InspectorCardHeaderTitle.Text = "Code Snippet";
                 InspectorOpenLinkBtn.Visibility = Visibility.Collapsed;
             }
             else
@@ -1051,7 +1009,7 @@ public sealed partial class MainWindow : Window
                 InspectorTypeBadge.BorderBrush = BrushTextBorder;
                 InspectorTypeBadgeText.Foreground = BrushTextPrimary;
                 InspectorTypeBadgeIcon.Foreground = BrushTextSecondary;
-                InspectorCardHeaderTitle.Text = $"{item.Text.Length} characters";
+                InspectorCardHeaderTitle.Text = "Plain Text";
                 InspectorOpenLinkBtn.Visibility = Visibility.Collapsed;
             }
 
@@ -1063,7 +1021,6 @@ public sealed partial class MainWindow : Window
             InspectorTextScrollViewer?.ChangeView(0, 0, 1.0f, true);
 
             InspectorDirectionText.Text = direction;
-            InspectorDirectionIcon.Glyph = item.IsFromPc ? "\uE7F8" : "\uE8EA";
             InspectorFormatText.Text = item.Uti;
             InspectorTransportText.Text = item.Transport;
             InspectorLatencyText.Text = $"{item.FormattedSize}  ·  {item.LatencyMs:F1} ms";
@@ -1130,13 +1087,11 @@ public sealed partial class MainWindow : Window
             OnboardingPane.Visibility = Visibility.Collapsed;
             AboutPane.Visibility = Visibility.Collapsed;
             LogsPane.Visibility = Visibility.Collapsed;
-            AirDropPane.Visibility = Visibility.Collapsed;
             InspectorPane.Visibility = Visibility.Visible;
             RailClipboardBtn.Background = BrushRailActive;
             RailAboutBtn.Background = BrushTransparent;
             RailSettingsBtn.Background = BrushTransparent;
             RailLogsBtn.Background = BrushTransparent;
-            RailAirDropBtn.Background = BrushTransparent;
             AnimateStageEntrance(InspectorPane);
         }
     }
@@ -1146,13 +1101,11 @@ public sealed partial class MainWindow : Window
         InspectorPane.Visibility = Visibility.Collapsed;
         AboutPane.Visibility = Visibility.Collapsed;
         LogsPane.Visibility = Visibility.Collapsed;
-        AirDropPane.Visibility = Visibility.Collapsed;
         OnboardingPane.Visibility = Visibility.Visible;
         RailSettingsBtn.Background = BrushRailActive;
         RailAboutBtn.Background = BrushTransparent;
         RailClipboardBtn.Background = BrushTransparent;
         RailLogsBtn.Background = BrushTransparent;
-        RailAirDropBtn.Background = BrushTransparent;
         AnimateStageEntrance(OnboardingPane);
     }
 
@@ -1161,13 +1114,11 @@ public sealed partial class MainWindow : Window
         InspectorPane.Visibility = Visibility.Collapsed;
         OnboardingPane.Visibility = Visibility.Collapsed;
         LogsPane.Visibility = Visibility.Collapsed;
-        AirDropPane.Visibility = Visibility.Collapsed;
         AboutPane.Visibility = Visibility.Visible;
         RailAboutBtn.Background = BrushRailActive;
         RailSettingsBtn.Background = BrushTransparent;
         RailClipboardBtn.Background = BrushTransparent;
         RailLogsBtn.Background = BrushTransparent;
-        RailAirDropBtn.Background = BrushTransparent;
         AnimateStageEntrance(AboutPane);
     }
 
@@ -1176,43 +1127,13 @@ public sealed partial class MainWindow : Window
         InspectorPane.Visibility = Visibility.Collapsed;
         OnboardingPane.Visibility = Visibility.Collapsed;
         AboutPane.Visibility = Visibility.Collapsed;
-        AirDropPane.Visibility = Visibility.Collapsed;
         LogsPane.Visibility = Visibility.Visible;
         RailLogsBtn.Background = BrushRailActive;
         RailAboutBtn.Background = BrushTransparent;
         RailSettingsBtn.Background = BrushTransparent;
         RailClipboardBtn.Background = BrushTransparent;
-        RailAirDropBtn.Background = BrushTransparent;
         AnimateStageEntrance(LogsPane);
         _ = RefreshBackendLogsAsync();
-    }
-
-    private void ShowAirDropPane()
-    {
-        InspectorPane.Visibility = Visibility.Collapsed;
-        OnboardingPane.Visibility = Visibility.Collapsed;
-        AboutPane.Visibility = Visibility.Collapsed;
-        LogsPane.Visibility = Visibility.Collapsed;
-        AirDropPane.Visibility = Visibility.Visible;
-        RailAirDropBtn.Background = BrushRailActive;
-        RailClipboardBtn.Background = BrushTransparent;
-        RailAboutBtn.Background = BrushTransparent;
-        RailSettingsBtn.Background = BrushTransparent;
-        RailLogsBtn.Background = BrushTransparent;
-        AnimateStageEntrance(AirDropPane);
-        _ = RefreshAirDropStatusAsync();
-    }
-
-    private void OnRailAirDropClick(object sender, RoutedEventArgs e)
-    {
-        if (AirDropPane.Visibility == Visibility.Visible)
-        {
-            ShowInspectorPane();
-        }
-        else
-        {
-            ShowAirDropPane();
-        }
     }
 
     private void OnRailLogsClick(object sender, RoutedEventArgs e)
@@ -1351,23 +1272,15 @@ public sealed partial class MainWindow : Window
                 if (doc.RootElement.TryGetProperty("developer_mode", out var devProp))
                 {
                     _isDeveloperModeEnabled = devProp.GetBoolean();
-                }
-                if (doc.RootElement.TryGetProperty("airdrop_enabled", out var adProp))
-                {
-                    _isAirDropReceivingActive = adProp.GetBoolean();
-                }
-            }
+                }            }
         }
         catch
         {
             _isDeveloperModeEnabled = false;
-            _isAirDropReceivingActive = true;
         }
 
         DeveloperModeToggle.IsOn = _isDeveloperModeEnabled;
         RailLogsBtn.Visibility = _isDeveloperModeEnabled ? Visibility.Visible : Visibility.Collapsed;
-        if (AirDropMainToggle != null) AirDropMainToggle.IsOn = _isAirDropReceivingActive;
-        if (AirDropQuickToggle != null) AirDropQuickToggle.IsOn = _isAirDropReceivingActive;
     }
 
     private void SaveAppSettings()
@@ -1378,7 +1291,6 @@ public sealed partial class MainWindow : Window
             var json = JsonSerializer.Serialize(new
             {
                 developer_mode = _isDeveloperModeEnabled,
-                airdrop_enabled = _isAirDropReceivingActive,
             });
             File.WriteAllText(file, json);
         }
@@ -1388,339 +1300,21 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async Task InitializeAirDropAsync()
+    private void OnImageDoubleTapped(object sender, Microsoft.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
     {
-        try
-        {
-            var hw = await _airDropBle.ProbeHardwareAsync();
-            AirDropBleStatusChip.Text = hw.BluetoothAvailable && hw.BluetoothPeripheralSupported ? "Continuity Wake Active" : "Standby";
-            AirDropWifiStatusChip.Text = string.IsNullOrEmpty(hw.WifiAdapterName) ? "Intel AX211" : hw.WifiAdapterName;
-            AirDropProtoStatusChip.Text = "mDNS & HTTPS";
-            AirDropAwdlNote.Text = hw.AwdlGuidanceMessage;
-
-            if (_isAirDropReceivingActive)
-            {
-                await _airDropBle.StartAdvertisingAsync();
-                await _backend.ToggleAirDropAsync(true);
-            }
-            await RefreshAirDropStatusAsync();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[InitializeAirDropAsync Error] {ex.Message}");
-        }
+        if (InspectorImageScrollViewer == null) return;
+        var target = Math.Abs(InspectorImageScrollViewer.ZoomFactor - 1.0f) < 0.1f ? 2.0f : 1.0f;
+        InspectorImageScrollViewer.ChangeView(null, null, target);
     }
 
-    private async Task RefreshAirDropStatusAsync()
+    private void OnImagePointerWheelChanged(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
-        try
-        {
-            var airdrop = await _backend.GetAirDropStatusAsync();
-            if (airdrop == null) return;
-            _airDropStatus = airdrop;
-
-            // Update Header Status Pill
-            if (airdrop.Enabled)
-            {
-                AirDropStatusPillText.Text = "● Ready · Everyone";
-                AirDropStatusPillText.Foreground = BrushStatusGreen;
-                AirDropStatusPill.Background = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x1C, 0x26, 0x1C));
-                AirDropStatusPill.BorderBrush = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x2D, 0x48, 0x2D));
-            }
-            else
-            {
-                AirDropStatusPillText.Text = "Standby";
-                AirDropStatusPillText.Foreground = BrushTextMuted;
-                AirDropStatusPill.Background = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x22, 0x22, 0x26));
-                AirDropStatusPill.BorderBrush = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x2C, 0x2C, 0x32));
-            }
-
-            // Sync Toggles if out of sync
-            _isUpdatingAirDropUi = true;
-            try
-            {
-                if (AirDropMainToggle != null && AirDropMainToggle.IsOn != airdrop.Enabled)
-                {
-                    AirDropMainToggle.IsOn = airdrop.Enabled;
-                }
-                if (AirDropQuickToggle != null && AirDropQuickToggle.IsOn != airdrop.Enabled)
-                {
-                    AirDropQuickToggle.IsOn = airdrop.Enabled;
-                }
-            }
-            finally
-            {
-                _isUpdatingAirDropUi = false;
-            }
-
-            if (!string.IsNullOrEmpty(airdrop.ComputerName) && AirDropDeviceNameInput != null && string.IsNullOrEmpty(AirDropDeviceNameInput.Text))
-            {
-                AirDropDeviceNameInput.Text = airdrop.ComputerName;
-            }
-
-            // Check for Pending Transfer Consent Request
-            var pending = airdrop.ActiveTransfers.FirstOrDefault(t => t.IsPendingConsent);
-            if (pending != null)
-            {
-                _currentPendingTransferId = pending.Id;
-                AirDropIncomingSenderText.Text = pending.SenderName;
-                AirDropIncomingFilesText.Text = $"wants to share {pending.DisplaySummary}";
-                AirDropIncomingPromptCard.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                AirDropIncomingPromptCard.Visibility = Visibility.Collapsed;
-            }
-
-            // Check for In-Progress Transfer
-            var transferring = airdrop.ActiveTransfers.FirstOrDefault(t => t.IsTransferring);
-            if (transferring != null)
-            {
-                AirDropActiveTransferCard.Visibility = Visibility.Visible;
-                AirDropActiveTransferTitle.Text = $"Receiving from {transferring.SenderName}...";
-                AirDropActiveTransferSub.Text = transferring.DisplaySummary;
-                AirDropActiveProgressBar.Value = transferring.ProgressPercent;
-                AirDropActiveTransferPercent.Text = $"{transferring.ProgressPercent}%";
-            }
-            else
-            {
-                AirDropActiveTransferCard.Visibility = Visibility.Collapsed;
-            }
-
-            // Refresh recent transfers if AirDrop pane is visible
-            if (AirDropPane.Visibility == Visibility.Visible)
-            {
-                AirDropTransferCountText.Text = $"{airdrop.History.Count} transfers";
-                RenderAirDropHistory(airdrop.History);
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[RefreshAirDropStatusAsync Error] {ex.Message}");
-        }
-    }
-
-    private void RenderAirDropHistory(List<AirDropTransferItem> history)
-    {
-        AirDropRecentTransfersPanel.Children.Clear();
-        if (history.Count == 0)
-        {
-            AirDropRecentTransfersPanel.Children.Add(new TextBlock
-            {
-                Text = "No AirDrop transfers received yet. Send a photo or file from iPhone via AirDrop to see it here.",
-                FontSize = 12,
-                Foreground = BrushTextMuted,
-                Padding = new Thickness(4, 8, 4, 8),
-            });
-            return;
-        }
-
-        foreach (var item in history)
-        {
-            var card = new Border
-            {
-                Background = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x14, 0x14, 0x17)),
-                BorderBrush = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x24, 0x24, 0x2A)),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(12, 10, 12, 10),
-            };
-
-            var grid = new Grid { ColumnSpacing = 12 };
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            // Icon
-            var iconBorder = new Border
-            {
-                Width = 32,
-                Height = 32,
-                CornerRadius = new CornerRadius(6),
-                Background = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x1E, 0x1E, 0x24)),
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            var glyph = item.PrimaryFileName.EndsWith(".heic", StringComparison.OrdinalIgnoreCase)
-                     || item.PrimaryFileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
-                     || item.PrimaryFileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
-                     || item.PrimaryFileName.EndsWith(".mov", StringComparison.OrdinalIgnoreCase)
-                     || item.PrimaryFileName.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)
-                     ? "\uEB9F" : "\uE8A5";
-            iconBorder.Child = new FontIcon
-            {
-                Glyph = glyph,
-                FontSize = 14,
-                Foreground = BrushTextSecondary,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            Grid.SetColumn(iconBorder, 0);
-            grid.Children.Add(iconBorder);
-
-            // Metadata text
-            var textStack = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-            var titleBlock = new TextBlock
-            {
-                Text = item.DisplaySummary,
-                FontSize = 12.5,
-                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-                Foreground = BrushTextPrimary,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-            };
-            var subText = item.IsCompleted
-                ? $"From {item.SenderName} · {item.TimeLabel}"
-                : $"From {item.SenderName} · {item.Status}";
-            var subBlock = new TextBlock
-            {
-                Text = subText,
-                FontSize = 11,
-                Foreground = item.IsCompleted ? BrushTextMuted : (item.IsFailed ? new SolidColorBrush(Colors.IndianRed) : BrushTextDim),
-            };
-            textStack.Children.Add(titleBlock);
-            textStack.Children.Add(subBlock);
-            Grid.SetColumn(textStack, 1);
-            grid.Children.Add(textStack);
-
-            // Action button (Open file if completed)
-            if (item.IsCompleted && item.FirstSavedPath != null && File.Exists(item.FirstSavedPath))
-            {
-                var openBtn = new Button
-                {
-                    Background = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x20, 0x20, 0x26)),
-                    BorderBrush = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x2C, 0x2C, 0x32)),
-                    BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(6),
-                    Padding = new Thickness(10, 4, 10, 4),
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Content = new TextBlock { Text = "Open", FontSize = 11.5, Foreground = BrushTextPrimary },
-                };
-                var path = item.FirstSavedPath;
-                openBtn.Click += (_, _) =>
-                {
-                    try
-                    {
-                        Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
-                    }
-                    catch (Exception ex)
-                    {
-                        ShowNotification($"Could not open file: {ex.Message}", InfoBarSeverity.Error);
-                    }
-                };
-                Grid.SetColumn(openBtn, 2);
-                grid.Children.Add(openBtn);
-            }
-            else
-            {
-                var statusBadge = new Border
-                {
-                    Background = item.IsCompleted
-                        ? new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x1A, 0x26, 0x1A))
-                        : new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x22, 0x22, 0x26)),
-                    CornerRadius = new CornerRadius(4),
-                    Padding = new Thickness(6, 2, 6, 2),
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Child = new TextBlock
-                    {
-                        Text = item.Status.ToUpperInvariant(),
-                        FontSize = 10,
-                        FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-                        Foreground = item.IsCompleted ? BrushStatusGreen : BrushTextDim,
-                    },
-                };
-                Grid.SetColumn(statusBadge, 2);
-                grid.Children.Add(statusBadge);
-            }
-
-            card.Child = grid;
-            AirDropRecentTransfersPanel.Children.Add(card);
-        }
-    }
-
-    private async void OnAirDropAcceptClick(object sender, RoutedEventArgs e)
-    {
-        if (string.IsNullOrEmpty(_currentPendingTransferId)) return;
-        var id = _currentPendingTransferId;
-        AirDropIncomingPromptCard.Visibility = Visibility.Collapsed;
-        var ok = await _backend.SubmitAirDropConsentAsync(id, accept: true);
-        if (ok)
-        {
-            ShowNotification("AirDrop transfer accepted. Receiving files...", InfoBarSeverity.Informational, "AirDrop");
-        }
-        await RefreshAirDropStatusAsync();
-    }
-
-    private async void OnAirDropDeclineClick(object sender, RoutedEventArgs e)
-    {
-        if (string.IsNullOrEmpty(_currentPendingTransferId)) return;
-        var id = _currentPendingTransferId;
-        AirDropIncomingPromptCard.Visibility = Visibility.Collapsed;
-        await _backend.SubmitAirDropConsentAsync(id, accept: false);
-        ShowNotification("AirDrop transfer declined.", InfoBarSeverity.Informational, "AirDrop");
-        await RefreshAirDropStatusAsync();
-    }
-
-    private async void OnAirDropReceivingToggled(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing || _isUpdatingAirDropUi) return;
-        _isUpdatingAirDropUi = true;
-        try
-        {
-            var isOn = (sender is ToggleSwitch ts) ? ts.IsOn : (AirDropMainToggle?.IsOn ?? false);
-            _isAirDropReceivingActive = isOn;
-            if (AirDropMainToggle != null && AirDropMainToggle.IsOn != isOn) AirDropMainToggle.IsOn = isOn;
-            if (AirDropQuickToggle != null && AirDropQuickToggle.IsOn != isOn) AirDropQuickToggle.IsOn = isOn;
-
-            await _backend.ToggleAirDropAsync(isOn);
-            if (isOn)
-            {
-                await _airDropBle.StartAdvertisingAsync();
-                ShowNotification("AirDrop receiving enabled. Nearby Apple devices can discover this PC.", InfoBarSeverity.Success, "AirDrop");
-            }
-            else
-            {
-                _airDropBle.StopAdvertising();
-                ShowNotification("AirDrop receiving turned off.", InfoBarSeverity.Informational, "AirDrop");
-            }
-            SaveAppSettings();
-            await RefreshAirDropStatusAsync();
-        }
-        catch (Exception ex)
-        {
-            ShowNotification("AirDrop toggle error: " + ex.Message, InfoBarSeverity.Warning);
-        }
-        finally
-        {
-            _isUpdatingAirDropUi = false;
-        }
-    }
-
-    private async void OnSaveAirDropDeviceNameClick(object sender, RoutedEventArgs e)
-    {
-        var name = AirDropDeviceNameInput.Text.Trim();
-        if (!string.IsNullOrEmpty(name))
-        {
-            await _backend.ConfigureAirDropAsync(computerName: name);
-            ShowNotification($"AirDrop device name set to '{name}'.", InfoBarSeverity.Success, "AirDrop");
-            await RefreshAirDropStatusAsync();
-        }
-    }
-
-    private void OnOpenAirDropFolderClick(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var downloadsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "AirDrop");
-            Directory.CreateDirectory(downloadsDir);
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = downloadsDir,
-                UseShellExecute = true,
-            });
-        }
-        catch (Exception ex)
-        {
-            ShowNotification($"Could not open AirDrop folder: {ex.Message}", InfoBarSeverity.Error);
-        }
+        if (InspectorImageScrollViewer == null) return;
+        var delta = e.GetCurrentPoint(InspectorImageScrollViewer).Properties.MouseWheelDelta;
+        if (delta == 0) return;
+        var zoom = Math.Clamp(InspectorImageScrollViewer.ZoomFactor * (delta > 0 ? 1.15f : 0.85f), 0.2f, 5.0f);
+        InspectorImageScrollViewer.ChangeView(null, null, zoom);
+        e.Handled = true;
     }
 
     private void OnRailClipboardClick(object sender, RoutedEventArgs e)
@@ -2028,14 +1622,6 @@ public sealed partial class MainWindow : Window
         {
             UnregisterHotKey(_hwnd, HotkeyIdWinAltV);
             UnregisterHotKey(_hwnd, HotkeyIdCtrlShiftV);
-        }
-        try
-        {
-            _airDropBle.StopAdvertising();
-        }
-        catch
-        {
-            // Ignore
         }
         try
         {

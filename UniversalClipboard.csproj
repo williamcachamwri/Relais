@@ -4,9 +4,10 @@
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>UniversalClipboard</RootNamespace>
-    <AssemblyName>UniversalClipboard</AssemblyName>
-    <Product>Universal Clipboard</Product>
-    <ApplicationTitle>Universal Clipboard</ApplicationTitle>
+    <AssemblyName>Relais</AssemblyName>
+    <Product>Relais</Product>
+    <ApplicationTitle>Relais</ApplicationTitle>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platform>x64</Platform>
     <PlatformTarget>x64</PlatformTarget>
@@ -26,6 +27,18 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.240923002" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="CoreDeviceBridge\**\*.py">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="universalClipboard.py">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

@@ -7,16 +7,16 @@
     <Grid
         x:Name="PopupRoot"
         RequestedTheme="Dark"
-        Background="#141417"
+        Background="#0E0E0E"
         KeyDown="OnRootKeyDown">
         <Grid.Resources>
             <Style x:Key="QuickTabStyle" TargetType="Button">
                 <Setter Property="Height" Value="26" />
                 <Setter Property="Padding" Value="11,0,11,0" />
                 <Setter Property="CornerRadius" Value="7" />
-                <Setter Property="Background" Value="#1D1D22" />
+                <Setter Property="Background" Value="#161616" />
                 <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="Foreground" Value="#8E8E98" />
+                <Setter Property="Foreground" Value="#8F8F8F" />
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="FontWeight" Value="Medium" />
             </Style>
@@ -25,13 +25,13 @@
                 <Setter Property="Height" Value="18" />
                 <Setter Property="Padding" Value="4,0,4,0" />
                 <Setter Property="CornerRadius" Value="4" />
-                <Setter Property="Background" Value="#1C1C21" />
-                <Setter Property="BorderBrush" Value="#2C2C33" />
+                <Setter Property="Background" Value="#151515" />
+                <Setter Property="BorderBrush" Value="#202020" />
                 <Setter Property="BorderThickness" Value="1,1,1,2" />
             </Style>
             <Style x:Key="KeycapTextStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="10.5" />
-                <Setter Property="Foreground" Value="#9A9AA3" />
+                <Setter Property="Foreground" Value="#9B9B9B" />
                 <Setter Property="HorizontalAlignment" Value="Center" />
                 <Setter Property="VerticalAlignment" Value="Center" />
             </Style>
@@ -49,10 +49,10 @@
             Grid.Row="0"
             Margin="12,12,12,8"
             Height="34"
-            Background="#1C1C21"
-            BorderBrush="#2A2A32"
+            Background="#151515"
+            BorderBrush="#1F1F1F"
             BorderThickness="1"
-            CornerRadius="8"
+            CornerRadius="6"
             Padding="11,0">
             <Grid ColumnSpacing="8" VerticalAlignment="Center">
                 <Grid.ColumnDefinitions>
@@ -65,7 +65,7 @@
                     Grid.Column="0"
                     Glyph="&#xE721;"
                     FontSize="12.5"
-                    Foreground="#787882"
+                    Foreground="#797979"
                     VerticalAlignment="Center" />
 
                 <TextBox
@@ -80,7 +80,7 @@
                     Height="26"
                     Padding="0,3,0,3"
                     FontSize="13"
-                    Foreground="#F2F2F5"
+                    Foreground="#F2F2F2"
                     VerticalAlignment="Center"
                     VerticalContentAlignment="Center">
                     <TextBox.Resources>
@@ -92,10 +92,10 @@
                         <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
                         <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
                         <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
-                        <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#F2F2F5" />
-                        <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#6E6E77" />
-                        <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#82828C" />
-                        <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#5E5E66" />
+                        <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#F2F2F2" />
+                        <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#6F6F6F" />
+                        <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#838383" />
+                        <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#5F5F5F" />
                     </TextBox.Resources>
                 </TextBox>
 
@@ -104,7 +104,7 @@
                     Grid.Column="2"
                     Text="0 items"
                     FontSize="11.5"
-                    Foreground="#66666F"
+                    Foreground="#676767"
                     Typography.NumeralAlignment="Tabular"
                     VerticalAlignment="Center" />
             </Grid>
@@ -113,7 +113,7 @@
         <!-- Row 1: Filter Pill Tabs -->
         <Grid
             Grid.Row="1"
-            BorderBrush="#202026"
+            BorderBrush="#181818"
             BorderThickness="0,0,0,1"
             Padding="12,0,12,9">
             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
@@ -155,12 +155,12 @@
                     Text="Nothing here yet"
                     FontSize="13"
                     FontWeight="SemiBold"
-                    Foreground="#8A8A92"
+                    Foreground="#8B8B8B"
                     HorizontalAlignment="Center" />
                 <TextBlock
                     Text="Copy on iPhone or Windows and it shows up here."
                     FontSize="12"
-                    Foreground="#5A5A62"
+                    Foreground="#5B5B5B"
                     HorizontalAlignment="Center" />
             </StackPanel>
         </Grid>
@@ -170,8 +170,8 @@
             Grid.Row="3"
             Height="34"
             Padding="14,0,14,0"
-            Background="#101013"
-            BorderBrush="#222228"
+            Background="#0C0C0C"
+            BorderBrush="#191919"
             BorderThickness="0,1,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -187,12 +187,12 @@
                     x:Name="FooterSourceIcon"
                     Glyph="&#xE8EA;"
                     FontSize="11"
-                    Foreground="#6C6C75" />
+                    Foreground="#6D6D6D" />
                 <TextBlock
                     x:Name="FooterSourceText"
                     Text="Relais"
                     FontSize="11.5"
-                    Foreground="#6C6C75"
+                    Foreground="#6D6D6D"
                     TextTrimming="CharacterEllipsis"
                     Typography.NumeralAlignment="Tabular" />
             </StackPanel>
@@ -204,11 +204,11 @@
                 VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="5">
                     <Border Style="{StaticResource KeycapStyle}"><TextBlock Text="↵" Style="{StaticResource KeycapTextStyle}" /></Border>
-                    <TextBlock Text="Paste" FontSize="11.5" Foreground="#6C6C75" VerticalAlignment="Center" />
+                    <TextBlock Text="Paste" FontSize="11.5" Foreground="#6D6D6D" VerticalAlignment="Center" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="5">
                     <Border Style="{StaticResource KeycapStyle}"><TextBlock Text="↑↓" Style="{StaticResource KeycapTextStyle}" /></Border>
-                    <TextBlock Text="Move" FontSize="11.5" Foreground="#6C6C75" VerticalAlignment="Center" />
+                    <TextBlock Text="Move" FontSize="11.5" Foreground="#6D6D6D" VerticalAlignment="Center" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="5">
                     <Border Style="{StaticResource KeycapStyle}"><TextBlock Text="esc" Style="{StaticResource KeycapTextStyle}" /></Border>

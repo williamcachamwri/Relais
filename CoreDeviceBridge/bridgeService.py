@@ -16,7 +16,6 @@ if _root not in sys.path:
 from CoreDeviceBridge.deviceTunnel import pair_device_for_wifi_over_usb
 from CoreDeviceBridge.bridgeServer import GLOBAL_LOG_HANDLER, start_local_api_server
 from CoreDeviceBridge.continuityCoordinator import UniversalClipboardCoordinator
-from CoreDeviceBridge.airdropService import AIRDROP_SERVICE
 
 logger = logging.getLogger("universal_clipboard")
 
@@ -116,10 +115,6 @@ async def _async_main(args: argparse.Namespace) -> int:
     )
     if args.api_port > 0:
         start_local_api_server(coordinator, port=args.api_port)
-    try:
-        AIRDROP_SERVICE.start()
-    except Exception as exc:
-        logger.warning("[AirDrop] Could not auto-start AirDrop receiver: %s", exc)
     await coordinator.run()
     return 0
 

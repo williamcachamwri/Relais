@@ -22,7 +22,6 @@ from CoreDeviceBridge.deviceTunnel import (
     list_wifi_paired_udids,
     pair_device_for_wifi_over_usb,
 )
-from CoreDeviceBridge.airdropService import AIRDROP_SERVICE
 
 logger = logging.getLogger("universal_clipboard")
 
@@ -162,10 +161,6 @@ def start_local_api_server(
                 self._send_json(200, coordinator.get_status_snapshot())
                 return
 
-            if path == "/api/airdrop/status":
-                self._send_json(200, AIRDROP_SERVICE.get_status())
-                return
-
             if path == "/api/history":
                 rev, items = coordinator.history.list_items()
                 self._send_json(200, {"revision": rev, "items": items})
@@ -203,31 +198,6 @@ def start_local_api_server(
             if path == "/api/sync-now":
                 triggered = coordinator.trigger_manual_sync()
                 self._send_json(200, {"ok": triggered})
-                return
-
-            if path == "/api/airdrop/toggle":
-                enable = bool(body.get("enable", not AIRDROP_SERVICE.is_enabled))
-                if enable:
-                    ok = AIRDROP_SERVICE.start()
-                else:
-                    AIRDROP_SERVICE.stop()
-                    ok = True
-                self._send_json(200, {"ok": ok, "status": AIRDROP_SERVICE.get_status()})
-                return
-
-            if path == "/api/airdrop/consent":
-                ask_id = str(body.get("id", ""))
-                accept = bool(body.get("accept", False))
-                ok = AIRDROP_SERVICE.submit_consent(ask_id, accept)
-                self._send_json(200, {"ok": ok, "id": ask_id, "accepted": accept})
-                return
-
-            if path == "/api/airdrop/config":
-                if "computer_name" in body:
-                    AIRDROP_SERVICE.set_computer_name(str(body["computer_name"]))
-                if "downloads_dir" in body:
-                    AIRDROP_SERVICE.set_downloads_dir(str(body["downloads_dir"]))
-                self._send_json(200, {"ok": True, "status": AIRDROP_SERVICE.get_status()})
                 return
 
             if path == "/api/transport":

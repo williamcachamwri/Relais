@@ -7,24 +7,47 @@ __pycache__/
 .venv/
 venv/
 ENV/
+*.egg-info/
 
 # Logs and local runtime state
 *.log
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+ui-crash.log
+ui-crash.old.log
 
-# External reference clones
+# External reference clones & OS files
 reference/
 external/
 external_references/
 Thumbs.db
 .DS_Store
+Desktop.ini
 
 # .NET / WinUI 3 build outputs
 bin/
 obj/
+dist/
 .vs/
 *.user
 *.suo
+*.userosscache
+*.sln.docstates
+AppPackages/
+BundleArtifacts/
+PackagePackages/
+Generated Files/
 
+# WiX and installer build artifacts
+*.wixobj
+*.wixpdb
+*.msi
+*.cab
+.wix/
+
+# Scratch and temporary IDE folders
+scratch/
+.idea/
+.vscode/
+*.tmp

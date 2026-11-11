@@ -1,0 +1,45 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Relais"
+           Manufacturer="Relais"
+           Version="2.0.0"
+           UpgradeCode="48D93E42-6A81-4C0F-873E-F8B429A265B1"
+           Scope="perUserOrMachine">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Relais is already installed." />
+
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Relais" />
+    </StandardDirectory>
+
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="d:\UniversalClipboard\dist\Relais\**" />
+    </ComponentGroup>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="ApplicationShortcut" Guid="B63E48C2-4B60-4E87-8A33-72C9E44F35E2">
+        <Shortcut Id="ApplicationStartMenuShortcut"
+                  Name="Relais"
+                  Description="Universal Clipboard for Windows and iPhone"
+                  Target="[INSTALLFOLDER]Relais.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="AppIcon" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\Relais"
+                       Name="installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <Icon Id="AppIcon" SourceFile="Assets\app.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+
+    <Feature Id="Main" Title="Relais">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="ApplicationShortcut" />
+    </Feature>
+  </Package>
+</Wix>

@@ -6,7 +6,7 @@
 
     <Grid
         x:Name="RootGrid"
-        Background="#141416"
+        Background="#0A0A0A"
         KeyDown="OnRootGridKeyDown"
         SizeChanged="OnRootGridSizeChanged">
         <Grid.RowDefinitions>
@@ -19,9 +19,7 @@
         <!-- =================================================================== -->
         <Border
             Grid.Row="0"
-            Background="#151517"
-            BorderBrush="#232326"
-            BorderThickness="0,0,0,1">
+            Background="#0A0A0A" BorderThickness="0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -39,30 +37,34 @@
                         Orientation="Horizontal"
                         VerticalAlignment="Center"
                         Spacing="10">
-                        <FontIcon
-                            Glyph="&#xE81E;"
-                            FontSize="13.5"
-                            Foreground="#8E8E96"
-                            VerticalAlignment="Center" />
+                        <Border
+                            Width="18"
+                            Height="18"
+                            CornerRadius="4.5"
+                            VerticalAlignment="Center">
+                            <Image
+                                Source="ms-appx:///Assets/logo_48.png"
+                                Stretch="UniformToFill" />
+                        </Border>
                         <TextBlock
                             Text="Relais"
                             FontSize="12.5"
                             FontWeight="SemiBold"
-                            Foreground="#D4D4DC"
+                            Foreground="#D5D5D5"
                             VerticalAlignment="Center" />
                         <Border
                             x:Name="TitleBarHintDot"
                             Width="4"
                             Height="4"
-                            CornerRadius="2"
-                            Background="#3A3A42"
+                            CornerRadius="2.0"
+                            Background="#2A2A2A"
                             VerticalAlignment="Center"
                             Margin="2,0" />
                         <TextBlock
                             x:Name="TitleBarSyncHintText"
                             Text="iPhone ⇄ Windows"
                             FontSize="11.5"
-                            Foreground="#6E6E76"
+                            Foreground="#6F6F6F"
                             TextTrimming="CharacterEllipsis"
                             VerticalAlignment="Center" />
                     </StackPanel>
@@ -72,13 +74,13 @@
                 <Border
                     x:Name="SearchPillBorder"
                     Grid.Column="1"
-                    Width="300"
-                    Height="30"
+                    Width="320"
+                    Height="32"
                     Margin="8,0,144,0"
-                    Background="#202024"
-                    BorderBrush="#2C2C32"
+                    Background="#171717"
+                    BorderBrush="#202020"
                     BorderThickness="1"
-                    CornerRadius="7"
+                    CornerRadius="6"
                     Padding="11,0"
                     VerticalAlignment="Center">
                     <Grid ColumnSpacing="8" VerticalAlignment="Center">
@@ -92,7 +94,7 @@
                             Grid.Column="0"
                             Glyph="&#xE721;"
                             FontSize="12"
-                            Foreground="#7C7C84"
+                            Foreground="#7D7D7D"
                             VerticalAlignment="Center" />
 
                         <TextBox
@@ -106,7 +108,7 @@
                             Height="26"
                             Padding="0,3,0,3"
                             FontSize="12.5"
-                            Foreground="#ECECEF"
+                            Foreground="#ECECEC"
                             VerticalAlignment="Center"
                             VerticalContentAlignment="Center">
                             <TextBox.Resources>
@@ -118,9 +120,9 @@
                                 <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
                                 <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
                                 <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
-                                <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#7C7C84" />
-                                <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#8E8E96" />
-                                <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#6E6E76" />
+                                <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#7D7D7D" />
+                                <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#8F8F8F" />
+                                <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#6F6F6F" />
                             </TextBox.Resources>
                         </TextBox>
 
@@ -129,7 +131,7 @@
                             Grid.Column="2"
                             Text="0 items"
                             FontSize="11.5"
-                            Foreground="#6E6E76"
+                            Foreground="#6F6F6F"
                             Typography.NumeralAlignment="Tabular"
                             VerticalAlignment="Center" />
                     </Grid>
@@ -143,8 +145,8 @@
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="ColRail" Width="50" />
-                <ColumnDefinition x:Name="ColSidebar" Width="180" />
-                <ColumnDefinition x:Name="ColFeed" Width="330" />
+                <ColumnDefinition x:Name="ColSidebar" Width="172" />
+                <ColumnDefinition x:Name="ColFeed" Width="348" />
                 <ColumnDefinition x:Name="ColInspector" Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -159,100 +161,12 @@
                 VerticalAlignment="Top"
                 Canvas.ZIndex="1000" />
 
-            <!-- Floating AirDrop Incoming Transfer Request Modal / Banner -->
-            <Border
-                x:Name="AirDropIncomingPromptCard"
-                Grid.ColumnSpan="4"
-                VerticalAlignment="Top"
-                HorizontalAlignment="Center"
-                Margin="0,14,0,0"
-                Background="#1C1C22"
-                BorderBrush="#3B82F6"
-                BorderThickness="1.5"
-                CornerRadius="12"
-                Padding="16,12"
-                Visibility="Collapsed"
-                Canvas.ZIndex="2000"
-                MaxWidth="560">
-                <Grid ColumnSpacing="14">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <!-- AirDrop Avatar / Icon -->
-                    <Border
-                        Grid.Column="0"
-                        Width="40"
-                        Height="40"
-                        CornerRadius="20"
-                        Background="#1E293B"
-                        BorderBrush="#38BDF8"
-                        BorderThickness="1"
-                        VerticalAlignment="Center">
-                        <FontIcon Glyph="&#xE72D;" FontSize="17" Foreground="#38BDF8" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-
-                    <!-- Transfer Info -->
-                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock
-                                x:Name="AirDropIncomingSenderText"
-                                Text="iPhone"
-                                FontSize="13.5"
-                                FontWeight="SemiBold"
-                                Foreground="#FFFFFF" />
-                            <Border
-                                Background="#1E3A8A"
-                                CornerRadius="4"
-                                Padding="5,1"
-                                VerticalAlignment="Center">
-                                <TextBlock Text="AirDrop" FontSize="10" FontWeight="SemiBold" Foreground="#93C5FD" />
-                            </Border>
-                        </StackPanel>
-                        <TextBlock
-                            x:Name="AirDropIncomingFilesText"
-                            Text="wants to share files"
-                            FontSize="12"
-                            Foreground="#94A3B8"
-                            TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
-
-                    <!-- Action Buttons -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <Button
-                            x:Name="AirDropDeclineBtn"
-                            Click="OnAirDropDeclineClick"
-                            Background="#282830"
-                            BorderBrush="#383842"
-                            BorderThickness="1"
-                            CornerRadius="7"
-                            Padding="12,5">
-                            <TextBlock Text="Decline" FontSize="12" FontWeight="SemiBold" Foreground="#E2E8F0" />
-                        </Button>
-                        <Button
-                            x:Name="AirDropAcceptBtn"
-                            Click="OnAirDropAcceptClick"
-                            Background="#2563EB"
-                            BorderBrush="#3B82F6"
-                            BorderThickness="1"
-                            CornerRadius="7"
-                            Padding="14,5">
-                            <TextBlock Text="Accept" FontSize="12" FontWeight="Bold" Foreground="#FFFFFF" />
-                        </Button>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
             <!-- =============================================================== -->
             <!-- COLUMN 0: FAR-LEFT ICON RAIL                                    -->
             <!-- =============================================================== -->
             <Border
                 Grid.Column="0"
-                Background="#151517"
-                BorderBrush="#232326"
-                BorderThickness="0,0,1,0"
+                Background="#0A0A0A" BorderThickness="0"
                 Padding="0,10">
                 <Grid>
                     <StackPanel VerticalAlignment="Top" HorizontalAlignment="Center" Spacing="6">
@@ -262,24 +176,13 @@
                             Width="34"
                             Height="34"
                             Padding="0"
-                            CornerRadius="8"
-                            Background="#2A2A2E"
+                            CornerRadius="6"
+                            Background="#1E1E1E"
                             BorderThickness="0"
                             ToolTipService.ToolTip="Clipboard History">
-                            <FontIcon Glyph="&#xE81E;" FontSize="15" Foreground="#F2F2F5" />
-                        </Button>
-
-                        <Button
-                            x:Name="RailAirDropBtn"
-                            Click="OnRailAirDropClick"
-                            Width="34"
-                            Height="34"
-                            Padding="0"
-                            CornerRadius="8"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            ToolTipService.ToolTip="Apple AirDrop">
-                            <FontIcon Glyph="&#xE72D;" FontSize="15" Foreground="#8A8A92" />
+                            <Border Width="22" Height="22" CornerRadius="5.5" VerticalAlignment="Center">
+                                <Image Source="ms-appx:///Assets/logo_64.png" Stretch="UniformToFill" />
+                            </Border>
                         </Button>
                     </StackPanel>
 
@@ -290,12 +193,12 @@
                             Width="34"
                             Height="34"
                             Padding="0"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Background="Transparent"
                             BorderThickness="0"
                             Visibility="Collapsed"
                             ToolTipService.ToolTip="Backend Logs">
-                            <FontIcon Glyph="&#xE756;" FontSize="15" Foreground="#8A8A92" />
+                            <FontIcon Glyph="&#xE756;" FontSize="15" Foreground="#8B8B8B" />
                         </Button>
 
                         <Button
@@ -304,11 +207,11 @@
                             Width="34"
                             Height="34"
                             Padding="0"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Background="Transparent"
                             BorderThickness="0"
                             ToolTipService.ToolTip="About Relais">
-                            <FontIcon Glyph="&#xE946;" FontSize="15" Foreground="#8A8A92" />
+                            <FontIcon Glyph="&#xE946;" FontSize="15" Foreground="#8B8B8B" />
                         </Button>
 
                         <Button
@@ -317,11 +220,11 @@
                             Width="34"
                             Height="34"
                             Padding="0"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Background="Transparent"
                             BorderThickness="0"
                             ToolTipService.ToolTip="Continuity Setup &amp; Settings">
-                            <FontIcon Glyph="&#xE713;" FontSize="15" Foreground="#8A8A92" />
+                            <FontIcon Glyph="&#xE713;" FontSize="15" Foreground="#8B8B8B" />
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -333,9 +236,7 @@
             <Border
                 x:Name="FilterSidebarBorder"
                 Grid.Column="1"
-                Background="#17171A"
-                BorderBrush="#232326"
-                BorderThickness="0,0,1,0">
+                Background="#0A0A0A" BorderThickness="0">
                 <ScrollViewer VerticalScrollBarVisibility="Hidden" Padding="10,10">
                     <StackPanel Spacing="2">
                         <!-- All & Favorites -->
@@ -347,12 +248,12 @@
                             HorizontalContentAlignment="Left"
                             Height="32"
                             Padding="10,0"
-                            CornerRadius="8"
-                            Background="#28282D"
+                            CornerRadius="6"
+                            Background="#1E1E1E"
                             BorderThickness="0">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xF0E2;" FontSize="13" Foreground="#F2F2F5" />
-                                <TextBlock Text="All" FontSize="13" FontWeight="SemiBold" Foreground="#F2F2F5" />
+                                <FontIcon Glyph="&#xF0E2;" FontSize="13" Foreground="#F2F2F2" />
+                                <TextBlock Text="All" FontSize="13" FontWeight="SemiBold" Foreground="#F2F2F2" />
                             </StackPanel>
                         </Button>
 
@@ -364,12 +265,12 @@
                             HorizontalContentAlignment="Left"
                             Height="32"
                             Padding="10,0"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Background="Transparent"
                             BorderThickness="0">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xE734;" FontSize="13" Foreground="#9A9AA2" />
-                                <TextBlock Text="Favorites" FontSize="13" Foreground="#9A9AA2" />
+                                <FontIcon Glyph="&#xE734;" FontSize="13" Foreground="#9B9B9B" />
+                                <TextBlock Text="Favorites" FontSize="13" Foreground="#9B9B9B" />
                             </StackPanel>
                         </Button>
 
@@ -378,7 +279,7 @@
                             Text="TYPE"
                             FontSize="10.5"
                             FontWeight="SemiBold"
-                            Foreground="#5A5A62"
+                            Foreground="#5B5B5B"
                             Margin="10,14,0,4" />
 
                         <Button
@@ -389,12 +290,12 @@
                             HorizontalContentAlignment="Left"
                             Height="32"
                             Padding="10,0"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Background="Transparent"
                             BorderThickness="0">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xE8A5;" FontSize="13" Foreground="#9A9AA2" />
-                                <TextBlock Text="Text" FontSize="13" Foreground="#9A9AA2" />
+                                <FontIcon Glyph="&#xE8A5;" FontSize="13" Foreground="#9B9B9B" />
+                                <TextBlock Text="Text" FontSize="13" Foreground="#9B9B9B" />
                             </StackPanel>
                         </Button>
 
@@ -406,12 +307,12 @@
                             HorizontalContentAlignment="Left"
                             Height="32"
                             Padding="10,0"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Background="Transparent"
                             BorderThickness="0">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xE8A5;" FontSize="13" Foreground="#9A9AA2" />
-                                <TextBlock Text="Rich Text" FontSize="13" Foreground="#9A9AA2" />
+                                <FontIcon Glyph="&#xE8A5;" FontSize="13" Foreground="#9B9B9B" />
+                                <TextBlock Text="Rich Text" FontSize="13" Foreground="#9B9B9B" />
                             </StackPanel>
                         </Button>
 
@@ -423,12 +324,12 @@
                             HorizontalContentAlignment="Left"
                             Height="32"
                             Padding="10,0"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Background="Transparent"
                             BorderThickness="0">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xEB9F;" FontSize="13" Foreground="#9A9AA2" />
-                                <TextBlock Text="Image" FontSize="13" Foreground="#9A9AA2" />
+                                <FontIcon Glyph="&#xEB9F;" FontSize="13" Foreground="#9B9B9B" />
+                                <TextBlock Text="Image" FontSize="13" Foreground="#9B9B9B" />
                             </StackPanel>
                         </Button>
 
@@ -440,13 +341,13 @@
                             HorizontalContentAlignment="Left"
                             Height="32"
                             Padding="10,0"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Background="Transparent"
                             BorderThickness="0"
                             Visibility="Collapsed">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xE7C3;" FontSize="13" Foreground="#9A9AA2" />
-                                <TextBlock Text="File" FontSize="13" Foreground="#9A9AA2" />
+                                <FontIcon Glyph="&#xE7C3;" FontSize="13" Foreground="#9B9B9B" />
+                                <TextBlock Text="File" FontSize="13" Foreground="#9B9B9B" />
                             </StackPanel>
                         </Button>
 
@@ -455,7 +356,7 @@
                             Text="TAG"
                             FontSize="10.5"
                             FontWeight="SemiBold"
-                            Foreground="#5A5A62"
+                            Foreground="#5B5B5B"
                             Margin="10,14,0,4" />
 
                         <Button
@@ -466,12 +367,12 @@
                             HorizontalContentAlignment="Left"
                             Height="32"
                             Padding="10,0"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Background="Transparent"
                             BorderThickness="0">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xE71B;" FontSize="13" Foreground="#9A9AA2" />
-                                <TextBlock Text="Link" FontSize="13" Foreground="#9A9AA2" />
+                                <FontIcon Glyph="&#xE71B;" FontSize="13" Foreground="#9B9B9B" />
+                                <TextBlock Text="Link" FontSize="13" Foreground="#9B9B9B" />
                             </StackPanel>
                         </Button>
 
@@ -483,12 +384,12 @@
                             HorizontalContentAlignment="Left"
                             Height="32"
                             Padding="10,0"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Background="Transparent"
                             BorderThickness="0">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xE943;" FontSize="13" Foreground="#9A9AA2" />
-                                <TextBlock Text="Code" FontSize="13" Foreground="#9A9AA2" />
+                                <FontIcon Glyph="&#xE943;" FontSize="13" Foreground="#9B9B9B" />
+                                <TextBlock Text="Code" FontSize="13" Foreground="#9B9B9B" />
                             </StackPanel>
                         </Button>
 
@@ -500,12 +401,12 @@
                             HorizontalContentAlignment="Left"
                             Height="32"
                             Padding="10,0"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Background="Transparent"
                             BorderThickness="0">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xEB9F;" FontSize="13" Foreground="#9A9AA2" />
-                                <TextBlock Text="Image" FontSize="13" Foreground="#9A9AA2" />
+                                <FontIcon Glyph="&#xEB9F;" FontSize="13" Foreground="#9B9B9B" />
+                                <TextBlock Text="Image" FontSize="13" Foreground="#9B9B9B" />
                             </StackPanel>
                         </Button>
 
@@ -514,7 +415,7 @@
                             Text="SOURCE"
                             FontSize="10.5"
                             FontWeight="SemiBold"
-                            Foreground="#5A5A62"
+                            Foreground="#5B5B5B"
                             Margin="10,14,0,4" />
 
                         <Button
@@ -525,12 +426,12 @@
                             HorizontalContentAlignment="Left"
                             Height="32"
                             Padding="10,0"
-                            CornerRadius="8"
-                            Background="#28282D"
+                            CornerRadius="6"
+                            Background="#1E1E1E"
                             BorderThickness="0">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xE8E5;" FontSize="13" Foreground="#F2F2F5" />
-                                <TextBlock Text="All sources" FontSize="13" FontWeight="SemiBold" Foreground="#F2F2F5" />
+                                <FontIcon Glyph="&#xE8E5;" FontSize="13" Foreground="#F2F2F2" />
+                                <TextBlock Text="All sources" FontSize="13" FontWeight="SemiBold" Foreground="#F2F2F2" />
                             </StackPanel>
                         </Button>
 
@@ -542,16 +443,16 @@
                             HorizontalContentAlignment="Left"
                             Height="32"
                             Padding="10,0"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Background="Transparent"
                             BorderThickness="0">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xE7F8;" FontSize="13" Foreground="#9A9AA2" />
+                                <FontIcon Glyph="&#xE7F8;" FontSize="13" Foreground="#9B9B9B" />
                                 <TextBlock
                                     x:Name="SidebarPcNameText"
                                     Text="This device"
                                     FontSize="13"
-                                    Foreground="#9A9AA2"
+                                    Foreground="#9B9B9B"
                                     TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                         </Button>
@@ -564,16 +465,16 @@
                             HorizontalContentAlignment="Left"
                             Height="32"
                             Padding="10,0"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Background="Transparent"
                             BorderThickness="0">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xE8EA;" FontSize="13" Foreground="#9A9AA2" />
+                                <FontIcon Glyph="&#xE8EA;" FontSize="13" Foreground="#9B9B9B" />
                                 <TextBlock
                                     x:Name="SidebarIphoneNameText"
                                     Text="iPhone 16e"
                                     FontSize="13"
-                                    Foreground="#9A9AA2"
+                                    Foreground="#9B9B9B"
                                     TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                         </Button>
@@ -583,7 +484,7 @@
                             Text="TIME"
                             FontSize="10.5"
                             FontWeight="SemiBold"
-                            Foreground="#5A5A62"
+                            Foreground="#5B5B5B"
                             Margin="10,14,0,4" />
 
                         <Button
@@ -594,12 +495,12 @@
                             HorizontalContentAlignment="Left"
                             Height="32"
                             Padding="10,0"
-                            CornerRadius="8"
-                            Background="#28282D"
+                            CornerRadius="6"
+                            Background="#1E1E1E"
                             BorderThickness="0">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xE823;" FontSize="13" Foreground="#F2F2F5" />
-                                <TextBlock Text="All time" FontSize="13" FontWeight="SemiBold" Foreground="#F2F2F5" />
+                                <FontIcon Glyph="&#xE823;" FontSize="13" Foreground="#F2F2F2" />
+                                <TextBlock Text="All time" FontSize="13" FontWeight="SemiBold" Foreground="#F2F2F2" />
                             </StackPanel>
                         </Button>
 
@@ -611,12 +512,12 @@
                             HorizontalContentAlignment="Left"
                             Height="32"
                             Padding="10,0"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Background="Transparent"
                             BorderThickness="0">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xE823;" FontSize="13" Foreground="#9A9AA2" />
-                                <TextBlock Text="Today" FontSize="13" Foreground="#9A9AA2" />
+                                <FontIcon Glyph="&#xE823;" FontSize="13" Foreground="#9B9B9B" />
+                                <TextBlock Text="Today" FontSize="13" Foreground="#9B9B9B" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -628,8 +529,8 @@
             <!-- =============================================================== -->
             <Border
                 Grid.Column="2"
-                Background="#151517"
-                BorderBrush="#232326"
+                Background="#0F0F0F"
+                BorderBrush="#191919"
                 BorderThickness="0,0,1,0">
                 <Grid>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -647,12 +548,12 @@
                             Text="No clipboard items"
                             FontSize="13.5"
                             FontWeight="SemiBold"
-                            Foreground="#8E8E96"
+                            Foreground="#8F8F8F"
                             HorizontalAlignment="Center" />
                         <TextBlock
                             Text="Copy anything on your iPhone to sync automatically."
                             FontSize="12"
-                            Foreground="#5A5A62"
+                            Foreground="#5B5B5B"
                             TextAlignment="Center"
                             TextWrapping="Wrap" />
                     </StackPanel>
@@ -662,7 +563,7 @@
             <!-- =============================================================== -->
             <!-- COLUMN 3: RIGHT INSPECTOR / PREVIEW PANE                        -->
             <!-- =============================================================== -->
-            <Grid Grid.Column="3" Background="#131315">
+            <Grid Grid.Column="3" Background="#0A0A0A">
 
                 <!-- LAYER A: CLIPBOARD ITEM INSPECTOR (Matches Image #2 Right Pane) -->
                 <Grid x:Name="InspectorPane">
@@ -684,7 +585,7 @@
                             Grid.Column="0"
                             Text="Text  ·  0 chars"
                             FontSize="12.5"
-                            Foreground="#8A8A92"
+                            Foreground="#8B8B8B"
                             TextTrimming="CharacterEllipsis"
                             Typography.NumeralAlignment="Tabular"
                             VerticalAlignment="Center" />
@@ -699,12 +600,12 @@
                                     x:Name="InspectorSourceIcon"
                                     Glyph="&#xE8EA;"
                                     FontSize="12"
-                                    Foreground="#8A8A92" />
+                                    Foreground="#8B8B8B" />
                                 <TextBlock
                                     x:Name="InspectorSourceText"
                                     Text="iPhone 16e"
                                     FontSize="12.5"
-                                    Foreground="#8A8A92" />
+                                    Foreground="#8B8B8B" />
                             </StackPanel>
 
                             <Button
@@ -713,19 +614,19 @@
                                 Background="Transparent"
                                 BorderThickness="0"
                                 Padding="6,4"
-                                CornerRadius="6"
+                                CornerRadius="6.0"
                                 ToolTipService.ToolTip="Click to configure Continuity transport or wireless pairing">
                                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                     <FontIcon
                                         x:Name="InspectorPeerIcon"
                                         Glyph="&#xE701;"
                                         FontSize="12"
-                                        Foreground="#8A8A92" />
+                                        Foreground="#8B8B8B" />
                                     <TextBlock
                                         x:Name="InspectorPeerText"
                                         Text="Peer online"
                                         FontSize="12.5"
-                                        Foreground="#8A8A92" />
+                                        Foreground="#8B8B8B" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -738,154 +639,69 @@
                         HorizontalScrollBarVisibility="Disabled">
                         <Grid
                             x:Name="InspectorStageGrid"
-                            Padding="24,16"
-                            MinHeight="280"
+                            Padding=" 32,24"
+                            MinHeight=" 280"
                             HorizontalAlignment="Stretch"
-                            VerticalAlignment="Center">
+                            VerticalAlignment="Top">
 
-                            <!-- 1. IMAGE PREVIEW STAGE -->
-                            <StackPanel
+                            <!-- 1. IMAGE PREVIEW STAGE (Frameless, Direct Canvas, Mouse-Wheel Zoomable) -->
+                            <Grid
                                 x:Name="InspectorImageStage"
                                 Visibility="Collapsed"
-                                VerticalAlignment="Center"
-                                HorizontalAlignment="Center"
-                                MaxWidth="640"
-                                Spacing="14">
-                                <Border
-                                    Background="#16161D"
-                                    BorderBrush="#282836"
-                                    BorderThickness="1"
-                                    CornerRadius="12"
-                                    Padding="0">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="*" />
-                                        </Grid.RowDefinitions>
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                MinHeight="300">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
 
-                                        <!-- Top Header Bar for Image Card -->
-                                        <Border
-                                            Grid.Row="0"
-                                            Background="#1C1C26"
-                                            BorderBrush="#262634"
-                                            BorderThickness="0,0,0,1"
-                                            CornerRadius="12,12,0,0"
-                                            Height="38"
-                                            Padding="14,0">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
+                                <!-- Zoomable Image Viewport -->
+                                <ScrollViewer
+                                    x:Name="InspectorImageScrollViewer"
+                                    Grid.Row="0"
+                                    HorizontalScrollBarVisibility="Hidden"
+                                    VerticalScrollBarVisibility="Hidden"
+                                    ZoomMode="Enabled"
+                                    MinZoomFactor="0.2"
+                                    MaxZoomFactor="5.0"
+                                    Background="Transparent"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
+                                    DoubleTapped="OnImageDoubleTapped"
+                                    PointerWheelChanged="OnImagePointerWheelChanged">
+                                    <Image
+                                        x:Name="InspectorPreviewImage"
+                                        Stretch="Uniform"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        MaxHeight="460"
+                                        MaxWidth="720" />
+                                </ScrollViewer>
 
-                                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                                    <Border
-                                                        Background="#252534"
-                                                        BorderBrush="#343448"
-                                                        BorderThickness="1"
-                                                        CornerRadius="5"
-                                                        Padding="7,2"
-                                                        VerticalAlignment="Center">
-                                                        <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                                            <FontIcon Glyph="&#xEB9F;" FontSize="11" Foreground="#A0A0B0" />
-                                                            <TextBlock Text="IMAGE" FontSize="10.5" FontWeight="SemiBold" Foreground="#D0D0DC" />
-                                                        </StackPanel>
-                                                    </Border>
-                                                    <TextBlock
-                                                        x:Name="InspectorImageMetaHeader"
-                                                        Text="PNG"
-                                                        FontSize="12"
-                                                        Foreground="#8A8A96"
-                                                        VerticalAlignment="Center" />
-                                                </StackPanel>
-
-                                                <Button
-                                                    Grid.Column="1"
-                                                    Click="OnInspectorCopyClick"
-                                                    Background="#22222C"
-                                                    BorderBrush="#2E2E3A"
-                                                    BorderThickness="1"
-                                                    CornerRadius="6"
-                                                    Padding="8,3"
-                                                    ToolTipService.ToolTip="Copy image to clipboard">
-                                                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                                        <FontIcon Glyph="&#xE8C8;" FontSize="11" Foreground="#A0A0AA" />
-                                                        <TextBlock Text="Copy Image" FontSize="11.5" Foreground="#D0D0DC" />
-                                                    </StackPanel>
-                                                </Button>
-                                            </Grid>
-                                        </Border>
-
-                                        <!-- Image Display Canvas -->
-                                        <Border
-                                            Grid.Row="1"
-                                            Background="#0C0C10"
-                                            Padding="14"
-                                            CornerRadius="0,0,12,12">
-                                            <StackPanel Spacing="10" HorizontalAlignment="Center">
-                                                <Image
-                                                    x:Name="InspectorPreviewImage"
-                                                    MaxHeight="260"
-                                                    MaxWidth="540"
-                                                    Stretch="Uniform" />
-                                                <TextBlock
-                                                    x:Name="InspectorImageTitleText"
-                                                    Text="Clipboard.png"
-                                                    FontSize="13"
-                                                    FontWeight="SemiBold"
-                                                    Foreground="#EDEDF4"
-                                                    TextTrimming="CharacterEllipsis"
-                                                    HorizontalAlignment="Center" />
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Image Badges Chips Row -->
+                                <!-- Minimalist Single-Line Caption (Clean, Anti-AI Slop) -->
                                 <StackPanel
-                                    x:Name="InspectorImageChipsPanel"
+                                    Grid.Row="1"
                                     Orientation="Horizontal"
-                                    Spacing="6"
-                                    HorizontalAlignment="Center">
-                                    <Border
-                                        Background="#181820"
-                                        BorderBrush="#262632"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        Padding="8,3">
-                                        <TextBlock
-                                            x:Name="InspectorImageDirText"
-                                            Text="iPhone → Windows"
-                                            FontSize="11"
-                                            Foreground="#A0A0AB" />
-                                    </Border>
-                                    <Border
-                                        Background="#181820"
-                                        BorderBrush="#262632"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        Padding="8,3">
-                                        <TextBlock
-                                            x:Name="InspectorImageUtiText"
-                                            Text="public.png"
-                                            FontSize="11"
-                                            Foreground="#8A8A96"
-                                            FontFamily="Cascadia Code, Consolas" />
-                                    </Border>
-                                    <Border
-                                        Background="#181820"
-                                        BorderBrush="#262632"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        Padding="8,3">
-                                        <TextBlock
-                                            x:Name="InspectorImageTransportText"
-                                            Text="Wi-Fi · 130 ms"
-                                            FontSize="11"
-                                            Foreground="#8A8A96" />
-                                    </Border>
+                                    Spacing="8"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,12,0,4">
+                                    <TextBlock
+                                        x:Name="InspectorImageMetaText"
+                                        Text="PNG"
+                                        FontSize="12"
+                                        Foreground="#7B7B7B"
+                                        Typography.NumeralAlignment="Tabular"
+                                        VerticalAlignment="Center" />
+                                    <TextBlock Text="·" FontSize="12" Foreground="#454545" VerticalAlignment="Center" />
+                                    <TextBlock
+                                        x:Name="InspectorImageTransportText"
+                                        Text="Wi-Fi"
+                                        FontSize="12"
+                                        Foreground="#7B7B7B"
+                                        VerticalAlignment="Center" />
                                 </StackPanel>
-                            </StackPanel>
+                            </Grid>
 
                             <!-- 2. FILE PREVIEW STAGE -->
                             <StackPanel
@@ -896,19 +712,19 @@
                                 MaxWidth="520"
                                 Spacing="14">
                                 <Border
-                                    Background="#16161D"
-                                    BorderBrush="#282836"
+                                    Background="#121212"
+                                    BorderBrush="#1A1A1A"
                                     BorderThickness="1"
-                                    CornerRadius="12"
+                                    CornerRadius="8"
                                     Padding="36,26"
                                     HorizontalAlignment="Center">
                                     <StackPanel Spacing="16" HorizontalAlignment="Center">
                                         <Border
                                             Width="64"
                                             Height="64"
-                                            CornerRadius="14"
-                                            Background="#232330"
-                                            BorderBrush="#323242"
+                                            CornerRadius="10"
+                                            Background="#181818"
+                                            BorderBrush="#222222"
                                             BorderThickness="1"
                                             HorizontalAlignment="Center">
                                             <TextBlock
@@ -916,7 +732,7 @@
                                                 Text="ZIP"
                                                 FontSize="15"
                                                 FontWeight="Bold"
-                                                Foreground="#E8E8EE"
+                                                Foreground="#E9E9E9"
                                                 HorizontalAlignment="Center"
                                                 VerticalAlignment="Center" />
                                         </Border>
@@ -926,7 +742,7 @@
                                             Text="document.zip"
                                             FontSize="14.5"
                                             FontWeight="SemiBold"
-                                            Foreground="#F2F2F5"
+                                            Foreground="#F2F2F2"
                                             TextAlignment="Center"
                                             TextWrapping="Wrap"
                                             MaxWidth="420"
@@ -938,7 +754,7 @@
                                     x:Name="InspectorFileSubtitle"
                                     Text=""
                                     FontSize="11.5"
-                                    Foreground="#787884"
+                                    Foreground="#797979"
                                     Typography.NumeralAlignment="Tabular"
                                     TextAlignment="Center"
                                     TextWrapping="Wrap"
@@ -949,224 +765,141 @@
                             <StackPanel
                                 x:Name="InspectorTextStage"
                                 Visibility="Visible"
-                                VerticalAlignment="Center"
-                                HorizontalAlignment="Center"
-                                MaxWidth="640"
-                                Spacing="14">
-                                <Border
-                                    x:Name="InspectorTextCardBorder"
-                                    Background="#16161D"
-                                    BorderBrush="#282836"
-                                    BorderThickness="1"
-                                    CornerRadius="12"
-                                    Padding="0"
-                                    HorizontalAlignment="Stretch">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="*" />
-                                        </Grid.RowDefinitions>
+                                VerticalAlignment="Top"
+                                HorizontalAlignment="Stretch"
+                                MaxWidth="920"
+                                Spacing="16">
 
-                                        <!-- Card Header Bar -->
+                                <!-- Content Header: Title & Actions -->
+                                <Grid x:Name="InspectorCardHeaderLeft" Margin="2,0,2,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Left: Type Badge & Header Title -->
+                                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                                         <Border
-                                            Grid.Row="0"
-                                            Background="#1C1C26"
-                                            BorderBrush="#262634"
-                                            BorderThickness="0,0,0,1"
-                                            CornerRadius="12,12,0,0"
-                                            Height="38"
-                                            Padding="14,0">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-
-                                                <!-- Left: Type Badge & Header Title -->
-                                                <StackPanel
-                                                    x:Name="InspectorCardHeaderLeft"
-                                                    Orientation="Horizontal"
-                                                    Spacing="8"
-                                                    VerticalAlignment="Center">
-                                                    <Border
-                                                        x:Name="InspectorTypeBadge"
-                                                        Background="#22222E"
-                                                        BorderBrush="#323242"
-                                                        BorderThickness="1"
-                                                        CornerRadius="5"
-                                                        Padding="7,2"
-                                                        VerticalAlignment="Center">
-                                                        <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                                            <FontIcon
-                                                                x:Name="InspectorTypeBadgeIcon"
-                                                                Glyph="&#xE8A5;"
-                                                                FontSize="11"
-                                                                Foreground="#A0A0B0" />
-                                                            <TextBlock
-                                                                x:Name="InspectorTypeBadgeText"
-                                                                Text="TEXT"
-                                                                FontSize="10.5"
-                                                                FontWeight="SemiBold"
-                                                                Foreground="#D0D0DC"
-                                                                Typography.NumeralAlignment="Tabular" />
-                                                        </StackPanel>
-                                                    </Border>
-
-                                                    <TextBlock
-                                                        x:Name="InspectorCardHeaderTitle"
-                                                        Text="116 characters"
-                                                        FontSize="12"
-                                                        Foreground="#8A8A96"
-                                                        VerticalAlignment="Center"
-                                                        TextTrimming="CharacterEllipsis"
-                                                        MaxWidth="300" />
-                                                </StackPanel>
-
-                                                <!-- Right: Actions (Open Link / Copy) -->
-                                                <StackPanel
-                                                    Grid.Column="1"
-                                                    Orientation="Horizontal"
-                                                    Spacing="6"
-                                                    VerticalAlignment="Center">
-                                                    <Button
-                                                        x:Name="InspectorOpenLinkBtn"
-                                                        Click="OnInspectorOpenLinkClick"
-                                                        Visibility="Collapsed"
-                                                        Background="#182738"
-                                                        BorderBrush="#243C56"
-                                                        BorderThickness="1"
-                                                        CornerRadius="6"
-                                                        Padding="9,3"
-                                                        ToolTipService.ToolTip="Open URL in default web browser">
-                                                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                                            <FontIcon Glyph="&#xE8A7;" FontSize="11" Foreground="#60A5FA" />
-                                                            <TextBlock Text="Open Link" FontSize="11.5" FontWeight="Medium" Foreground="#93C5FD" />
-                                                        </StackPanel>
-                                                    </Button>
-
-                                                    <Button
-                                                        x:Name="InspectorHeaderCopyBtn"
-                                                        Click="OnInspectorCopyClick"
-                                                        Background="#22222C"
-                                                        BorderBrush="#2E2E3A"
-                                                        BorderThickness="1"
-                                                        CornerRadius="6"
-                                                        Padding="8,3"
-                                                        ToolTipService.ToolTip="Copy text to clipboard">
-                                                        <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                                            <FontIcon Glyph="&#xE8C8;" FontSize="11" Foreground="#A0A0AA" />
-                                                            <TextBlock Text="Copy" FontSize="11.5" Foreground="#D0D0DC" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                </StackPanel>
-                                            </Grid>
+                                            x:Name="InspectorTypeBadge"
+                                            Background="#18181C"
+                                            BorderBrush="#26262C"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Padding="6,2"
+                                            VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                                <FontIcon
+                                                    x:Name="InspectorTypeBadgeIcon"
+                                                    Glyph="&#xE8A5;"
+                                                    FontSize="10.5"
+                                                    Foreground="#A0A0A8" />
+                                                <TextBlock
+                                                    x:Name="InspectorTypeBadgeText"
+                                                    Text="TEXT"
+                                                    FontSize="10"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="#FFFFFF"
+                                                    Typography.NumeralAlignment="Tabular" />
+                                            </StackPanel>
                                         </Border>
 
-                                        <!-- Card Text Body -->
-                                        <ScrollViewer
-                                            Grid.Row="1"
-                                            x:Name="InspectorTextScrollViewer"
-                                            MaxHeight="330"
-                                            Padding="20,16"
-                                            VerticalScrollBarVisibility="Auto"
-                                            HorizontalScrollBarVisibility="Disabled">
-                                            <TextBlock
-                                                x:Name="InspectorPreviewText"
-                                                Text=""
-                                                FontSize="13.5"
-                                                Foreground="#EDEDF4"
-                                                LineHeight="22"
-                                                TextWrapping="Wrap"
-                                                HorizontalAlignment="Stretch"
-                                                TextAlignment="Left"
-                                                IsTextSelectionEnabled="True" />
-                                        </ScrollViewer>
-                                    </Grid>
+                                        <TextBlock
+                                            x:Name="InspectorCardHeaderTitle"
+                                            Text="Title"
+                                            FontSize="18"
+                                            FontWeight="SemiBold"
+                                            Foreground="#FFFFFF"
+                                            VerticalAlignment="Center"
+                                            TextTrimming="CharacterEllipsis"
+                                            MaxWidth="620" />
+                                    </StackPanel>
+
+                                    <!-- Right: Actions (Open Link) -->
+                                    <Button
+                                        x:Name="InspectorOpenLinkBtn"
+                                        Grid.Column="1"
+                                        Click="OnInspectorOpenLinkClick"
+                                        Visibility="Collapsed"
+                                        Background="#1C1C22"
+                                        BorderBrush="#2E2E36"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="12,5"
+                                        ToolTipService.ToolTip="Open URL in default web browser">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                            <TextBlock Text="Open Link" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                                            <FontIcon Glyph="&#xE8A7;" FontSize="11" Foreground="#A0A0A8" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <!-- Text Body Container -->
+                                <Border
+                                    x:Name="InspectorTextCardBorder"
+                                    Background="#111114"
+                                    BorderBrush="#1E1E24"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="22,18"
+                                    HorizontalAlignment="Stretch">
+                                    <ScrollViewer
+                                        x:Name="InspectorTextScrollViewer"
+                                        MaxHeight="620"
+                                        VerticalScrollBarVisibility="Auto"
+                                        HorizontalScrollBarVisibility="Disabled">
+                                        <TextBlock
+                                            x:Name="InspectorPreviewText"
+                                            Text=""
+                                            FontSize="13.5"
+                                            Foreground="#EDEDF4"
+                                            LineHeight="24"
+                                            TextWrapping="Wrap"
+                                            HorizontalAlignment="Stretch"
+                                            TextAlignment="Left"
+                                            IsTextSelectionEnabled="True" />
+                                    </ScrollViewer>
                                 </Border>
 
-                                <!-- Text Metadata Chips Row (Neat, Centered Pills) -->
+                                <!-- Metadata Breadcrumb Line (Clean, Minimalist) -->
                                 <StackPanel
                                     x:Name="InspectorChipsPanel"
                                     Orientation="Horizontal"
-                                    Spacing="6"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center">
-                                    <Border
-                                        x:Name="InspectorDirectionChip"
-                                        Background="#181820"
-                                        BorderBrush="#262632"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        Padding="8,3">
-                                        <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                            <FontIcon
-                                                x:Name="InspectorDirectionIcon"
-                                                Glyph="&#xE8EA;"
-                                                FontSize="10.5"
-                                                Foreground="#8A8A96" />
-                                            <TextBlock
-                                                x:Name="InspectorDirectionText"
-                                                Text="Windows → iPhone"
-                                                FontSize="11"
-                                                Foreground="#A0A0AB" />
-                                        </StackPanel>
-                                    </Border>
-
-                                    <Border
-                                        x:Name="InspectorFormatChip"
-                                        Background="#181820"
-                                        BorderBrush="#262632"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        Padding="8,3">
-                                        <TextBlock
-                                            x:Name="InspectorFormatText"
-                                            Text="public.utf8-plain-text"
-                                            FontSize="11"
-                                            Foreground="#8A8A96"
-                                            FontFamily="Cascadia Code, Consolas" />
-                                    </Border>
-
-                                    <Border
-                                        x:Name="InspectorTransportChip"
-                                        Background="#181820"
-                                        BorderBrush="#262632"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        Padding="8,3">
-                                        <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                            <FontIcon
-                                                x:Name="InspectorTransportIcon"
-                                                Glyph="&#xE701;"
-                                                FontSize="10.5"
-                                                Foreground="#34D399" />
-                                            <TextBlock
-                                                x:Name="InspectorTransportText"
-                                                Text="Wi-Fi"
-                                                FontSize="11"
-                                                Foreground="#A0A0AB" />
-                                        </StackPanel>
-                                    </Border>
-
-                                    <Border
-                                        x:Name="InspectorLatencyChip"
-                                        Background="#181820"
-                                        BorderBrush="#262632"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        Padding="8,3">
-                                        <TextBlock
-                                            x:Name="InspectorLatencyText"
-                                            Text="116 B · 132 ms"
-                                            FontSize="11"
-                                            Foreground="#8A8A96"
-                                            Typography.NumeralAlignment="Tabular" />
-                                    </Border>
+                                    Spacing="8"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    Margin="4,0,0,0">
+                                    <TextBlock
+                                        x:Name="InspectorDirectionText"
+                                        Text="Windows → iPhone"
+                                        FontSize="11.5"
+                                        Foreground="#74747C"
+                                        VerticalAlignment="Center" />
+                                    <TextBlock Text="·" FontSize="11.5" Foreground="#323238" VerticalAlignment="Center" />
+                                    <TextBlock
+                                        x:Name="InspectorFormatText"
+                                        Text="public.url"
+                                        FontSize="11.5"
+                                        Foreground="#74747C"
+                                        FontFamily="Cascadia Code, Consolas"
+                                        VerticalAlignment="Center" />
+                                    <TextBlock Text="·" FontSize="11.5" Foreground="#323238" VerticalAlignment="Center" />
+                                    <TextBlock
+                                        x:Name="InspectorTransportText"
+                                        Text="Wi-Fi"
+                                        FontSize="11.5"
+                                        Foreground="#74747C"
+                                        VerticalAlignment="Center" />
+                                    <TextBlock Text="·" FontSize="11.5" Foreground="#323238" VerticalAlignment="Center" />
+                                    <TextBlock
+                                        x:Name="InspectorLatencyText"
+                                        Text="79.2 ms"
+                                        FontSize="11.5"
+                                        Foreground="#74747C"
+                                        Typography.NumeralAlignment="Tabular"
+                                        VerticalAlignment="Center" />
                                 </StackPanel>
 
-                                <TextBlock
-                                    x:Name="InspectorTextSubtitle"
-                                    Visibility="Collapsed" />
+                                <TextBlock x:Name="InspectorTextSubtitle" Visibility="Collapsed" />
                             </StackPanel>
                         </Grid>
                     </ScrollViewer>
@@ -1177,10 +910,10 @@
                         Grid.Row="2"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        Background="#17171B"
-                        BorderBrush="#26262D"
+                        Background="#111111"
+                        BorderBrush="#1C1C1C"
                         BorderThickness="1"
-                        CornerRadius="10"
+                        CornerRadius="8"
                         Padding="5,4"
                         Margin="0,0,0,16">
                         <StackPanel
@@ -1196,7 +929,7 @@
                                 Background="Transparent"
                                 BorderThickness="0"
                                 Padding="10,0"
-                                CornerRadius="7"
+                                CornerRadius="6"
                                 VerticalAlignment="Center"
                                 VerticalContentAlignment="Center"
                                 ToolTipService.ToolTip="Copy to Windows clipboard (C)">
@@ -1204,7 +937,7 @@
                                     <FontIcon
                                         Glyph="&#xE8C8;"
                                         FontSize="12.5"
-                                        Foreground="#F2F2F5"
+                                        Foreground="#F2F2F2"
                                         VerticalAlignment="Center"
                                         Margin="0,1,0,0" />
                                     <TextBlock
@@ -1212,7 +945,7 @@
                                         Text="Copy"
                                         FontSize="12.5"
                                         FontWeight="SemiBold"
-                                        Foreground="#F2F2F5"
+                                        Foreground="#F2F2F2"
                                         LineHeight="18"
                                         LineStackingStrategy="BlockLineHeight"
                                         VerticalAlignment="Center" />
@@ -1220,9 +953,9 @@
                                         x:Name="KeyHintC"
                                         Width="18"
                                         Height="18"
-                                        CornerRadius="4"
-                                        Background="#212127"
-                                        BorderBrush="#2F2F37"
+                                        CornerRadius="4.0"
+                                        Background="#181818"
+                                        BorderBrush="#232323"
                                         BorderThickness="1"
                                         VerticalAlignment="Center"
                                         Margin="1,0,0,0">
@@ -1230,14 +963,14 @@
                                             Text="C"
                                             FontSize="10.5"
                                             FontWeight="Medium"
-                                            Foreground="#868690"
+                                            Foreground="#878787"
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center" />
                                     </Border>
                                 </StackPanel>
                             </Button>
 
-                            <Border Width="1" Height="14" Background="#25252C" VerticalAlignment="Center" />
+                            <Border Width="1" Height="14" Background="#1B1B1B" VerticalAlignment="Center" />
 
                             <Button
                                 x:Name="ActionSendIphoneBtn"
@@ -1246,7 +979,7 @@
                                 Background="Transparent"
                                 BorderThickness="0"
                                 Padding="10,0"
-                                CornerRadius="7"
+                                CornerRadius="6"
                                 VerticalAlignment="Center"
                                 VerticalContentAlignment="Center"
                                 ToolTipService.ToolTip="Push this item to iPhone clipboard (S)">
@@ -1254,7 +987,7 @@
                                     <FontIcon
                                         Glyph="&#xE8EA;"
                                         FontSize="12.5"
-                                        Foreground="#A6A6B0"
+                                        Foreground="#A7A7A7"
                                         VerticalAlignment="Center"
                                         Margin="0,1,0,0" />
                                     <TextBlock
@@ -1262,7 +995,7 @@
                                         Text="Send to iPhone"
                                         FontSize="12.5"
                                         FontWeight="Medium"
-                                        Foreground="#A6A6B0"
+                                        Foreground="#A7A7A7"
                                         LineHeight="18"
                                         LineStackingStrategy="BlockLineHeight"
                                         VerticalAlignment="Center" />
@@ -1270,9 +1003,9 @@
                                         x:Name="KeyHintS"
                                         Width="18"
                                         Height="18"
-                                        CornerRadius="4"
-                                        Background="#212127"
-                                        BorderBrush="#2F2F37"
+                                        CornerRadius="4.0"
+                                        Background="#181818"
+                                        BorderBrush="#232323"
                                         BorderThickness="1"
                                         VerticalAlignment="Center"
                                         Margin="1,0,0,0">
@@ -1280,14 +1013,14 @@
                                             Text="S"
                                             FontSize="10.5"
                                             FontWeight="Medium"
-                                            Foreground="#868690"
+                                            Foreground="#878787"
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center" />
                                     </Border>
                                 </StackPanel>
                             </Button>
 
-                            <Border Width="1" Height="14" Background="#25252C" VerticalAlignment="Center" />
+                            <Border Width="1" Height="14" Background="#1B1B1B" VerticalAlignment="Center" />
 
                             <Button
                                 x:Name="ActionFavoriteBtn"
@@ -1296,7 +1029,7 @@
                                 Background="Transparent"
                                 BorderThickness="0"
                                 Padding="10,0"
-                                CornerRadius="7"
+                                CornerRadius="6"
                                 VerticalAlignment="Center"
                                 VerticalContentAlignment="Center"
                                 ToolTipService.ToolTip="Toggle Favorite (F)">
@@ -1305,7 +1038,7 @@
                                         x:Name="ActionFavoriteIcon"
                                         Glyph="&#xE734;"
                                         FontSize="12.5"
-                                        Foreground="#A6A6B0"
+                                        Foreground="#A7A7A7"
                                         VerticalAlignment="Center"
                                         Margin="0,1,0,0" />
                                     <TextBlock
@@ -1313,7 +1046,7 @@
                                         Text="Favorite"
                                         FontSize="12.5"
                                         FontWeight="Medium"
-                                        Foreground="#A6A6B0"
+                                        Foreground="#A7A7A7"
                                         LineHeight="18"
                                         LineStackingStrategy="BlockLineHeight"
                                         VerticalAlignment="Center" />
@@ -1321,9 +1054,9 @@
                                         x:Name="KeyHintF"
                                         Width="18"
                                         Height="18"
-                                        CornerRadius="4"
-                                        Background="#212127"
-                                        BorderBrush="#2F2F37"
+                                        CornerRadius="4.0"
+                                        Background="#181818"
+                                        BorderBrush="#232323"
                                         BorderThickness="1"
                                         VerticalAlignment="Center"
                                         Margin="1,0,0,0">
@@ -1331,14 +1064,14 @@
                                             Text="F"
                                             FontSize="10.5"
                                             FontWeight="Medium"
-                                            Foreground="#868690"
+                                            Foreground="#878787"
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center" />
                                     </Border>
                                 </StackPanel>
                             </Button>
 
-                            <Border Width="1" Height="14" Background="#25252C" VerticalAlignment="Center" />
+                            <Border Width="1" Height="14" Background="#1B1B1B" VerticalAlignment="Center" />
 
                             <Button
                                 x:Name="ActionDeleteBtn"
@@ -1347,7 +1080,7 @@
                                 Background="Transparent"
                                 BorderThickness="0"
                                 Padding="10,0"
-                                CornerRadius="7"
+                                CornerRadius="6"
                                 VerticalAlignment="Center"
                                 VerticalContentAlignment="Center"
                                 ToolTipService.ToolTip="Delete item (D)">
@@ -1355,7 +1088,7 @@
                                     <FontIcon
                                         Glyph="&#xE74D;"
                                         FontSize="12.5"
-                                        Foreground="#A6A6B0"
+                                        Foreground="#A7A7A7"
                                         VerticalAlignment="Center"
                                         Margin="0,1,0,0" />
                                     <TextBlock
@@ -1363,7 +1096,7 @@
                                         Text="Delete"
                                         FontSize="12.5"
                                         FontWeight="Medium"
-                                        Foreground="#A6A6B0"
+                                        Foreground="#A7A7A7"
                                         LineHeight="18"
                                         LineStackingStrategy="BlockLineHeight"
                                         VerticalAlignment="Center" />
@@ -1371,9 +1104,9 @@
                                         x:Name="KeyHintD"
                                         Width="18"
                                         Height="18"
-                                        CornerRadius="4"
-                                        Background="#212127"
-                                        BorderBrush="#2F2F37"
+                                        CornerRadius="4.0"
+                                        Background="#181818"
+                                        BorderBrush="#232323"
                                         BorderThickness="1"
                                         VerticalAlignment="Center"
                                         Margin="1,0,0,0">
@@ -1381,7 +1114,7 @@
                                             Text="D"
                                             FontSize="10.5"
                                             FontWeight="Medium"
-                                            Foreground="#868690"
+                                            Foreground="#878787"
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center" />
                                     </Border>
@@ -1391,7 +1124,7 @@
                     </Border>
                 </Grid>
 
-                <!-- LAYER B: CONTINUITY & ONBOARDING PANE (Same neutral #18181B palette) -->
+                <!-- LAYER B: CONTINUITY & ONBOARDING PANE (Same neutral #111111 palette) -->
                 <ScrollViewer
                     x:Name="OnboardingPane"
                     Visibility="Collapsed"
@@ -1408,32 +1141,32 @@
                                     Text="Continuity Setup"
                                     FontSize="19"
                                     FontWeight="SemiBold"
-                                    Foreground="#F2F2F5" />
+                                    Foreground="#F2F2F2" />
                                 <TextBlock
                                     Text="Automatic iPhone to Windows clipboard synchronization via CoreDevice."
                                     FontSize="12.5"
-                                    Foreground="#8A8A92" />
+                                    Foreground="#8B8B8B" />
                             </StackPanel>
 
                             <Button
                                 Grid.Column="1"
                                 Click="OnRailClipboardClick"
-                                Background="#212125"
-                                BorderBrush="#2C2C30"
+                                Background="#181818"
+                                BorderBrush="#202020"
                                 BorderThickness="1"
-                                CornerRadius="7"
+                                CornerRadius="6"
                                 Padding="12,5"
                                 VerticalAlignment="Top">
-                                <TextBlock Text="Done" FontSize="12" FontWeight="SemiBold" Foreground="#F2F2F5" />
+                                <TextBlock Text="Done" FontSize="12" FontWeight="SemiBold" Foreground="#F2F2F2" />
                             </Button>
                         </Grid>
 
                         <!-- Step 1 -->
                         <Border
-                            Background="#18181B"
-                            BorderBrush="#242428"
+                            Background="#111111"
+                            BorderBrush="#1A1A1A"
                             BorderThickness="1"
-                            CornerRadius="10"
+                            CornerRadius="8"
                             Padding="16,14">
                             <Grid ColumnSpacing="14">
                                 <Grid.ColumnDefinitions>
@@ -1445,7 +1178,7 @@
                                     Text="01"
                                     FontSize="12"
                                     FontWeight="SemiBold"
-                                    Foreground="#6E6E76"
+                                    Foreground="#6F6F6F"
                                     Typography.NumeralAlignment="Tabular"
                                     VerticalAlignment="Top"
                                     Margin="0,2,0,0" />
@@ -1454,12 +1187,12 @@
                                         Text="USB Trust &amp; Device Pairing"
                                         FontSize="13.5"
                                         FontWeight="SemiBold"
-                                        Foreground="#F2F2F5" />
+                                        Foreground="#F2F2F2" />
                                     <TextBlock
                                         x:Name="Step1DetailText"
                                         Text="Connect iPhone over USB once and tap Trust This Computer."
                                         FontSize="12"
-                                        Foreground="#8A8A92"
+                                        Foreground="#8B8B8B"
                                         TextWrapping="Wrap" />
                                 </StackPanel>
                                 <TextBlock
@@ -1467,17 +1200,17 @@
                                     Grid.Column="2"
                                     Text="Trusted"
                                     FontSize="12"
-                                    Foreground="#28C840"
+                                    Foreground="#898989"
                                     VerticalAlignment="Center" />
                             </Grid>
                         </Border>
 
                         <!-- Step 2 -->
                         <Border
-                            Background="#18181B"
-                            BorderBrush="#242428"
+                            Background="#111111"
+                            BorderBrush="#1A1A1A"
                             BorderThickness="1"
-                            CornerRadius="10"
+                            CornerRadius="8"
                             Padding="16,14">
                             <Grid ColumnSpacing="14">
                                 <Grid.ColumnDefinitions>
@@ -1489,7 +1222,7 @@
                                     Text="02"
                                     FontSize="12"
                                     FontWeight="SemiBold"
-                                    Foreground="#6E6E76"
+                                    Foreground="#6F6F6F"
                                     Typography.NumeralAlignment="Tabular"
                                     VerticalAlignment="Top"
                                     Margin="0,2,0,0" />
@@ -1498,25 +1231,25 @@
                                         Text="Wireless Continuity (_remotepairing._tcp)"
                                         FontSize="13.5"
                                         FontWeight="SemiBold"
-                                        Foreground="#F2F2F5" />
+                                        Foreground="#F2F2F2" />
                                     <TextBlock
                                         Text="Create a RemotePairing record over USB so clipboard sync works over local Wi-Fi without cables."
                                         FontSize="12"
-                                        Foreground="#8A8A92"
+                                        Foreground="#8B8B8B"
                                         TextWrapping="Wrap" />
                                     <Button
                                         x:Name="PairWifiBtn"
                                         Click="OnPairWifiClick"
-                                        Background="#232328"
-                                        BorderBrush="#2E2E34"
+                                        Background="#1A1A1A"
+                                        BorderBrush="#222222"
                                         BorderThickness="1"
-                                        CornerRadius="7"
+                                        CornerRadius="6"
                                         Padding="12,5">
                                         <TextBlock
                                             x:Name="PairWifiBtnText"
                                             Text="Pair Wireless Over USB"
                                             FontSize="12"
-                                            Foreground="#F2F2F5" />
+                                            Foreground="#F2F2F2" />
                                     </Button>
                                 </StackPanel>
                                 <TextBlock
@@ -1524,17 +1257,17 @@
                                     Grid.Column="2"
                                     Text="Paired"
                                     FontSize="12"
-                                    Foreground="#28C840"
+                                    Foreground="#898989"
                                     VerticalAlignment="Center" />
                             </Grid>
                         </Border>
 
                         <!-- Step 3: Transport Mode & Clear -->
                         <Border
-                            Background="#18181B"
-                            BorderBrush="#242428"
+                            Background="#111111"
+                            BorderBrush="#1A1A1A"
                             BorderThickness="1"
-                            CornerRadius="10"
+                            CornerRadius="8"
                             Padding="16,14">
                             <Grid ColumnSpacing="14">
                                 <Grid.ColumnDefinitions>
@@ -1546,7 +1279,7 @@
                                     Text="03"
                                     FontSize="12"
                                     FontWeight="SemiBold"
-                                    Foreground="#6E6E76"
+                                    Foreground="#6F6F6F"
                                     Typography.NumeralAlignment="Tabular"
                                     VerticalAlignment="Top"
                                     Margin="0,2,0,0" />
@@ -1555,7 +1288,7 @@
                                         Text="Transport Preference"
                                         FontSize="13.5"
                                         FontWeight="SemiBold"
-                                        Foreground="#F2F2F5" />
+                                        Foreground="#F2F2F2" />
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <Button
                                             x:Name="TransportAutoBtn"
@@ -1563,56 +1296,56 @@
                                             Click="OnTransportAutoClick"
                                             FontSize="12"
                                             Padding="12,4"
-                                            CornerRadius="6"
-                                            Background="#2A2A30"
-                                            BorderBrush="#3A3A42"
+                                            CornerRadius="6.0"
+                                            Background="#1F1F1F"
+                                            BorderBrush="#2A2A2A"
                                             BorderThickness="1"
-                                            Foreground="#F2F2F5" />
+                                            Foreground="#F2F2F2" />
                                         <Button
                                             x:Name="TransportWifiBtn"
                                             Content="Wi-Fi"
                                             Click="OnTransportWifiClick"
                                             FontSize="12"
                                             Padding="12,4"
-                                            CornerRadius="6"
+                                            CornerRadius="6.0"
                                             Background="Transparent"
-                                            BorderBrush="#2A2A30"
+                                            BorderBrush="#1F1F1F"
                                             BorderThickness="1"
-                                            Foreground="#8A8A92" />
+                                            Foreground="#8B8B8B" />
                                         <Button
                                             x:Name="TransportUsbBtn"
                                             Content="USB"
                                             Click="OnTransportUsbClick"
                                             FontSize="12"
                                             Padding="12,4"
-                                            CornerRadius="6"
+                                            CornerRadius="6.0"
                                             Background="Transparent"
-                                            BorderBrush="#2A2A30"
+                                            BorderBrush="#1F1F1F"
                                             BorderThickness="1"
-                                            Foreground="#8A8A92" />
+                                            Foreground="#8B8B8B" />
                                     </StackPanel>
                                 </StackPanel>
 
                                 <Button
                                     Click="OnClearHistoryClick"
                                     Grid.Column="2"
-                                    Background="#232328"
-                                    BorderBrush="#2E2E34"
+                                    Background="#1A1A1A"
+                                    BorderBrush="#222222"
                                     BorderThickness="1"
-                                    CornerRadius="7"
+                                    CornerRadius="6"
                                     Padding="10,5"
                                     VerticalAlignment="Center">
-                                    <TextBlock Text="Clear History" FontSize="12" Foreground="#9A9AA2" />
+                                    <TextBlock Text="Clear History" FontSize="12" Foreground="#9B9B9B" />
                                 </Button>
                             </Grid>
                         </Border>
 
                         <!-- Card 04: Developer Mode -->
                         <Border
-                            Background="#18181B"
-                            BorderBrush="#242428"
+                            Background="#111111"
+                            BorderBrush="#1A1A1A"
                             BorderThickness="1"
-                            CornerRadius="10"
+                            CornerRadius="8"
                             Padding="16,14">
                             <Grid ColumnSpacing="14">
                                 <Grid.ColumnDefinitions>
@@ -1624,7 +1357,7 @@
                                     Text="04"
                                     FontSize="12"
                                     FontWeight="SemiBold"
-                                    Foreground="#6E6E76"
+                                    Foreground="#6F6F6F"
                                     Typography.NumeralAlignment="Tabular"
                                     VerticalAlignment="Top"
                                     Margin="0,2,0,0" />
@@ -1633,11 +1366,11 @@
                                         Text="Developer Mode"
                                         FontSize="13.5"
                                         FontWeight="SemiBold"
-                                        Foreground="#F2F2F5" />
+                                        Foreground="#F2F2F2" />
                                     <TextBlock
                                         Text="Hiển thị icon nhật ký backend ở thanh điều hướng để theo dõi tiến trình CoreDevice và kết nối iPhone thời gian thực."
                                         FontSize="11.5"
-                                        Foreground="#8A8A92"
+                                        Foreground="#8B8B8B"
                                         TextWrapping="Wrap" />
                                 </StackPanel>
 
@@ -1656,60 +1389,11 @@
                             </Grid>
                         </Border>
 
-                        <!-- Card 05: Apple AirDrop -->
-                        <Border
-                            Background="#18181B"
-                            BorderBrush="#242428"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Padding="16,14">
-                            <Grid ColumnSpacing="14">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Text="05"
-                                    FontSize="12"
-                                    FontWeight="SemiBold"
-                                    Foreground="#6E6E76"
-                                    Typography.NumeralAlignment="Tabular"
-                                    VerticalAlignment="Top"
-                                    Margin="0,2,0,0" />
-                                <StackPanel Grid.Column="1" Spacing="4">
-                                    <TextBlock
-                                        Text="Apple AirDrop"
-                                        FontSize="13.5"
-                                        FontWeight="SemiBold"
-                                        Foreground="#F2F2F5" />
-                                    <TextBlock
-                                        Text="Nhận ảnh, video và tệp tin trực tiếp từ iPhone qua Apple AirDrop native. Lưu an toàn vào Downloads\AirDrop với Mark-of-the-Web."
-                                        FontSize="11.5"
-                                        Foreground="#8A8A92"
-                                        TextWrapping="Wrap" />
-                                </StackPanel>
-
-                                <ToggleSwitch
-                                    x:Name="AirDropQuickToggle"
-                                    Grid.Column="2"
-                                    Toggled="OnAirDropReceivingToggled"
-                                    OnContent=""
-                                    OffContent=""
-                                    MinWidth="0"
-                                    HorizontalAlignment="Right"
-                                    HorizontalContentAlignment="Right"
-                                    VerticalAlignment="Center"
-                                    Margin="0"
-                                    Padding="0" />
-                            </Grid>
-                        </Border>
-
                         <TextBlock
                             x:Name="OnboardingFeedbackText"
                             Text=""
                             FontSize="12"
-                            Foreground="#8A8A92" />
+                            Foreground="#8B8B8B" />
                     </StackPanel>
                 </ScrollViewer>
 
@@ -1730,20 +1414,14 @@
 
                             <Border
                                 Grid.Column="0"
-                                Width="44"
-                                Height="44"
-                                CornerRadius="11"
-                                Background="#1C1C21"
-                                BorderBrush="#2C2C34"
-                                BorderThickness="1"
+                                Width="48"
+                                Height="48"
+                                CornerRadius="11.0"
                                 Margin="0,0,14,0"
                                 VerticalAlignment="Center">
-                                <FontIcon
-                                    Glyph="&#xE81E;"
-                                    FontSize="19"
-                                    Foreground="#F2F2F5"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center" />
+                                <Image
+                                    Source="ms-appx:///Assets/logo_128.png"
+                                    Stretch="UniformToFill" />
                             </Border>
 
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
@@ -1752,54 +1430,54 @@
                                         Text="Relais"
                                         FontSize="18"
                                         FontWeight="SemiBold"
-                                        Foreground="#F2F2F5" />
+                                        Foreground="#F2F2F2" />
                                     <Border
-                                        Background="#222228"
-                                        BorderBrush="#303038"
+                                        Background="#191919"
+                                        BorderBrush="#232323"
                                         BorderThickness="1"
-                                        CornerRadius="5"
+                                        CornerRadius="5.0"
                                         Padding="7,1"
                                         VerticalAlignment="Center">
                                         <TextBlock
                                             Text="v2.0.0"
                                             FontSize="11"
                                             FontWeight="Medium"
-                                            Foreground="#B8B8C2"
+                                            Foreground="#B9B9B9"
                                             Typography.NumeralAlignment="Tabular" />
                                     </Border>
                                 </StackPanel>
                                 <TextBlock
-                                    Text="Native iPhone ⇄ Windows Continuity &amp; AirDrop Engine"
+                                    Text="Native iPhone ⇄ Windows Universal Clipboard"
                                     FontSize="12.5"
-                                    Foreground="#8A8A96" />
+                                    Foreground="#8B8B8B" />
                             </StackPanel>
 
                             <Button
                                 Grid.Column="2"
                                 Click="OnRailClipboardClick"
-                                Background="#212125"
-                                BorderBrush="#2C2C30"
+                                Background="#181818"
+                                BorderBrush="#202020"
                                 BorderThickness="1"
-                                CornerRadius="7"
+                                CornerRadius="6"
                                 Padding="12,5"
                                 VerticalAlignment="Top">
-                                <TextBlock Text="Close" FontSize="12" FontWeight="SemiBold" Foreground="#F2F2F5" />
+                                <TextBlock Text="Close" FontSize="12" FontWeight="SemiBold" Foreground="#F2F2F2" />
                             </Button>
                         </Grid>
 
                         <!-- Card 1: Live Runtime Status -->
                         <Border
-                            Background="#18181B"
-                            BorderBrush="#242428"
+                            Background="#111111"
+                            BorderBrush="#1A1A1A"
                             BorderThickness="1"
-                            CornerRadius="10"
+                            CornerRadius="8"
                             Padding="16,14">
                             <StackPanel Spacing="10">
                                 <TextBlock
                                     Text="RUNTIME STATUS"
                                     FontSize="10.5"
                                     FontWeight="SemiBold"
-                                    Foreground="#66666E" />
+                                    Foreground="#676767" />
 
                                 <Grid RowSpacing="8" ColumnSpacing="16">
                                     <Grid.ColumnDefinitions>
@@ -1812,31 +1490,31 @@
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
 
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Paired Device" FontSize="12.5" Foreground="#8A8A92" />
-                                    <TextBlock x:Name="AboutDeviceText" Grid.Row="0" Grid.Column="1" Text="iPhone 16e (iPhone17,5) · iOS 27.0" FontSize="12.5" FontWeight="Medium" Foreground="#E4E4EA" />
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Paired Device" FontSize="12.5" Foreground="#8B8B8B" />
+                                    <TextBlock x:Name="AboutDeviceText" Grid.Row="0" Grid.Column="1" Text="iPhone 16e (iPhone17,5) · iOS 27.0" FontSize="12.5" FontWeight="Medium" Foreground="#E5E5E5" />
 
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Active Transport" FontSize="12.5" Foreground="#8A8A92" />
-                                    <TextBlock x:Name="AboutTransportText" Grid.Row="1" Grid.Column="1" Text="Wi-Fi (_remotepairing._tcp.local.)" FontSize="12.5" FontWeight="Medium" Foreground="#E4E4EA" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Active Transport" FontSize="12.5" Foreground="#8B8B8B" />
+                                    <TextBlock x:Name="AboutTransportText" Grid.Row="1" Grid.Column="1" Text="Wi-Fi (_remotepairing._tcp.local.)" FontSize="12.5" FontWeight="Medium" Foreground="#E5E5E5" />
 
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Local API Endpoint" FontSize="12.5" Foreground="#8A8A92" />
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="http://127.0.0.1:8767 (CoreDevice Daemon)" FontSize="12.5" Foreground="#B8B8C2" Typography.NumeralAlignment="Tabular" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Local API Endpoint" FontSize="12.5" Foreground="#8B8B8B" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="http://127.0.0.1:8767 (CoreDevice Daemon)" FontSize="12.5" Foreground="#B9B9B9" Typography.NumeralAlignment="Tabular" />
                                 </Grid>
                             </StackPanel>
                         </Border>
 
                         <!-- Card 2: Architecture & Protocol -->
                         <Border
-                            Background="#18181B"
-                            BorderBrush="#242428"
+                            Background="#111111"
+                            BorderBrush="#1A1A1A"
                             BorderThickness="1"
-                            CornerRadius="10"
+                            CornerRadius="8"
                             Padding="16,14">
                             <StackPanel Spacing="10">
                                 <TextBlock
                                     Text="CORE ARCHITECTURE"
                                     FontSize="10.5"
                                     FontWeight="SemiBold"
-                                    Foreground="#66666E" />
+                                    Foreground="#676767" />
 
                                 <Grid RowSpacing="8" ColumnSpacing="16">
                                     <Grid.ColumnDefinitions>
@@ -1850,34 +1528,34 @@
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
 
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="RemoteXPC Service" FontSize="12.5" Foreground="#8A8A92" />
-                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="com.apple.coredevice.pasteboardservice" FontSize="12.5" Foreground="#D4D4DC" />
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="RemoteXPC Service" FontSize="12.5" Foreground="#8B8B8B" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="com.apple.coredevice.pasteboardservice" FontSize="12.5" Foreground="#D5D5D5" />
 
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Darwin Notification" FontSize="12.5" Foreground="#8A8A92" />
-                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="com.apple.pasteboard.notify.changed" FontSize="12.5" Foreground="#D4D4DC" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Darwin Notification" FontSize="12.5" Foreground="#8B8B8B" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="com.apple.pasteboard.notify.changed" FontSize="12.5" Foreground="#D5D5D5" />
 
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Inclusion Policy" FontSize="12.5" Foreground="#8A8A92" />
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="POLICY_PROMISE_SECONDARY + RESOLVE" FontSize="12.5" Foreground="#D4D4DC" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Inclusion Policy" FontSize="12.5" Foreground="#8B8B8B" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="POLICY_PROMISE_SECONDARY + RESOLVE" FontSize="12.5" Foreground="#D5D5D5" />
 
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Windows Formats" FontSize="12.5" Foreground="#8A8A92" />
-                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="CF_UNICODETEXT · HTML · CF_DIBV5 · PNG · CF_HDROP" FontSize="12.5" Foreground="#D4D4DC" />
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Windows Formats" FontSize="12.5" Foreground="#8B8B8B" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="CF_UNICODETEXT · HTML · CF_DIBV5 · PNG · CF_HDROP" FontSize="12.5" Foreground="#D5D5D5" />
                                 </Grid>
                             </StackPanel>
                         </Border>
 
                         <!-- Card 3: Keyboard Shortcuts -->
                         <Border
-                            Background="#18181B"
-                            BorderBrush="#242428"
+                            Background="#111111"
+                            BorderBrush="#1A1A1A"
                             BorderThickness="1"
-                            CornerRadius="10"
+                            CornerRadius="8"
                             Padding="16,14">
                             <StackPanel Spacing="10">
                                 <TextBlock
                                     Text="KEYBOARD SHORTCUTS"
                                     FontSize="10.5"
                                     FontWeight="SemiBold"
-                                    Foreground="#66666E" />
+                                    Foreground="#676767" />
 
                                 <Grid RowSpacing="8" ColumnSpacing="16">
                                     <Grid.ColumnDefinitions>
@@ -1891,17 +1569,17 @@
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
 
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Win + Alt + V" FontSize="12.5" FontWeight="SemiBold" Foreground="#E4E4EA" />
-                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Toggle floating Quick Paste manager anywhere" FontSize="12.5" Foreground="#8A8A92" />
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Win + Alt + V" FontSize="12.5" FontWeight="SemiBold" Foreground="#E5E5E5" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Toggle floating Quick Paste manager anywhere" FontSize="12.5" Foreground="#8B8B8B" />
 
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Ctrl + 1 .. 9" FontSize="12.5" FontWeight="SemiBold" Foreground="#E4E4EA" Typography.NumeralAlignment="Tabular" />
-                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="Instant paste item #1–#9 in Quick Paste" FontSize="12.5" Foreground="#8A8A92" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Ctrl + 1 .. 9" FontSize="12.5" FontWeight="SemiBold" Foreground="#E5E5E5" Typography.NumeralAlignment="Tabular" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="Instant paste item #1–#9 in Quick Paste" FontSize="12.5" Foreground="#8B8B8B" />
 
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="C / S" FontSize="12.5" FontWeight="SemiBold" Foreground="#E4E4EA" />
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="Copy to Windows (C) or Send to iPhone (S)" FontSize="12.5" Foreground="#8A8A92" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="C / S" FontSize="12.5" FontWeight="SemiBold" Foreground="#E5E5E5" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="Copy to Windows (C) or Send to iPhone (S)" FontSize="12.5" Foreground="#8B8B8B" />
 
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="F / D" FontSize="12.5" FontWeight="SemiBold" Foreground="#E4E4EA" />
-                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="Toggle Favorite (F) or Delete selected clip (D)" FontSize="12.5" Foreground="#8A8A92" />
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="F / D" FontSize="12.5" FontWeight="SemiBold" Foreground="#E5E5E5" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="Toggle Favorite (F) or Delete selected clip (D)" FontSize="12.5" Foreground="#8B8B8B" />
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -1912,7 +1590,7 @@
                 <Grid
                     x:Name="LogsPane"
                     Visibility="Collapsed"
-                    Background="#111114"
+                    Background="#0C0C0C"
                     RowSpacing="0">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -1923,8 +1601,8 @@
                     <!-- Logs Pane Header -->
                     <Border
                         Grid.Row="0"
-                        Background="#151518"
-                        BorderBrush="#232328"
+                        Background="#0F0F0F"
+                        BorderBrush="#1A1A1A"
                         BorderThickness="0,0,0,1"
                         Padding="20,12">
                         <Grid>
@@ -1934,23 +1612,23 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                <FontIcon Glyph="&#xE756;" FontSize="15" Foreground="#A0A0AA" />
+                                <FontIcon Glyph="&#xE756;" FontSize="15" Foreground="#A1A1A1" />
                                 <TextBlock
                                     Text="CoreDevice Backend Logs"
                                     FontSize="14"
                                     FontWeight="SemiBold"
-                                    Foreground="#EDEDF2" />
+                                    Foreground="#EEEEEE" />
                                 <Border
-                                    Background="#1E281E"
-                                    BorderBrush="#2E482E"
+                                    Background="#1A1A1A"
+                                    BorderBrush="#2C2C2C"
                                     BorderThickness="1"
-                                    CornerRadius="4"
+                                    CornerRadius="4.0"
                                     Padding="6,2">
                                     <TextBlock
                                         x:Name="LogsStatusBadge"
                                         Text="LIVE · 127.0.0.1:8767"
                                         FontSize="10.5"
-                                        Foreground="#4ADE80"
+                                        Foreground="#A7A7A7"
                                         FontWeight="Medium" />
                                 </Border>
                             </StackPanel>
@@ -1959,51 +1637,51 @@
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                 <Button
                                     Click="OnRefreshLogsClick"
-                                    Background="#202025"
-                                    BorderBrush="#2C2C32"
+                                    Background="#181818"
+                                    BorderBrush="#202020"
                                     BorderThickness="1"
-                                    CornerRadius="6"
+                                    CornerRadius="6.0"
                                     Padding="10,4"
                                     ToolTipService.ToolTip="Refresh Logs (F5)">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE72C;" FontSize="11" Foreground="#A0A0AA" />
-                                        <TextBlock Text="Refresh" FontSize="11.5" Foreground="#EDEDF2" />
+                                        <FontIcon Glyph="&#xE72C;" FontSize="11" Foreground="#A1A1A1" />
+                                        <TextBlock Text="Refresh" FontSize="11.5" Foreground="#EEEEEE" />
                                     </StackPanel>
                                 </Button>
                                 <Button
                                     Click="OnCopyLogsClick"
-                                    Background="#202025"
-                                    BorderBrush="#2C2C32"
+                                    Background="#181818"
+                                    BorderBrush="#202020"
                                     BorderThickness="1"
-                                    CornerRadius="6"
+                                    CornerRadius="6.0"
                                     Padding="10,4"
                                     ToolTipService.ToolTip="Copy all logs to Windows Clipboard">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE8C8;" FontSize="11" Foreground="#A0A0AA" />
-                                        <TextBlock Text="Copy" FontSize="11.5" Foreground="#EDEDF2" />
+                                        <FontIcon Glyph="&#xE8C8;" FontSize="11" Foreground="#A1A1A1" />
+                                        <TextBlock Text="Copy" FontSize="11.5" Foreground="#EEEEEE" />
                                     </StackPanel>
                                 </Button>
                                 <Button
                                     Click="OnClearLogsClick"
-                                    Background="#202025"
-                                    BorderBrush="#2C2C32"
+                                    Background="#181818"
+                                    BorderBrush="#202020"
                                     BorderThickness="1"
-                                    CornerRadius="6"
+                                    CornerRadius="6.0"
                                     Padding="10,4"
                                     ToolTipService.ToolTip="Clear Backend Buffer">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE74D;" FontSize="11" Foreground="#A0A0AA" />
-                                        <TextBlock Text="Clear" FontSize="11.5" Foreground="#EDEDF2" />
+                                        <FontIcon Glyph="&#xE74D;" FontSize="11" Foreground="#A1A1A1" />
+                                        <TextBlock Text="Clear" FontSize="11.5" Foreground="#EEEEEE" />
                                     </StackPanel>
                                 </Button>
                                 <Button
                                     Click="OnRailClipboardClick"
-                                    Background="#202025"
-                                    BorderBrush="#2C2C32"
+                                    Background="#181818"
+                                    BorderBrush="#202020"
                                     BorderThickness="1"
-                                    CornerRadius="6"
+                                    CornerRadius="6.0"
                                     Padding="10,4">
-                                    <TextBlock Text="Close" FontSize="11.5" Foreground="#EDEDF2" />
+                                    <TextBlock Text="Close" FontSize="11.5" Foreground="#EEEEEE" />
                                 </Button>
                             </StackPanel>
                         </Grid>
@@ -2012,10 +1690,10 @@
                     <!-- Terminal Content Body (Framed elevated terminal console) -->
                     <Border
                         Grid.Row="1"
-                        Background="#0A0B0E"
-                        BorderBrush="#1E1F29"
+                        Background="#080808"
+                        BorderBrush="#171717"
                         BorderThickness="1"
-                        CornerRadius="8"
+                        CornerRadius="6"
                         Margin="16,12">
                         <ScrollViewer
                             x:Name="LogsScrollViewer"
@@ -2030,7 +1708,7 @@
                                 TextWrapping="NoWrap"
                                 FontFamily="Cascadia Code, Consolas, Courier New"
                                 FontSize="12"
-                                Foreground="#D4D4DE"
+                                Foreground="#D5D5D5"
                                 Background="Transparent"
                                 BorderThickness="0"
                                 Padding="16,12" />
@@ -2040,8 +1718,8 @@
                     <!-- Status Footer -->
                     <Border
                         Grid.Row="2"
-                        Background="#131316"
-                        BorderBrush="#202024"
+                        Background="#0E0E0E"
+                        BorderBrush="#171717"
                         BorderThickness="0,1,0,0"
                         Padding="16,6">
                         <Grid>
@@ -2053,330 +1731,19 @@
                                 x:Name="LogsFooterInfo"
                                 Text="Showing latest 300 lines · Auto-scroll active"
                                 FontSize="11"
-                                Foreground="#6E6E78" />
+                                Foreground="#6F6F6F" />
                             <CheckBox
                                 x:Name="LogsAutoScrollCheck"
                                 Grid.Column="1"
                                 Content="Auto-scroll"
                                 IsChecked="True"
                                 FontSize="11"
-                                Foreground="#8E8E98"
+                                Foreground="#8F8F8F"
                                 MinWidth="0"
                                 Padding="6,0,0,0" />
                         </Grid>
                     </Border>
                 </Grid>
-
-                <!-- LAYER E: AIRDROP CENTER PANE (Monochrome Carbon-Graphite) -->
-                <ScrollViewer
-                    x:Name="AirDropPane"
-                    Visibility="Collapsed"
-                    VerticalScrollBarVisibility="Auto"
-                    Padding="32,24">
-                    <StackPanel MaxWidth="560" HorizontalAlignment="Center" Spacing="16">
-                        <!-- AirDrop Header Row -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <Border
-                                Grid.Column="0"
-                                Width="44"
-                                Height="44"
-                                CornerRadius="11"
-                                Background="#1C1C21"
-                                BorderBrush="#2C2C34"
-                                BorderThickness="1"
-                                Margin="0,0,14,0"
-                                VerticalAlignment="Center">
-                                <FontIcon
-                                    Glyph="&#xE72D;"
-                                    FontSize="19"
-                                    Foreground="#38BDF8"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center" />
-                            </Border>
-
-                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <TextBlock
-                                        Text="Apple AirDrop"
-                                        FontSize="18"
-                                        FontWeight="SemiBold"
-                                        Foreground="#F2F2F5" />
-                                    <Border
-                                        x:Name="AirDropStatusPill"
-                                        Background="#1C261C"
-                                        BorderBrush="#2D482D"
-                                        BorderThickness="1"
-                                        CornerRadius="5"
-                                        Padding="7,1"
-                                        VerticalAlignment="Center">
-                                        <TextBlock
-                                            x:Name="AirDropStatusPillText"
-                                            Text="● Ready · Everyone"
-                                            FontSize="11"
-                                            FontWeight="Medium"
-                                            Foreground="#4ADE80" />
-                                    </Border>
-                                </StackPanel>
-                                <TextBlock
-                                    Text="Native iPhone ⇄ Windows Continuity Receiver"
-                                    FontSize="12.5"
-                                    Foreground="#8A8A96" />
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
-                                <Button
-                                    Click="OnOpenAirDropFolderClick"
-                                    Background="#212125"
-                                    BorderBrush="#2C2C30"
-                                    BorderThickness="1"
-                                    CornerRadius="7"
-                                    Padding="10,5"
-                                    ToolTipService.ToolTip="Open Downloads\AirDrop folder">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE838;" FontSize="12" Foreground="#A0A0AA" />
-                                        <TextBlock Text="Downloads" FontSize="11.5" Foreground="#F2F2F5" />
-                                    </StackPanel>
-                                </Button>
-                                <Button
-                                    Click="OnRailClipboardClick"
-                                    Background="#212125"
-                                    BorderBrush="#2C2C30"
-                                    BorderThickness="1"
-                                    CornerRadius="7"
-                                    Padding="10,5">
-                                    <TextBlock Text="Close" FontSize="11.5" FontWeight="SemiBold" Foreground="#F2F2F5" />
-                                </Button>
-                            </StackPanel>
-                        </Grid>
-
-                        <!-- Card 1: AirDrop Service Toggle & Device Identity -->
-                        <Border
-                            Background="#18181B"
-                            BorderBrush="#242428"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Padding="16,14">
-                            <StackPanel Spacing="14">
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Spacing="3">
-                                        <TextBlock
-                                            Text="AirDrop Discoverability"
-                                            FontSize="13.5"
-                                            FontWeight="SemiBold"
-                                            Foreground="#F2F2F5" />
-                                        <TextBlock
-                                            Text="Allows iPhones on the local network to discover this PC in the native AirDrop share sheet."
-                                            FontSize="12"
-                                            Foreground="#8A8A92"
-                                            TextWrapping="Wrap" />
-                                    </StackPanel>
-                                    <ToggleSwitch
-                                        x:Name="AirDropMainToggle"
-                                        Grid.Column="1"
-                                        Toggled="OnAirDropReceivingToggled"
-                                        OnContent=""
-                                        OffContent=""
-                                        MinWidth="0"
-                                        HorizontalAlignment="Right"
-                                        VerticalAlignment="Center"
-                                        Margin="0"
-                                        Padding="0" />
-                                </Grid>
-
-                                <Border Height="1" Background="#242428" Margin="0,2" />
-
-                                <!-- Computer Name in AirDrop -->
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock
-                                        Text="Device Name:"
-                                        FontSize="12.5"
-                                        Foreground="#8A8A96"
-                                        VerticalAlignment="Center" />
-                                    <TextBox
-                                        x:Name="AirDropDeviceNameInput"
-                                        Grid.Column="1"
-                                        Text="Relais PC"
-                                        FontSize="12.5"
-                                        Background="#1E1E22"
-                                        BorderBrush="#2C2C32"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        Padding="8,4"
-                                        VerticalAlignment="Center" />
-                                    <Button
-                                        Grid.Column="2"
-                                        Click="OnSaveAirDropDeviceNameClick"
-                                        Background="#25252A"
-                                        BorderBrush="#323238"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        Padding="10,4"
-                                        VerticalAlignment="Center">
-                                        <TextBlock Text="Save" FontSize="11.5" Foreground="#EDEDF2" />
-                                    </Button>
-                                </Grid>
-
-                                <!-- Hardware Diagnostics Chips -->
-                                <StackPanel Spacing="6">
-                                    <TextBlock Text="Hardware &amp; Network Diagnostics" FontSize="11.5" FontWeight="SemiBold" Foreground="#6E6E78" />
-                                    <Grid ColumnSpacing="8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-
-                                        <Border
-                                            Grid.Column="0"
-                                            Background="#151518"
-                                            BorderBrush="#222226"
-                                            BorderThickness="1"
-                                            CornerRadius="6"
-                                            Padding="8,6">
-                                            <StackPanel Spacing="2">
-                                                <TextBlock Text="BLUETOOTH" FontSize="9.5" FontWeight="Bold" Foreground="#60A5FA" />
-                                                <TextBlock x:Name="AirDropBleStatusChip" Text="Advertising Wake" FontSize="11" Foreground="#D4D4DE" TextTrimming="CharacterEllipsis" />
-                                            </StackPanel>
-                                        </Border>
-
-                                        <Border
-                                            Grid.Column="1"
-                                            Background="#151518"
-                                            BorderBrush="#222226"
-                                            BorderThickness="1"
-                                            CornerRadius="6"
-                                            Padding="8,6">
-                                            <StackPanel Spacing="2">
-                                                <TextBlock Text="WI-FI ADAPTER" FontSize="9.5" FontWeight="Bold" Foreground="#34D399" />
-                                                <TextBlock x:Name="AirDropWifiStatusChip" Text="Intel AX211" FontSize="11" Foreground="#D4D4DE" TextTrimming="CharacterEllipsis" />
-                                            </StackPanel>
-                                        </Border>
-
-                                        <Border
-                                            Grid.Column="2"
-                                            Background="#151518"
-                                            BorderBrush="#222226"
-                                            BorderThickness="1"
-                                            CornerRadius="6"
-                                            Padding="8,6">
-                                            <StackPanel Spacing="2">
-                                                <TextBlock Text="PROTOCOL" FontSize="9.5" FontWeight="Bold" Foreground="#A78BFA" />
-                                                <TextBlock x:Name="AirDropProtoStatusChip" Text="mDNS &amp; HTTPS" FontSize="11" Foreground="#D4D4DE" TextTrimming="CharacterEllipsis" />
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                    <TextBlock
-                                        x:Name="AirDropAwdlNote"
-                                        Text="Zero-configuration native AirDrop: iPhones on the same Wi-Fi network discover this PC instantly via BLE beacon and mDNS HTTPS responder. Windows SmartScreen Mark-of-the-Web is applied to all incoming files."
-                                        FontSize="11"
-                                        Foreground="#6E6E78"
-                                        TextWrapping="Wrap" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Card 2: Active Transfer Progress (Visible when receiving) -->
-                        <Border
-                            x:Name="AirDropActiveTransferCard"
-                            Visibility="Collapsed"
-                            Background="#18181B"
-                            BorderBrush="#3B82F6"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Padding="16,14">
-                            <StackPanel Spacing="10">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Spacing="2">
-                                        <TextBlock
-                                            x:Name="AirDropActiveTransferTitle"
-                                            Text="Receiving from iPhone..."
-                                            FontSize="13"
-                                            FontWeight="SemiBold"
-                                            Foreground="#F2F2F5" />
-                                        <TextBlock
-                                            x:Name="AirDropActiveTransferSub"
-                                            Text="Photo.heic (12.4 MB)"
-                                            FontSize="12"
-                                            Foreground="#8A8A92" />
-                                    </StackPanel>
-                                    <TextBlock
-                                        x:Name="AirDropActiveTransferPercent"
-                                        Grid.Column="1"
-                                        Text="0%"
-                                        FontSize="14"
-                                        FontWeight="Bold"
-                                        Foreground="#38BDF8"
-                                        VerticalAlignment="Center" />
-                                </Grid>
-                                <ProgressBar
-                                    x:Name="AirDropActiveProgressBar"
-                                    Value="0"
-                                    Maximum="100"
-                                    Height="6"
-                                    Foreground="#3B82F6"
-                                    Background="#232328"
-                                    CornerRadius="3" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Card 3: Recent AirDrop Transfers -->
-                        <Border
-                            Background="#18181B"
-                            BorderBrush="#242428"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Padding="16,14">
-                            <StackPanel Spacing="12">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock
-                                        Text="Recent Transfers"
-                                        FontSize="13.5"
-                                        FontWeight="SemiBold"
-                                        Foreground="#F2F2F5" />
-                                    <TextBlock
-                                        x:Name="AirDropTransferCountText"
-                                        Grid.Column="1"
-                                        Text="0 received"
-                                        FontSize="11.5"
-                                        Foreground="#6E6E78" />
-                                </Grid>
-
-                                <!-- Transfer list container -->
-                                <StackPanel x:Name="AirDropRecentTransfersPanel" Spacing="8">
-                                    <TextBlock
-                                        x:Name="AirDropNoTransfersText"
-                                        Text="No AirDrop transfers received yet. Send a photo or file from iPhone via AirDrop to see it here."
-                                        FontSize="12"
-                                        Foreground="#6E6E78"
-                                        Padding="4,8" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </ScrollViewer>
             </Grid>
         </Grid>
     </Grid>
