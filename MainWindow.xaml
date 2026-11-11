@@ -175,6 +175,19 @@
 
                     <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Center" Spacing="6">
                         <Button
+                            x:Name="RailAboutBtn"
+                            Click="OnRailAboutClick"
+                            Width="34"
+                            Height="34"
+                            Padding="0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ToolTipService.ToolTip="About Universal Clipboard">
+                            <FontIcon Glyph="&#xE946;" FontSize="15" Foreground="#8A8A92" />
+                        </Button>
+
+                        <Button
                             x:Name="RailSettingsBtn"
                             Click="OnRailDeviceClick"
                             Width="34"
@@ -631,7 +644,7 @@
                                 HorizontalAlignment="Center" />
                         </StackPanel>
 
-                        <!-- File Preview Stage (Matches Reference Image #2 Gold Badge) -->
+                        <!-- File Preview Stage (Monochrome Carbon-Gray Badge) -->
                         <StackPanel
                             x:Name="InspectorFileStage"
                             Visibility="Collapsed"
@@ -651,14 +664,16 @@
                                         Width="68"
                                         Height="68"
                                         CornerRadius="14"
-                                        Background="#B68F5E"
+                                        Background="#25252C"
+                                        BorderBrush="#363640"
+                                        BorderThickness="1"
                                         HorizontalAlignment="Center">
                                         <TextBlock
                                             x:Name="InspectorFileExtText"
                                             Text="ZIP"
-                                            FontSize="17"
+                                            FontSize="16"
                                             FontWeight="Bold"
-                                            Foreground="#FFFFFF"
+                                            Foreground="#E8E8EE"
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center" />
                                     </Border>
@@ -1068,6 +1083,201 @@
                             Text=""
                             FontSize="12"
                             Foreground="#8A8A92" />
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- LAYER C: ABOUT UNIVERSAL CLIPBOARD PANE (Monochrome Carbon-Graphite) -->
+                <ScrollViewer
+                    x:Name="AboutPane"
+                    Visibility="Collapsed"
+                    VerticalScrollBarVisibility="Auto"
+                    Padding="36,28">
+                    <StackPanel MaxWidth="520" HorizontalAlignment="Center" Spacing="16">
+                        <!-- Header Row -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border
+                                Grid.Column="0"
+                                Width="44"
+                                Height="44"
+                                CornerRadius="11"
+                                Background="#1C1C21"
+                                BorderBrush="#2C2C34"
+                                BorderThickness="1"
+                                Margin="0,0,14,0"
+                                VerticalAlignment="Center">
+                                <FontIcon
+                                    Glyph="&#xE81E;"
+                                    FontSize="19"
+                                    Foreground="#F2F2F5"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center" />
+                            </Border>
+
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock
+                                        Text="Universal Clipboard"
+                                        FontSize="18"
+                                        FontWeight="SemiBold"
+                                        Foreground="#F2F2F5" />
+                                    <Border
+                                        Background="#222228"
+                                        BorderBrush="#303038"
+                                        BorderThickness="1"
+                                        CornerRadius="5"
+                                        Padding="7,1"
+                                        VerticalAlignment="Center">
+                                        <TextBlock
+                                            Text="v1.2.0"
+                                            FontSize="11"
+                                            FontWeight="Medium"
+                                            Foreground="#B8B8C2"
+                                            Typography.NumeralAlignment="Tabular" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock
+                                    Text="Native iPhone ⇄ Windows Continuity Clipboard Engine"
+                                    FontSize="12.5"
+                                    Foreground="#8A8A92" />
+                            </StackPanel>
+
+                            <Button
+                                Grid.Column="2"
+                                Click="OnRailClipboardClick"
+                                Background="#212125"
+                                BorderBrush="#2C2C30"
+                                BorderThickness="1"
+                                CornerRadius="7"
+                                Padding="12,5"
+                                VerticalAlignment="Top">
+                                <TextBlock Text="Close" FontSize="12" FontWeight="SemiBold" Foreground="#F2F2F5" />
+                            </Button>
+                        </Grid>
+
+                        <!-- Card 1: Live Runtime Status -->
+                        <Border
+                            Background="#18181B"
+                            BorderBrush="#242428"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,14">
+                            <StackPanel Spacing="10">
+                                <TextBlock
+                                    Text="RUNTIME STATUS"
+                                    FontSize="10.5"
+                                    FontWeight="SemiBold"
+                                    Foreground="#66666E" />
+
+                                <Grid RowSpacing="8" ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Paired Device" FontSize="12.5" Foreground="#8A8A92" />
+                                    <TextBlock x:Name="AboutDeviceText" Grid.Row="0" Grid.Column="1" Text="iPhone 16e (iPhone17,5) · iOS 27.0" FontSize="12.5" FontWeight="Medium" Foreground="#E4E4EA" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Active Transport" FontSize="12.5" Foreground="#8A8A92" />
+                                    <TextBlock x:Name="AboutTransportText" Grid.Row="1" Grid.Column="1" Text="Wi-Fi (_remotepairing._tcp.local.)" FontSize="12.5" FontWeight="Medium" Foreground="#E4E4EA" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Local API Endpoint" FontSize="12.5" Foreground="#8A8A92" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="http://127.0.0.1:8767 (CoreDevice Daemon)" FontSize="12.5" Foreground="#B8B8C2" Typography.NumeralAlignment="Tabular" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 2: Architecture & Protocol -->
+                        <Border
+                            Background="#18181B"
+                            BorderBrush="#242428"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,14">
+                            <StackPanel Spacing="10">
+                                <TextBlock
+                                    Text="CORE ARCHITECTURE"
+                                    FontSize="10.5"
+                                    FontWeight="SemiBold"
+                                    Foreground="#66666E" />
+
+                                <Grid RowSpacing="8" ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="RemoteXPC Service" FontSize="12.5" Foreground="#8A8A92" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="com.apple.coredevice.pasteboardservice" FontSize="12.5" Foreground="#D4D4DC" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Darwin Notification" FontSize="12.5" Foreground="#8A8A92" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="com.apple.pasteboard.notify.changed" FontSize="12.5" Foreground="#D4D4DC" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Inclusion Policy" FontSize="12.5" Foreground="#8A8A92" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="POLICY_PROMISE_SECONDARY + RESOLVE" FontSize="12.5" Foreground="#D4D4DC" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Windows Formats" FontSize="12.5" Foreground="#8A8A92" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="CF_UNICODETEXT · HTML · CF_DIBV5 · PNG · CF_HDROP" FontSize="12.5" Foreground="#D4D4DC" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 3: Keyboard Shortcuts -->
+                        <Border
+                            Background="#18181B"
+                            BorderBrush="#242428"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,14">
+                            <StackPanel Spacing="10">
+                                <TextBlock
+                                    Text="KEYBOARD SHORTCUTS"
+                                    FontSize="10.5"
+                                    FontWeight="SemiBold"
+                                    Foreground="#66666E" />
+
+                                <Grid RowSpacing="8" ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Win + Alt + V" FontSize="12.5" FontWeight="SemiBold" Foreground="#E4E4EA" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Toggle floating Quick Paste manager anywhere" FontSize="12.5" Foreground="#8A8A92" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Ctrl + 1 .. 9" FontSize="12.5" FontWeight="SemiBold" Foreground="#E4E4EA" Typography.NumeralAlignment="Tabular" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="Instant paste item #1–#9 in Quick Paste" FontSize="12.5" Foreground="#8A8A92" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="C / S" FontSize="12.5" FontWeight="SemiBold" Foreground="#E4E4EA" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="Copy to Windows (C) or Send to iPhone (S)" FontSize="12.5" Foreground="#8A8A92" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="F / D" FontSize="12.5" FontWeight="SemiBold" Foreground="#E4E4EA" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="Toggle Favorite (F) or Delete selected clip (D)" FontSize="12.5" Foreground="#8A8A92" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

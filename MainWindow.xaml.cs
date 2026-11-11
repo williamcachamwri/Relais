@@ -56,8 +56,8 @@ public sealed partial class MainWindow : Window
     private static readonly SolidColorBrush BrushTextDim = new(ColorHelper.FromArgb(0xFF, 0x5E, 0x5E, 0x66));
     private static readonly SolidColorBrush BrushWhite = new(Colors.White);
 
-    private static readonly SolidColorBrush BrushFileGold = new(ColorHelper.FromArgb(0xFF, 0xD4, 0xA3, 0x59));
-    private static readonly SolidColorBrush BrushFileBadgeBg = new(ColorHelper.FromArgb(0xFF, 0xB6, 0x8F, 0x5E));
+    private static readonly SolidColorBrush BrushFileGold = new(ColorHelper.FromArgb(0xFF, 0xB8, 0xB8, 0xC2));
+    private static readonly SolidColorBrush BrushFileBadgeBg = new(ColorHelper.FromArgb(0xFF, 0x25, 0x25, 0x2C));
     private static readonly SolidColorBrush BrushLinkBlueText = new(ColorHelper.FromArgb(0xFF, 0x58, 0xA6, 0xFF));
     private static readonly SolidColorBrush BrushLinkBlueBg = new(ColorHelper.FromArgb(0xFF, 0x17, 0x2A, 0x3A));
     private static readonly SolidColorBrush BrushCodePurpleText = new(ColorHelper.FromArgb(0xFF, 0xA3, 0x71, 0xF7));
@@ -171,7 +171,7 @@ public sealed partial class MainWindow : Window
     {
         var interactiveButtons = new UIElement[]
         {
-            RailClipboardBtn, RailSettingsBtn,
+            RailClipboardBtn, RailAboutBtn, RailSettingsBtn,
             NavTypeAllBtn, NavTypeFavBtn, NavTypeTextBtn, NavTypeRichBtn,
             NavTypeImageBtn, NavTypeFileBtn, NavTagLinkBtn, NavTagCodeBtn,
             NavTagImageBtn, NavSrcAllBtn, NavSrcPcBtn, NavSrcIphoneBtn,
@@ -401,6 +401,13 @@ public sealed partial class MainWindow : Window
 
         Step2StatusText.Text = status.WifiPaired ? "Paired" : "Not paired";
         Step2StatusText.Foreground = status.WifiPaired ? BrushStatusGreen : BrushTextMuted;
+
+        AboutDeviceText.Text = !string.IsNullOrWhiteSpace(status.DeviceName)
+            ? $"{status.DeviceName} · iOS {status.IosVersion}"
+            : "Searching for paired iPhone...";
+        AboutTransportText.Text = status.Connected && !string.IsNullOrWhiteSpace(status.ActiveTransport)
+            ? $"{status.ActiveTransport} (Connected)"
+            : $"Standby ({status.TransportMode.ToUpperInvariant()})";
 
         UpdateTransportButtons(status.TransportMode);
     }
@@ -685,12 +692,14 @@ public sealed partial class MainWindow : Window
                 Height = 42,
                 CornerRadius = new CornerRadius(8),
                 Background = BrushFileBadgeBg,
+                BorderBrush = BrushRowSelectedEdge,
+                BorderThickness = new Thickness(1),
                 Child = new TextBlock
                 {
                     Text = item.FileExtensionBadge,
-                    FontSize = 11.5,
+                    FontSize = 11,
                     FontWeight = Microsoft.UI.Text.FontWeights.Bold,
-                    Foreground = BrushWhite,
+                    Foreground = BrushTextPrimary,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                 },
@@ -904,8 +913,10 @@ public sealed partial class MainWindow : Window
         if (InspectorPane.Visibility != Visibility.Visible)
         {
             OnboardingPane.Visibility = Visibility.Collapsed;
+            AboutPane.Visibility = Visibility.Collapsed;
             InspectorPane.Visibility = Visibility.Visible;
             RailClipboardBtn.Background = BrushRailActive;
+            RailAboutBtn.Background = BrushTransparent;
             RailSettingsBtn.Background = BrushTransparent;
             AnimateStageEntrance(InspectorPane);
         }
@@ -914,10 +925,23 @@ public sealed partial class MainWindow : Window
     private void ShowOnboardingPane()
     {
         InspectorPane.Visibility = Visibility.Collapsed;
+        AboutPane.Visibility = Visibility.Collapsed;
         OnboardingPane.Visibility = Visibility.Visible;
         RailSettingsBtn.Background = BrushRailActive;
+        RailAboutBtn.Background = BrushTransparent;
         RailClipboardBtn.Background = BrushTransparent;
         AnimateStageEntrance(OnboardingPane);
+    }
+
+    private void ShowAboutPane()
+    {
+        InspectorPane.Visibility = Visibility.Collapsed;
+        OnboardingPane.Visibility = Visibility.Collapsed;
+        AboutPane.Visibility = Visibility.Visible;
+        RailAboutBtn.Background = BrushRailActive;
+        RailSettingsBtn.Background = BrushTransparent;
+        RailClipboardBtn.Background = BrushTransparent;
+        AnimateStageEntrance(AboutPane);
     }
 
     private void OnRailClipboardClick(object sender, RoutedEventArgs e)
@@ -934,6 +958,18 @@ public sealed partial class MainWindow : Window
             var currentlyVisible = FilterSidebarBorder.Visibility == Visibility.Visible && ColSidebar.Width.Value > 0;
             _sidebarManualOverride = !currentlyVisible;
             ApplyResponsiveLayout(RootGrid.ActualWidth, RootGrid.ActualHeight);
+        }
+    }
+
+    private void OnRailAboutClick(object sender, RoutedEventArgs e)
+    {
+        if (AboutPane.Visibility == Visibility.Visible)
+        {
+            ShowInspectorPane();
+        }
+        else
+        {
+            ShowAboutPane();
         }
     }
 
