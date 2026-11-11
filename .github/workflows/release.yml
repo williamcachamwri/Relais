@@ -29,6 +29,12 @@ jobs:
       - name: Install WiX Toolset
         run: dotnet tool install --global wix --version 5.0.2
 
+      - name: Install WiX extensions (pinned to match WiX version)
+        run: |
+          wix extension add -g WixToolset.UI.wixext/5.0.2
+          wix extension add -g WixToolset.Util.wixext/5.0.2
+          wix extension list -g
+
       - name: Publish app (self-contained)
         run: dotnet publish -c Release -o dist/Relais
 
