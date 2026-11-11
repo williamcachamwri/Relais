@@ -1183,6 +1183,15 @@ class UniversalClipboardCoordinator:
                     )
                     resolved_bytes = None
 
+                if not resolved_bytes and not behind_rtf:
+                    # Fallback: if no `public.rtf` is present to stall the daemon, pull `POLICY_ALL_RESOLVED`
+                    with contextlib.suppress(Exception):
+                        full_snap = await asyncio.wait_for(
+                            pb_service.get(GENERAL_PASTEBOARD, POLICY_ALL_RESOLVED),
+                            timeout=8.0,
+                        )
+                        payload = extract_inline_payload(full_snap)
+
                 if resolved_bytes:
                     if target_uti in IMAGE_UTIS:
                         payload = ExtractedPayload(
