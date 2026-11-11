@@ -1,0 +1,271 @@
+<Window
+    x:Class="UniversalClipboard.QuickPasteWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Universal Clipboard Quick Paste">
+
+    <Border
+        x:Name="PopupRootBorder"
+        Background="#141416"
+        BorderBrush="#27272C"
+        BorderThickness="1"
+        CornerRadius="12"
+        KeyDown="OnRootKeyDown">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="32" />
+            </Grid.RowDefinitions>
+
+            <!-- =========================================================== -->
+            <!-- ROW 0: SEARCH PILL BAR (Matches Image #2 Top Search Box)    -->
+            <!-- =========================================================== -->
+            <Border
+                Grid.Row="0"
+                Margin="14,14,14,10"
+                Height="34"
+                Background="#1C1C20"
+                BorderBrush="#2A2A30"
+                BorderThickness="1"
+                CornerRadius="9"
+                Padding="12,0">
+                <Grid ColumnSpacing="8" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <FontIcon
+                        Grid.Column="0"
+                        Glyph="&#xE721;"
+                        FontSize="12.5"
+                        Foreground="#7C7C84"
+                        VerticalAlignment="Center" />
+
+                    <TextBox
+                        x:Name="QuickSearchBox"
+                        Grid.Column="1"
+                        PlaceholderText="Search clipboard..."
+                        TextChanged="OnQuickSearchTextChanged"
+                        PreviewKeyDown="OnSearchBoxPreviewKeyDown"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        MinHeight="0"
+                        Height="26"
+                        Padding="0,3,0,3"
+                        FontSize="13"
+                        Foreground="#F2F2F5"
+                        VerticalAlignment="Center"
+                        VerticalContentAlignment="Center">
+                        <TextBox.Resources>
+                            <x:Double x:Key="TextControlThemeMinHeight">24</x:Double>
+                            <x:Double x:Key="TextControlThemeMinWidth">0</x:Double>
+                            <Thickness x:Key="TextControlThemePadding">0,3,0,3</Thickness>
+                            <Thickness x:Key="TextControlBorderThemeThickness">0</Thickness>
+                            <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
+                            <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+                            <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+                            <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
+                            <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#74747C" />
+                            <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#8A8A92" />
+                            <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#66666E" />
+                        </TextBox.Resources>
+                    </TextBox>
+
+                    <TextBlock
+                        x:Name="QuickItemCountText"
+                        Grid.Column="2"
+                        Text="0 items"
+                        FontSize="12"
+                        Foreground="#6E6E76"
+                        Typography.NumeralAlignment="Tabular"
+                        VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+
+            <!-- =========================================================== -->
+            <!-- ROW 1: FILTER PILL TABS (All · Text · Rich Text · Image · File) -->
+            <!-- =========================================================== -->
+            <StackPanel
+                Grid.Row="1"
+                Orientation="Horizontal"
+                Spacing="6"
+                Margin="14,0,14,10">
+                <Button
+                    x:Name="TabAllBtn"
+                    Tag="all"
+                    Click="OnTabFilterClick"
+                    Height="26"
+                    Padding="11,0"
+                    CornerRadius="8"
+                    Background="#EDEDEF"
+                    BorderThickness="0">
+                    <TextBlock
+                        Text="All"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Foreground="#121214"
+                        VerticalAlignment="Center" />
+                </Button>
+
+                <Button
+                    x:Name="TabTextBtn"
+                    Tag="text"
+                    Click="OnTabFilterClick"
+                    Height="26"
+                    Padding="11,0"
+                    CornerRadius="8"
+                    Background="#1E1E23"
+                    BorderThickness="0">
+                    <TextBlock
+                        Text="Text"
+                        FontSize="12"
+                        FontWeight="Medium"
+                        Foreground="#94949E"
+                        VerticalAlignment="Center" />
+                </Button>
+
+                <Button
+                    x:Name="TabRichTextBtn"
+                    Tag="richtext"
+                    Click="OnTabFilterClick"
+                    Height="26"
+                    Padding="11,0"
+                    CornerRadius="8"
+                    Background="#1E1E23"
+                    BorderThickness="0">
+                    <TextBlock
+                        Text="Rich Text"
+                        FontSize="12"
+                        FontWeight="Medium"
+                        Foreground="#94949E"
+                        VerticalAlignment="Center" />
+                </Button>
+
+                <Button
+                    x:Name="TabImageBtn"
+                    Tag="image"
+                    Click="OnTabFilterClick"
+                    Height="26"
+                    Padding="11,0"
+                    CornerRadius="8"
+                    Background="#1E1E23"
+                    BorderThickness="0">
+                    <TextBlock
+                        Text="Image"
+                        FontSize="12"
+                        FontWeight="Medium"
+                        Foreground="#94949E"
+                        VerticalAlignment="Center" />
+                </Button>
+
+                <Button
+                    x:Name="TabFileBtn"
+                    Tag="file"
+                    Click="OnTabFilterClick"
+                    Height="26"
+                    Padding="11,0"
+                    CornerRadius="8"
+                    Background="#1E1E23"
+                    BorderThickness="0">
+                    <TextBlock
+                        Text="File"
+                        FontSize="12"
+                        FontWeight="Medium"
+                        Foreground="#94949E"
+                        VerticalAlignment="Center" />
+                </Button>
+            </StackPanel>
+
+            <!-- =========================================================== -->
+            <!-- ROW 2: COMPACT QUICK-PASTE ITEM LIST                        -->
+            <!-- =========================================================== -->
+            <Grid Grid.Row="2" Margin="8,0,8,6">
+                <ScrollViewer
+                    x:Name="QuickListScrollViewer"
+                    VerticalScrollBarVisibility="Hidden"
+                    HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="QuickItemsPanel" Spacing="2" />
+                </ScrollViewer>
+
+                <StackPanel
+                    x:Name="QuickEmptyState"
+                    Visibility="Collapsed"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Spacing="4">
+                    <TextBlock
+                        Text="No matching clips"
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        Foreground="#8A8A92"
+                        HorizontalAlignment="Center" />
+                    <TextBlock
+                        Text="Copy anything on iPhone or Windows"
+                        FontSize="11.5"
+                        Foreground="#5A5A62"
+                        HorizontalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+
+            <!-- =========================================================== -->
+            <!-- ROW 3: SUBTLE BOTTOM FOOTER                                 -->
+            <!-- =========================================================== -->
+            <Border
+                Grid.Row="3"
+                Background="#121214"
+                BorderBrush="#222226"
+                BorderThickness="0,1,0,0"
+                CornerRadius="0,0,12,12"
+                Padding="14,0">
+                <Grid VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel
+                        Grid.Column="0"
+                        Orientation="Horizontal"
+                        Spacing="6"
+                        VerticalAlignment="Center">
+                        <FontIcon
+                            x:Name="FooterSourceIcon"
+                            Glyph="&#xE8EA;"
+                            FontSize="10.5"
+                            Foreground="#6E6E76" />
+                        <TextBlock
+                            x:Name="FooterSourceText"
+                            Text="Universal Clipboard"
+                            FontSize="11"
+                            Foreground="#6E6E76"
+                            TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+
+                    <StackPanel
+                        Grid.Column="1"
+                        Orientation="Horizontal"
+                        Spacing="12"
+                        VerticalAlignment="Center">
+                        <TextBlock
+                            Text="↵ Paste"
+                            FontSize="11"
+                            Foreground="#66666E" />
+                        <TextBlock
+                            Text="^1–9 Quick paste"
+                            FontSize="11"
+                            Foreground="#66666E"
+                            Typography.NumeralAlignment="Tabular" />
+                        <TextBlock
+                            Text="Esc"
+                            FontSize="11"
+                            Foreground="#66666E" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

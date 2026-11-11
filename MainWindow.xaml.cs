@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -16,8 +17,25 @@ namespace UniversalClipboard;
 
 public sealed partial class MainWindow : Window
 {
+    private const int HotkeyIdWinAltV = 0x9001;
+    private const int HotkeyIdCtrlShiftV = 0x9002;
+    private const int WmHotkey = 0x0312;
+    private const int GwlpWndProc = -4;
+    private const uint ModAlt = 0x0001;
+    private const uint ModControl = 0x0002;
+    private const uint ModShift = 0x0004;
+    private const uint ModWin = 0x0008;
+    private const uint ModNoRepeat = 0x4000;
+    private const uint VkV = 0x56;
+
+    private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
     private readonly ClipboardBackendService _backend = new();
     private readonly DispatcherTimer _pollTimer;
+    private readonly QuickPasteWindow _quickPasteWindow;
+    private IntPtr _hwnd;
+    private IntPtr _origWndProc;
+    private WndProcDelegate? _wndProcDelegate;
 
     private List<ClipboardHistoryItem> _allItems = [];
     private List<ClipboardHistoryItem> _filteredItems = [];
@@ -62,9 +80,14 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
 
+        _quickPasteWindow = new QuickPasteWindow(_backend);
+
         ConfigureWindowChrome();
+        RegisterGlobalHotkeys();
         AttachGlobalAnimations();
         SidebarPcNameText.Text = "This device";
+
+        RootGrid.Loaded += (_, _) => ApplyResponsiveLayout(RootGrid.ActualWidth > 0 ? RootGrid.ActualWidth : 1050, RootGrid.ActualHeight > 0 ? RootGrid.ActualHeight : 680);
 
         _pollTimer = new DispatcherTimer
         {
@@ -81,8 +104,8 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
 
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-        var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
+        _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        var windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
         var appWindow = AppWindow.GetFromWindowId(windowId);
 
         appWindow.Resize(new SizeInt32(1050, 680));
@@ -98,6 +121,47 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void RegisterGlobalHotkeys()
+    {
+        if (_hwnd == IntPtr.Zero) return;
+
+        _wndProcDelegate = CustomWndProc;
+        var fnPtr = Marshal.GetFunctionPointerForDelegate(_wndProcDelegate);
+        _origWndProc = SetWindowLongPtrW(_hwnd, GwlpWndProc, fnPtr);
+
+        // Primary global shortcut: Win + Alt + V (like Windows + V)
+        RegisterHotKey(_hwnd, HotkeyIdWinAltV, ModWin | ModAlt | ModNoRepeat, VkV);
+        // Secondary fallback shortcut: Ctrl + Shift + V
+        RegisterHotKey(_hwnd, HotkeyIdCtrlShiftV, ModControl | ModShift | ModNoRepeat, VkV);
+    }
+
+    private IntPtr CustomWndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
+    {
+        if (msg == WmHotkey)
+        {
+            var id = wParam.ToInt32();
+            if (id == HotkeyIdWinAltV || id == HotkeyIdCtrlShiftV)
+            {
+                var fgHwnd = GetForegroundWindow();
+                DispatcherQueue.TryEnqueue(() => ToggleQuickPastePopup(fgHwnd));
+                return IntPtr.Zero;
+            }
+        }
+        return CallWindowProcW(_origWndProc, hWnd, msg, wParam, lParam);
+    }
+
+    private void ToggleQuickPastePopup(IntPtr fgHwnd)
+    {
+        if (_quickPasteWindow.IsPopupVisible)
+        {
+            _quickPasteWindow.HidePopup();
+        }
+        else
+        {
+            _quickPasteWindow.ShowPopup(fgHwnd, _allItems, _lastStatus);
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Smooth Composition Animations (Apple-Design / Emil-Design-Eng)
     // -----------------------------------------------------------------------
@@ -106,7 +170,7 @@ public sealed partial class MainWindow : Window
     {
         var interactiveButtons = new UIElement[]
         {
-            RailClipboardBtn, RailFilterBtn, RailDeviceBtn, RailSyncBtn, RailSettingsBtn,
+            RailClipboardBtn, RailSettingsBtn,
             NavTypeAllBtn, NavTypeFavBtn, NavTypeTextBtn, NavTypeRichBtn,
             NavTypeImageBtn, NavTypeFileBtn, NavTagLinkBtn, NavTagCodeBtn,
             NavTagImageBtn, NavSrcAllBtn, NavSrcPcBtn, NavSrcIphoneBtn,
@@ -130,17 +194,6 @@ public sealed partial class MainWindow : Window
         ApplyResponsiveLayout(e.NewSize.Width, e.NewSize.Height);
     }
 
-    private void OnRailFilterToggleClick(object sender, RoutedEventArgs e)
-    {
-        var currentlyVisible = FilterSidebarBorder.Visibility == Visibility.Visible && ColSidebar.Width.Value > 0;
-        _sidebarManualOverride = !currentlyVisible;
-        ApplyResponsiveLayout(RootGrid.ActualWidth, RootGrid.ActualHeight);
-        if (FilterSidebarBorder.Visibility == Visibility.Visible)
-        {
-            AnimateStageEntrance(FilterSidebarBorder);
-        }
-    }
-
     private void ApplyResponsiveLayout(double width, double height)
     {
         if (width <= 0 || height <= 0) return;
@@ -159,12 +212,10 @@ public sealed partial class MainWindow : Window
 
         FilterSidebarBorder.Visibility = showSidebar ? Visibility.Visible : Visibility.Collapsed;
         ColSidebar.Width = showSidebar ? new GridLength(176) : new GridLength(0);
-        RailFilterBtn.Background = showSidebar && width < 920 ? BrushRailActive : BrushTransparent;
-        RailFilterIcon.Foreground = showSidebar ? BrushTextPrimary : BrushTextSecondary;
 
         // Dynamic Feed column width based on remaining horizontal space
         var remainingAfterSidebar = width - 50 - (showSidebar ? 176 : 0);
-        var targetFeedWidth = Math.Clamp(remainingAfterSidebar * 0.41, 210, 340);
+        var targetFeedWidth = Math.Clamp(remainingAfterSidebar * 0.40, 210, 330);
         ColFeed.Width = new GridLength(targetFeedWidth);
 
         // Top Bar responsive search box and subtitle visibility
@@ -173,11 +224,12 @@ public sealed partial class MainWindow : Window
         TitleBarSyncHintText.Visibility = showTopHint ? Visibility.Visible : Visibility.Collapsed;
         SearchPillBorder.Width = Math.Clamp(width * 0.29, 165, 320);
 
-        // Inspector responsive spacing, image bounds, and action bar labels
+        // Inspector responsive spacing, image bounds, centered text card width, and action bar labels
         var inspectorWidth = Math.Max(240, remainingAfterSidebar - targetFeedWidth);
         InspectorTopBar.Padding = inspectorWidth < 380 ? new Thickness(14, 0, 14, 0) : new Thickness(24, 0, 24, 0);
         InspectorStageGrid.Padding = inspectorWidth < 380 ? new Thickness(16, 12, 16, 12) : new Thickness(28, 16, 28, 16);
 
+        InspectorTextStage.Width = Math.Clamp(inspectorWidth - 64, 220, 500);
         InspectorPreviewImage.MaxWidth = Math.Max(180, inspectorWidth - 64);
         InspectorPreviewImage.MaxHeight = Math.Max(160, height - 210);
 
@@ -304,6 +356,7 @@ public sealed partial class MainWindow : Window
             {
                 _lastHistoryRevision = historyResp.Revision;
                 _allItems = historyResp.Items;
+                _quickPasteWindow.UpdateItemsIfVisible(_allItems);
                 ApplyFiltersAndRenderFeed(animateRows: true);
             }
         }
@@ -844,7 +897,7 @@ public sealed partial class MainWindow : Window
             OnboardingPane.Visibility = Visibility.Collapsed;
             InspectorPane.Visibility = Visibility.Visible;
             RailClipboardBtn.Background = BrushRailActive;
-            RailDeviceBtn.Background = BrushTransparent;
+            RailSettingsBtn.Background = BrushTransparent;
             AnimateStageEntrance(InspectorPane);
         }
     }
@@ -853,14 +906,26 @@ public sealed partial class MainWindow : Window
     {
         InspectorPane.Visibility = Visibility.Collapsed;
         OnboardingPane.Visibility = Visibility.Visible;
-        RailDeviceBtn.Background = BrushRailActive;
+        RailSettingsBtn.Background = BrushRailActive;
         RailClipboardBtn.Background = BrushTransparent;
         AnimateStageEntrance(OnboardingPane);
     }
 
     private void OnRailClipboardClick(object sender, RoutedEventArgs e)
     {
-        ShowInspectorPane();
+        if (InspectorPane.Visibility != Visibility.Visible)
+        {
+            ShowInspectorPane();
+            return;
+        }
+
+        // When window is narrow (< 920px), clicking the Clipboard Rail icon toggles the Filter Sidebar
+        if (RootGrid.ActualWidth < 920)
+        {
+            var currentlyVisible = FilterSidebarBorder.Visibility == Visibility.Visible && ColSidebar.Width.Value > 0;
+            _sidebarManualOverride = !currentlyVisible;
+            ApplyResponsiveLayout(RootGrid.ActualWidth, RootGrid.ActualHeight);
+        }
     }
 
     private void OnRailDeviceClick(object sender, RoutedEventArgs e)
@@ -1052,7 +1117,35 @@ public sealed partial class MainWindow : Window
 
     private void OnWindowClosed(object sender, WindowEventArgs args)
     {
+        if (_hwnd != IntPtr.Zero)
+        {
+            UnregisterHotKey(_hwnd, HotkeyIdWinAltV);
+            UnregisterHotKey(_hwnd, HotkeyIdCtrlShiftV);
+        }
+        try
+        {
+            _quickPasteWindow.Close();
+        }
+        catch
+        {
+            // Ignore if already closed
+        }
         _pollTimer.Stop();
         _backend.Dispose();
     }
+
+    [DllImport("user32.dll")]
+    private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+    [DllImport("user32.dll")]
+    private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
+    private static extern IntPtr SetWindowLongPtrW(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport("user32.dll", EntryPoint = "CallWindowProcW")]
+    private static extern IntPtr CallWindowProcW(IntPtr lpPrevWndFunc, IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 }

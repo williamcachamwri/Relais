@@ -171,48 +171,9 @@
                             ToolTipService.ToolTip="Clipboard History">
                             <FontIcon Glyph="&#xE81E;" FontSize="15" Foreground="#F2F2F5" />
                         </Button>
-
-                        <Button
-                            x:Name="RailFilterBtn"
-                            Click="OnRailFilterToggleClick"
-                            Width="34"
-                            Height="34"
-                            Padding="0"
-                            CornerRadius="8"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            ToolTipService.ToolTip="Toggle Filter Sidebar">
-                            <FontIcon x:Name="RailFilterIcon" Glyph="&#xE71C;" FontSize="14" Foreground="#8A8A92" />
-                        </Button>
-
-                        <Button
-                            x:Name="RailDeviceBtn"
-                            Click="OnRailDeviceClick"
-                            Width="34"
-                            Height="34"
-                            Padding="0"
-                            CornerRadius="8"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            ToolTipService.ToolTip="Continuity &amp; Onboarding Setup">
-                            <FontIcon x:Name="RailDeviceIcon" Glyph="&#xE7F4;" FontSize="15" Foreground="#8A8A92" />
-                        </Button>
                     </StackPanel>
 
                     <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Center" Spacing="6">
-                        <Button
-                            x:Name="RailSyncBtn"
-                            Click="OnSyncNowClick"
-                            Width="34"
-                            Height="34"
-                            Padding="0"
-                            CornerRadius="8"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            ToolTipService.ToolTip="Pull iPhone Clipboard Now">
-                            <FontIcon Glyph="&#xE8F2;" FontSize="14" Foreground="#8A8A92" />
-                        </Button>
-
                         <Button
                             x:Name="RailSettingsBtn"
                             Click="OnRailDeviceClick"
@@ -222,7 +183,7 @@
                             CornerRadius="8"
                             Background="Transparent"
                             BorderThickness="0"
-                            ToolTipService.ToolTip="Device Pairing &amp; Settings">
+                            ToolTipService.ToolTip="Continuity Setup &amp; Settings">
                             <FontIcon Glyph="&#xE713;" FontSize="15" Foreground="#8A8A92" />
                         </Button>
                     </StackPanel>
@@ -632,138 +593,139 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Center Preview Stage (Responsive Scrollable Stage) -->
-                    <ScrollViewer
+                    <!-- Center Preview Stage (Always Horizontally & Vertically Centered) -->
+                    <Grid
+                        x:Name="InspectorStageGrid"
                         Grid.Row="1"
-                        VerticalScrollBarVisibility="Auto"
-                        HorizontalScrollBarVisibility="Disabled">
-                        <Grid x:Name="InspectorStageGrid" Padding="28,16" VerticalAlignment="Center">
-                            <!-- Image Preview Stage -->
-                            <StackPanel
-                                x:Name="InspectorImageStage"
-                                Visibility="Collapsed"
-                                VerticalAlignment="Center"
-                                HorizontalAlignment="Center"
-                                Spacing="16">
-                                <Border
-                                    Background="#0D0D0F"
-                                    BorderBrush="#2C2C30"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="6"
-                                    HorizontalAlignment="Center">
-                                    <Image
-                                        x:Name="InspectorPreviewImage"
-                                        MaxHeight="340"
-                                        MaxWidth="520"
-                                        Stretch="Uniform" />
-                                </Border>
+                        Padding="28,16"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch">
+                        <!-- Image Preview Stage -->
+                        <StackPanel
+                            x:Name="InspectorImageStage"
+                            Visibility="Collapsed"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Spacing="16">
+                            <Border
+                                Background="#0D0D0F"
+                                BorderBrush="#2C2C30"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="6"
+                                HorizontalAlignment="Center">
+                                <Image
+                                    x:Name="InspectorPreviewImage"
+                                    MaxHeight="340"
+                                    MaxWidth="520"
+                                    Stretch="Uniform" />
+                            </Border>
 
-                                <TextBlock
-                                    x:Name="InspectorImageTitleText"
-                                    Text="Clipboard.png"
-                                    FontSize="15.5"
-                                    FontWeight="SemiBold"
-                                    Foreground="#F2F2F5"
-                                    TextTrimming="CharacterEllipsis"
-                                    HorizontalAlignment="Center" />
-                            </StackPanel>
+                            <TextBlock
+                                x:Name="InspectorImageTitleText"
+                                Text="Clipboard.png"
+                                FontSize="15.5"
+                                FontWeight="SemiBold"
+                                Foreground="#F2F2F5"
+                                TextTrimming="CharacterEllipsis"
+                                HorizontalAlignment="Center" />
+                        </StackPanel>
 
-                            <!-- File Preview Stage (Matches Reference Image #2 Gold Badge) -->
-                            <StackPanel
-                                x:Name="InspectorFileStage"
-                                Visibility="Collapsed"
-                                VerticalAlignment="Center"
-                                HorizontalAlignment="Center"
-                                MaxWidth="480"
-                                Spacing="16">
-                                <Border
-                                    Background="#18181B"
-                                    BorderBrush="#252529"
-                                    BorderThickness="1"
-                                    CornerRadius="12"
-                                    Padding="36,28"
-                                    HorizontalAlignment="Center">
-                                    <StackPanel Spacing="16" HorizontalAlignment="Center">
-                                        <Border
-                                            Width="68"
-                                            Height="68"
-                                            CornerRadius="14"
-                                            Background="#B68F5E"
-                                            HorizontalAlignment="Center">
-                                            <TextBlock
-                                                x:Name="InspectorFileExtText"
-                                                Text="ZIP"
-                                                FontSize="17"
-                                                FontWeight="Bold"
-                                                Foreground="#FFFFFF"
-                                                HorizontalAlignment="Center"
-                                                VerticalAlignment="Center" />
-                                        </Border>
-
+                        <!-- File Preview Stage (Matches Reference Image #2 Gold Badge) -->
+                        <StackPanel
+                            x:Name="InspectorFileStage"
+                            Visibility="Collapsed"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            MaxWidth="480"
+                            Spacing="16">
+                            <Border
+                                Background="#18181B"
+                                BorderBrush="#252529"
+                                BorderThickness="1"
+                                CornerRadius="12"
+                                Padding="36,28"
+                                HorizontalAlignment="Center">
+                                <StackPanel Spacing="16" HorizontalAlignment="Center">
+                                    <Border
+                                        Width="68"
+                                        Height="68"
+                                        CornerRadius="14"
+                                        Background="#B68F5E"
+                                        HorizontalAlignment="Center">
                                         <TextBlock
-                                            x:Name="InspectorFileTitleText"
-                                            Text="document.zip"
-                                            FontSize="15.5"
-                                            FontWeight="SemiBold"
-                                            Foreground="#F2F2F5"
-                                            TextAlignment="Center"
-                                            TextWrapping="Wrap"
-                                            MaxWidth="380"
-                                            HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
+                                            x:Name="InspectorFileExtText"
+                                            Text="ZIP"
+                                            FontSize="17"
+                                            FontWeight="Bold"
+                                            Foreground="#FFFFFF"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center" />
+                                    </Border>
 
-                                <TextBlock
-                                    x:Name="InspectorFileSubtitle"
-                                    Text=""
-                                    FontSize="12"
-                                    Foreground="#6E6E76"
-                                    Typography.NumeralAlignment="Tabular"
-                                    TextAlignment="Center"
-                                    TextWrapping="Wrap"
-                                    HorizontalAlignment="Center" />
-                            </StackPanel>
+                                    <TextBlock
+                                        x:Name="InspectorFileTitleText"
+                                        Text="document.zip"
+                                        FontSize="15.5"
+                                        FontWeight="SemiBold"
+                                        Foreground="#F2F2F5"
+                                        TextAlignment="Center"
+                                        TextWrapping="Wrap"
+                                        MaxWidth="380"
+                                        HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
 
-                            <!-- Text / Link / Code Preview Stage -->
-                            <StackPanel
-                                x:Name="InspectorTextStage"
-                                Visibility="Visible"
-                                VerticalAlignment="Center"
-                                HorizontalAlignment="Stretch"
-                                MaxWidth="560"
-                                Spacing="14">
-                                <Border
-                                    Background="#18181B"
-                                    BorderBrush="#252529"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="20,18"
-                                    MaxHeight="360">
-                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                        <TextBlock
-                                            x:Name="InspectorPreviewText"
-                                            Text=""
-                                            FontSize="14"
-                                            Foreground="#F2F2F5"
-                                            LineHeight="22"
-                                            TextWrapping="Wrap"
-                                            IsTextSelectionEnabled="True" />
-                                    </ScrollViewer>
-                                </Border>
+                            <TextBlock
+                                x:Name="InspectorFileSubtitle"
+                                Text=""
+                                FontSize="12"
+                                Foreground="#6E6E76"
+                                Typography.NumeralAlignment="Tabular"
+                                TextAlignment="Center"
+                                TextWrapping="Wrap"
+                                HorizontalAlignment="Center" />
+                        </StackPanel>
 
-                                <TextBlock
-                                    x:Name="InspectorTextSubtitle"
-                                    Text=""
-                                    FontSize="12"
-                                    Foreground="#6E6E76"
-                                    Typography.NumeralAlignment="Tabular"
-                                    TextAlignment="Center"
-                                    TextWrapping="Wrap"
-                                    HorizontalAlignment="Center" />
-                            </StackPanel>
-                        </Grid>
-                    </ScrollViewer>
+                        <!-- Text / Link / Code Preview Stage -->
+                        <StackPanel
+                            x:Name="InspectorTextStage"
+                            Visibility="Visible"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Width="460"
+                            Spacing="14">
+                            <Border
+                                x:Name="InspectorTextCardBorder"
+                                Background="#18181B"
+                                BorderBrush="#252529"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="22,18"
+                                MaxHeight="360">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <TextBlock
+                                        x:Name="InspectorPreviewText"
+                                        Text=""
+                                        FontSize="14"
+                                        Foreground="#F2F2F5"
+                                        LineHeight="22"
+                                        TextWrapping="Wrap"
+                                        IsTextSelectionEnabled="True" />
+                                </ScrollViewer>
+                            </Border>
+
+                            <TextBlock
+                                x:Name="InspectorTextSubtitle"
+                                Text=""
+                                FontSize="12"
+                                Foreground="#6E6E76"
+                                Typography.NumeralAlignment="Tabular"
+                                TextAlignment="Center"
+                                TextWrapping="Wrap"
+                                HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Grid>
 
                     <!-- Bottom Minimal Action Bar: Copy C · Send to iPhone S · Favorite F · Delete D -->
                     <StackPanel
