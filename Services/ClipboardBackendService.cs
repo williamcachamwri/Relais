@@ -73,6 +73,12 @@ public sealed class ClipboardHistoryItem
     [JsonPropertyName("text")]
     public string Text { get; set; } = "";
 
+    [JsonPropertyName("file_name")]
+    public string FileName { get; set; } = "";
+
+    [JsonPropertyName("saved_file")]
+    public string? SavedFile { get; set; }
+
     [JsonPropertyName("image_file")]
     public string? ImageFile { get; set; }
 
@@ -116,6 +122,7 @@ public sealed class ClipboardHistoryItem
     public bool Pinned { get; set; }
 
     public bool IsImage => Kind == "image";
+    public bool IsFile => Kind == "file";
     public bool IsLink => Kind == "url";
     public bool IsFromPc => string.Equals(Source, "pc", StringComparison.OrdinalIgnoreCase)
                             || string.Equals(DeviceModel, "This device", StringComparison.OrdinalIgnoreCase);
@@ -123,7 +130,7 @@ public sealed class ClipboardHistoryItem
                               || Uti.Contains("webarchive", StringComparison.OrdinalIgnoreCase)
                               || Uti.Contains("rtf", StringComparison.OrdinalIgnoreCase);
 
-    public bool IsCode => !IsImage && !IsLink && (
+    public bool IsCode => !IsImage && !IsFile && !IsLink && (
         Text.Contains("function ", StringComparison.Ordinal)
         || Text.Contains("const ", StringComparison.Ordinal)
         || Text.Contains("import ", StringComparison.Ordinal)
@@ -137,6 +144,7 @@ public sealed class ClipboardHistoryItem
     {
         get
         {
+            if (IsFromPc) return "This device";
             if (string.IsNullOrWhiteSpace(DeviceModel)) return "iPhone";
             var parenIdx = DeviceModel.IndexOf('(');
             return parenIdx > 0 ? DeviceModel[..parenIdx].Trim() : DeviceModel;
@@ -147,10 +155,36 @@ public sealed class ClipboardHistoryItem
     {
         get
         {
+            if (!string.IsNullOrWhiteSpace(FileName)) return FileName;
             var dt = Timestamp > 0
                 ? DateTimeOffset.FromUnixTimeSeconds((long)Timestamp).ToLocalTime()
                 : DateTimeOffset.Now;
             return $"Clipboard_{dt:yyyy-MM-dd_HH-mm-ss}.png";
+        }
+    }
+
+    public string FileDisplayName
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(FileName)) return FileName;
+            if (!string.IsNullOrWhiteSpace(Text)) return Text;
+            return IsImage ? ImageDisplayName : "File";
+        }
+    }
+
+    public string FileExtensionBadge
+    {
+        get
+        {
+            var ext = Path.GetExtension(FileDisplayName).TrimStart('.').ToUpperInvariant();
+            if (!string.IsNullOrWhiteSpace(ext) && ext.Length <= 5) return ext;
+            if (Uti.Contains("zip", StringComparison.OrdinalIgnoreCase)) return "ZIP";
+            if (Uti.Contains("pdf", StringComparison.OrdinalIgnoreCase)) return "PDF";
+            if (Uti.Contains("json", StringComparison.OrdinalIgnoreCase)) return "JSON";
+            if (Uti.Contains("mp4", StringComparison.OrdinalIgnoreCase) || Uti.Contains("mpeg-4", StringComparison.OrdinalIgnoreCase)) return "MP4";
+            if (Uti.Contains("mp3", StringComparison.OrdinalIgnoreCase)) return "MP3";
+            return "FILE";
         }
     }
 

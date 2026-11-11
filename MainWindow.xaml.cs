@@ -29,14 +29,17 @@ public sealed partial class MainWindow : Window
     private string _sourceFilter = "src:all";
     private string _timeFilter = "time:all";
     private string _searchQuery = "";
+    private bool? _sidebarManualOverride;
 
     // Carbon-Graphite Palette (Reference Image #2)
     private static readonly SolidColorBrush BrushTextPrimary = new(ColorHelper.FromArgb(0xFF, 0xF2, 0xF2, 0xF5));
     private static readonly SolidColorBrush BrushTextSecondary = new(ColorHelper.FromArgb(0xFF, 0x9A, 0x9A, 0xA2));
     private static readonly SolidColorBrush BrushTextMuted = new(ColorHelper.FromArgb(0xFF, 0x6E, 0x6E, 0x76));
     private static readonly SolidColorBrush BrushTextDim = new(ColorHelper.FromArgb(0xFF, 0x5E, 0x5E, 0x66));
+    private static readonly SolidColorBrush BrushWhite = new(Colors.White);
 
     private static readonly SolidColorBrush BrushFileGold = new(ColorHelper.FromArgb(0xFF, 0xD4, 0xA3, 0x59));
+    private static readonly SolidColorBrush BrushFileBadgeBg = new(ColorHelper.FromArgb(0xFF, 0xB6, 0x8F, 0x5E));
     private static readonly SolidColorBrush BrushLinkBlueText = new(ColorHelper.FromArgb(0xFF, 0x58, 0xA6, 0xFF));
     private static readonly SolidColorBrush BrushLinkBlueBg = new(ColorHelper.FromArgb(0xFF, 0x17, 0x2A, 0x3A));
     private static readonly SolidColorBrush BrushCodePurpleText = new(ColorHelper.FromArgb(0xFF, 0xA3, 0x71, 0xF7));
@@ -61,7 +64,7 @@ public sealed partial class MainWindow : Window
 
         ConfigureWindowChrome();
         AttachGlobalAnimations();
-        SidebarPcNameText.Text = Environment.MachineName;
+        SidebarPcNameText.Text = "This device";
 
         _pollTimer = new DispatcherTimer
         {
@@ -103,7 +106,7 @@ public sealed partial class MainWindow : Window
     {
         var interactiveButtons = new UIElement[]
         {
-            RailClipboardBtn, RailDeviceBtn, RailSyncBtn, RailSettingsBtn,
+            RailClipboardBtn, RailFilterBtn, RailDeviceBtn, RailSyncBtn, RailSettingsBtn,
             NavTypeAllBtn, NavTypeFavBtn, NavTypeTextBtn, NavTypeRichBtn,
             NavTypeImageBtn, NavTypeFileBtn, NavTagLinkBtn, NavTagCodeBtn,
             NavTagImageBtn, NavSrcAllBtn, NavSrcPcBtn, NavSrcIphoneBtn,
@@ -116,6 +119,78 @@ public sealed partial class MainWindow : Window
         {
             AttachPressAnimation(btn, 0.965f);
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Responsive Window Layout Breakpoints
+    // -----------------------------------------------------------------------
+
+    private void OnRootGridSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        ApplyResponsiveLayout(e.NewSize.Width, e.NewSize.Height);
+    }
+
+    private void OnRailFilterToggleClick(object sender, RoutedEventArgs e)
+    {
+        var currentlyVisible = FilterSidebarBorder.Visibility == Visibility.Visible && ColSidebar.Width.Value > 0;
+        _sidebarManualOverride = !currentlyVisible;
+        ApplyResponsiveLayout(RootGrid.ActualWidth, RootGrid.ActualHeight);
+        if (FilterSidebarBorder.Visibility == Visibility.Visible)
+        {
+            AnimateStageEntrance(FilterSidebarBorder);
+        }
+    }
+
+    private void ApplyResponsiveLayout(double width, double height)
+    {
+        if (width <= 0 || height <= 0) return;
+
+        // Reset manual override once window is resized wide enough
+        if (width >= 960 && _sidebarManualOverride == true)
+        {
+            _sidebarManualOverride = null;
+        }
+
+        var showSidebar = _sidebarManualOverride ?? (width >= 920);
+        if (width < 640)
+        {
+            showSidebar = false;
+        }
+
+        FilterSidebarBorder.Visibility = showSidebar ? Visibility.Visible : Visibility.Collapsed;
+        ColSidebar.Width = showSidebar ? new GridLength(176) : new GridLength(0);
+        RailFilterBtn.Background = showSidebar && width < 920 ? BrushRailActive : BrushTransparent;
+        RailFilterIcon.Foreground = showSidebar ? BrushTextPrimary : BrushTextSecondary;
+
+        // Dynamic Feed column width based on remaining horizontal space
+        var remainingAfterSidebar = width - 50 - (showSidebar ? 176 : 0);
+        var targetFeedWidth = Math.Clamp(remainingAfterSidebar * 0.41, 210, 340);
+        ColFeed.Width = new GridLength(targetFeedWidth);
+
+        // Top Bar responsive search box and subtitle visibility
+        var showTopHint = width >= 820;
+        TitleBarHintDot.Visibility = showTopHint ? Visibility.Visible : Visibility.Collapsed;
+        TitleBarSyncHintText.Visibility = showTopHint ? Visibility.Visible : Visibility.Collapsed;
+        SearchPillBorder.Width = Math.Clamp(width * 0.29, 165, 320);
+
+        // Inspector responsive spacing, image bounds, and action bar labels
+        var inspectorWidth = Math.Max(240, remainingAfterSidebar - targetFeedWidth);
+        InspectorTopBar.Padding = inspectorWidth < 380 ? new Thickness(14, 0, 14, 0) : new Thickness(24, 0, 24, 0);
+        InspectorStageGrid.Padding = inspectorWidth < 380 ? new Thickness(16, 12, 16, 12) : new Thickness(28, 16, 28, 16);
+
+        InspectorPreviewImage.MaxWidth = Math.Max(180, inspectorWidth - 64);
+        InspectorPreviewImage.MaxHeight = Math.Max(160, height - 210);
+
+        var compactBar = inspectorWidth < 430;
+        var veryCompactBar = inspectorWidth < 340;
+        InspectorBarPanel.Spacing = veryCompactBar ? 4 : (compactBar ? 10 : 16);
+        ActionSendIphoneLabel.Text = compactBar ? "iPhone" : "Send to iPhone";
+
+        var keyHintVis = veryCompactBar ? Visibility.Collapsed : Visibility.Visible;
+        KeyHintC.Visibility = keyHintVis;
+        KeyHintS.Visibility = keyHintVis;
+        KeyHintF.Visibility = keyHintVis;
+        KeyHintD.Visibility = keyHintVis;
     }
 
     private static void AttachPressAnimation(UIElement element, float pressedScale = 0.975f)
@@ -296,9 +371,10 @@ public sealed partial class MainWindow : Window
             var matchesTypeOrTag = _typeOrTagFilter switch
             {
                 "type:favorites" => item.Pinned,
-                "type:text" => !item.IsImage,
+                "type:text" => !item.IsImage && !item.IsFile,
                 "type:richtext" => item.IsRichText,
-                "type:image" or "tag:image" or "type:file" => item.IsImage,
+                "type:image" or "tag:image" => item.IsImage,
+                "type:file" => item.IsFile || item.IsImage,
                 "tag:link" => item.IsLink,
                 "tag:code" => item.IsCode,
                 _ => true,
@@ -324,6 +400,7 @@ public sealed partial class MainWindow : Window
             var q = _searchQuery.Trim();
             return item.Text.Contains(q, StringComparison.OrdinalIgnoreCase)
                    || item.Uti.Contains(q, StringComparison.OrdinalIgnoreCase)
+                   || item.FileDisplayName.Contains(q, StringComparison.OrdinalIgnoreCase)
                    || item.ImageDisplayName.Contains(q, StringComparison.OrdinalIgnoreCase);
         }).ToList();
 
@@ -410,7 +487,7 @@ public sealed partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Center,
         };
 
-        if (item.IsImage)
+        if (item.IsImage || item.IsFile)
         {
             leftMeta.Children.Add(new FontIcon
             {
@@ -492,7 +569,7 @@ public sealed partial class MainWindow : Window
         metaGrid.Children.Add(rightMeta);
         rowStack.Children.Add(metaGrid);
 
-        // 2. Main Content Line (Thumbnail + Filename for Image, or Bold Text for Text/URL)
+        // 2. Main Content Line (Thumbnail for Image, Tan Extension Badge for File, or Bold Text for Text/URL)
         if (item.IsImage)
         {
             var imgRow = new Grid { ColumnSpacing = 12, Margin = new Thickness(0, 2, 0, 0) };
@@ -539,6 +616,49 @@ public sealed partial class MainWindow : Window
             imgRow.Children.Add(titleBlock);
 
             rowStack.Children.Add(imgRow);
+        }
+        else if (item.IsFile)
+        {
+            var fileRow = new Grid { ColumnSpacing = 12, Margin = new Thickness(0, 2, 0, 0) };
+            fileRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            fileRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var badgeBorder = new Border
+            {
+                Width = 42,
+                Height = 42,
+                CornerRadius = new CornerRadius(8),
+                Background = BrushFileBadgeBg,
+                Child = new TextBlock
+                {
+                    Text = item.FileExtensionBadge,
+                    FontSize = 11.5,
+                    FontWeight = Microsoft.UI.Text.FontWeights.Bold,
+                    Foreground = BrushWhite,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            };
+
+            Grid.SetColumn(badgeBorder, 0);
+            fileRow.Children.Add(badgeBorder);
+
+            var fileTitleBlock = new TextBlock
+            {
+                Text = item.FileDisplayName,
+                FontSize = 13.5,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Foreground = BrushTextPrimary,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextWrapping = TextWrapping.Wrap,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxLines = 2,
+                LineHeight = 18,
+            };
+            Grid.SetColumn(fileTitleBlock, 1);
+            fileRow.Children.Add(fileTitleBlock);
+
+            rowStack.Children.Add(fileRow);
         }
         else
         {
@@ -620,10 +740,12 @@ public sealed partial class MainWindow : Window
         if (item is null)
         {
             InspectorMetaLeftText.Text = "No item selected";
+            InspectorSourceIcon.Glyph = "\uE7F8";
             InspectorSourceText.Text = "This device";
             InspectorImageStage.Visibility = Visibility.Collapsed;
+            InspectorFileStage.Visibility = Visibility.Collapsed;
             InspectorTextStage.Visibility = Visibility.Visible;
-            InspectorPreviewText.Text = "Copy anything on your iPhone or Windows PC — both directions sync automatically.";
+            InspectorPreviewText.Text = "Copy text, images, URLs, or files on your iPhone or Windows PC — both directions sync automatically.";
             InspectorTextSubtitle.Text = "";
             return;
         }
@@ -634,10 +756,13 @@ public sealed partial class MainWindow : Window
         ActionFavoriteIcon.Foreground = item.Pinned ? BrushFileGold : BrushTextSecondary;
         ActionFavoriteLabel.Text = item.Pinned ? "Favorited" : "Favorite";
 
+        var direction = item.IsFromPc ? "Windows → iPhone" : "iPhone → Windows";
+
         if (item.IsImage)
         {
             InspectorMetaLeftText.Text = "File  ·  1 files";
             InspectorTextStage.Visibility = Visibility.Collapsed;
+            InspectorFileStage.Visibility = Visibility.Collapsed;
             InspectorImageStage.Visibility = Visibility.Visible;
 
             try
@@ -652,14 +777,26 @@ public sealed partial class MainWindow : Window
             InspectorImageTitleText.Text = item.ImageDisplayName;
             if (animateStage) AnimateStageEntrance(InspectorImageStage);
         }
+        else if (item.IsFile)
+        {
+            InspectorMetaLeftText.Text = "File  ·  1 files";
+            InspectorImageStage.Visibility = Visibility.Collapsed;
+            InspectorTextStage.Visibility = Visibility.Collapsed;
+            InspectorFileStage.Visibility = Visibility.Visible;
+
+            InspectorFileExtText.Text = item.FileExtensionBadge;
+            InspectorFileTitleText.Text = item.FileDisplayName;
+            InspectorFileSubtitle.Text = $"{direction}  ·  {item.Uti}  ·  {item.FormattedSize}  ·  {item.Transport}  ·  {item.LatencyMs:F1} ms";
+            if (animateStage) AnimateStageEntrance(InspectorFileStage);
+        }
         else
         {
             InspectorMetaLeftText.Text = $"Text  ·  {item.Text.Length} chars";
             InspectorImageStage.Visibility = Visibility.Collapsed;
+            InspectorFileStage.Visibility = Visibility.Collapsed;
             InspectorTextStage.Visibility = Visibility.Visible;
 
             InspectorPreviewText.Text = item.Text;
-            var direction = item.IsFromPc ? "Windows → iPhone" : "iPhone → Windows";
             InspectorTextSubtitle.Text = $"{direction}  ·  {item.Uti}  ·  {item.FormattedSize}  ·  {item.Transport}  ·  {item.LatencyMs:F1} ms";
             if (animateStage) AnimateStageEntrance(InspectorTextStage);
         }
