@@ -29,22 +29,30 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
 import contextlib
 import ctypes
 from ctypes import wintypes
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from html.parser import HTMLParser
 import hashlib
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import io
+import json
 import logging
+import os
+from pathlib import Path
 import plistlib
 import re
 import socket
 import struct
 import subprocess
 import sys
+import threading
 import time
 from typing import Any, Optional, cast
+from urllib.parse import urlparse
 
 import ifaddr
 from PIL import Image, ImageOps
@@ -912,6 +920,217 @@ def extract_change_info(snapshot: dict[str, Any]) -> tuple[Optional[Any], Option
     return None, None
 
 
+FRIENDLY_MODEL_NAMES: dict[str, str] = {
+    "iPhone14,2": "iPhone 13 Pro",
+    "iPhone14,3": "iPhone 13 Pro Max",
+    "iPhone14,4": "iPhone 13 mini",
+    "iPhone14,5": "iPhone 13",
+    "iPhone14,7": "iPhone 14",
+    "iPhone14,8": "iPhone 14 Plus",
+    "iPhone15,2": "iPhone 14 Pro",
+    "iPhone15,3": "iPhone 14 Pro Max",
+    "iPhone15,4": "iPhone 15",
+    "iPhone15,5": "iPhone 15 Plus",
+    "iPhone16,1": "iPhone 15 Pro",
+    "iPhone16,2": "iPhone 15 Pro Max",
+    "iPhone17,1": "iPhone 16 Pro",
+    "iPhone17,2": "iPhone 16 Pro Max",
+    "iPhone17,3": "iPhone 16",
+    "iPhone17,4": "iPhone 16 Plus",
+    "iPhone17,5": "iPhone 16e",
+    "iPhone18,1": "iPhone 17 Pro",
+    "iPhone18,2": "iPhone 17 Pro Max",
+    "iPhone18,3": "iPhone 17",
+    "iPhone18,4": "iPhone 17 Air",
+}
+
+
+def friendly_device_name(product_type: Optional[str]) -> str:
+    if not product_type:
+        return "iPhone"
+    friendly = FRIENDLY_MODEL_NAMES.get(product_type)
+    return f"{friendly} ({product_type})" if friendly else product_type
+
+
+class ClipboardHistoryStore:
+    """Thread-safe persistent history store for synced iPhone clipboard items (served locally to WinUI 3)."""
+
+    def __init__(self, max_items: int = 80) -> None:
+        self.max_items = max_items
+        self._lock = threading.Lock()
+        self.revision = 1
+        app_data = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local")))
+        self.base_dir = app_data / "UniversalClipboard"
+        self.images_dir = self.base_dir / "images"
+        self.history_file = self.base_dir / "history.json"
+        self.images_dir.mkdir(parents=True, exist_ok=True)
+        self._items: list[dict[str, Any]] = []
+        self._load()
+
+    def _load(self) -> None:
+        if not self.history_file.exists():
+            return
+        with contextlib.suppress(Exception):
+            raw = json.loads(self.history_file.read_text(encoding="utf-8"))
+            if isinstance(raw, list):
+                self._items = [item for item in raw if isinstance(item, dict)][: self.max_items]
+
+    def _save_locked(self) -> None:
+        with contextlib.suppress(Exception):
+            self.base_dir.mkdir(parents=True, exist_ok=True)
+            self.history_file.write_text(
+                json.dumps(self._items, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+
+    def add_item(
+        self,
+        payload: ExtractedPayload,
+        change_count: Optional[int],
+        transport: str,
+        product_type: Optional[str],
+        ios_version: Optional[str],
+        latency_ms: float,
+        dimensions: Optional[tuple[int, int]] = None,
+    ) -> dict[str, Any]:
+        now = time.time()
+        iso_now = datetime.fromtimestamp(now, tz=timezone.utc).astimezone().strftime("%H:%M:%S")
+        fp = payload.fingerprint
+        item_id = f"clip-{int(now * 1000)}-{change_count or 0}"
+
+        image_file: Optional[str] = None
+        width, height = dimensions or (0, 0)
+        if payload.kind == "image" and payload.image_bytes is not None:
+            image_file = f"{item_id}.png"
+            img_path = self.images_dir / image_file
+            with contextlib.suppress(Exception):
+                with Image.open(io.BytesIO(payload.image_bytes)) as img:
+                    img = ImageOps.exif_transpose(img)
+                    width, height = img.size
+                    img.save(img_path, format="PNG")
+
+        html_b64: Optional[str] = None
+        if payload.html_bytes:
+            html_b64 = base64.b64encode(payload.html_bytes).decode("ascii")
+
+        display_text = payload.text or ""
+        if payload.kind == "image":
+            display_text = f"Image ({width} × {height} px)" if width and height else "Image from iPhone"
+
+        entry: dict[str, Any] = {
+            "id": item_id,
+            "kind": payload.kind,
+            "uti": payload.uti,
+            "text": display_text,
+            "html_base64": html_b64,
+            "image_file": image_file,
+            "width": width,
+            "height": height,
+            "raw_size": payload.raw_size,
+            "change_count": change_count,
+            "transport": transport,
+            "device_model": friendly_device_name(product_type),
+            "product_type": product_type or "iPhone",
+            "ios_version": ios_version or "",
+            "latency_ms": round(latency_ms, 1),
+            "timestamp": now,
+            "time_label": iso_now,
+            "pinned": False,
+            "fingerprint": fp,
+        }
+
+        with self._lock:
+            # Deduplicate existing unpinned entry with identical fingerprint
+            existing_pinned = False
+            filtered: list[dict[str, Any]] = []
+            for old in self._items:
+                if old.get("fingerprint") == fp:
+                    existing_pinned = bool(old.get("pinned"))
+                    old_img = old.get("image_file")
+                    if old_img and old_img != image_file:
+                        with contextlib.suppress(Exception):
+                            (self.images_dir / old_img).unlink(missing_ok=True)
+                else:
+                    filtered.append(old)
+            entry["pinned"] = existing_pinned
+            self._items = [entry, *filtered][: self.max_items]
+            self.revision += 1
+            self._save_locked()
+            return dict(entry)
+
+    def list_items(self) -> tuple[int, list[dict[str, Any]]]:
+        with self._lock:
+            # Sort pinned items first, then newest first
+            sorted_items = sorted(
+                self._items,
+                key=lambda x: (1 if x.get("pinned") else 0, float(x.get("timestamp", 0.0))),
+                reverse=True,
+            )
+            sanitized = []
+            for item in sorted_items:
+                copy_item = dict(item)
+                copy_item.pop("html_base64", None)
+                sanitized.append(copy_item)
+            return self.revision, sanitized
+
+    def get_item(self, item_id: str) -> Optional[dict[str, Any]]:
+        with self._lock:
+            for item in self._items:
+                if item.get("id") == item_id:
+                    return dict(item)
+        return None
+
+    def get_image_bytes(self, item_id: str) -> Optional[bytes]:
+        item = self.get_item(item_id)
+        if not item or not item.get("image_file"):
+            return None
+        img_path = self.images_dir / str(item["image_file"])
+        if img_path.exists():
+            with contextlib.suppress(Exception):
+                return img_path.read_bytes()
+        return None
+
+    def toggle_pin(self, item_id: str) -> Optional[bool]:
+        with self._lock:
+            for item in self._items:
+                if item.get("id") == item_id:
+                    item["pinned"] = not bool(item.get("pinned"))
+                    self.revision += 1
+                    self._save_locked()
+                    return bool(item["pinned"])
+        return None
+
+    def delete_item(self, item_id: str) -> bool:
+        with self._lock:
+            for idx, item in enumerate(self._items):
+                if item.get("id") == item_id:
+                    old = self._items.pop(idx)
+                    if old.get("image_file"):
+                        with contextlib.suppress(Exception):
+                            (self.images_dir / str(old["image_file"])).unlink(missing_ok=True)
+                    self.revision += 1
+                    self._save_locked()
+                    return True
+        return False
+
+    def clear(self, include_pinned: bool = False) -> int:
+        with self._lock:
+            kept: list[dict[str, Any]] = []
+            removed = 0
+            for item in self._items:
+                if item.get("pinned") and not include_pinned:
+                    kept.append(item)
+                else:
+                    removed += 1
+                    if item.get("image_file"):
+                        with contextlib.suppress(Exception):
+                            (self.images_dir / str(item["image_file"])).unlink(missing_ok=True)
+            self._items = kept
+            self.revision += 1
+            self._save_locked()
+            return removed
+
+
 class UniversalClipboardCoordinator:
     """Manages the CoreDevice RSD tunnel, DDI mounting, NotificationProxy subscription,
     PasteboardService pulls, and Windows clipboard updates with automatic reconnection.
@@ -932,14 +1151,95 @@ class UniversalClipboardCoordinator:
         self.sync_on_connect = sync_on_connect
 
         self.clipboard = WindowsClipboardWriter()
+        self.history = ClipboardHistoryStore()
         self.last_change_id: Optional[tuple[Any, Optional[int]]] = None
         self.recent_fingerprints: dict[str, float] = {}
         self.echo_window_sec = 5.0
+
+        # Live runtime state for WinUI 3 desktop client
+        self.loop: Optional[asyncio.AbstractEventLoop] = None
+        self._active_pull_trigger: Optional[asyncio.Event] = None
+        self._session_cancel_event: Optional[asyncio.Event] = None
+        self.state: str = "starting"
+        self.state_message: str = "Initializing Universal Clipboard service..."
+        self.connected_udid: Optional[str] = None
+        self.product_type: Optional[str] = None
+        self.ios_version: Optional[str] = None
+        self.active_transport: str = ""
+        self.ddi_mounted: bool = False
+        self.last_sync_ms: Optional[float] = None
+        self.total_synced: int = 0
+        self.last_usb_udids: list[str] = []
+        self.last_wifi_udids: list[str] = list_wifi_paired_udids()
+
+    def get_status_snapshot(self) -> dict[str, Any]:
+        with contextlib.suppress(Exception):
+            self.last_wifi_udids = list_wifi_paired_udids()
+        rev, items = self.history.list_items()
+        return {
+            "connected": self.state == "monitoring",
+            "state": self.state,
+            "state_message": self.state_message,
+            "udid": self.connected_udid or self.requested_udid or (self.last_usb_udids[0] if self.last_usb_udids else (self.last_wifi_udids[0] if self.last_wifi_udids else "")),
+            "device_name": friendly_device_name(self.product_type),
+            "product_type": self.product_type or "",
+            "ios_version": self.ios_version or "",
+            "active_transport": self.active_transport,
+            "transport_mode": self.transport_mode,
+            "usb_connected": len(self.last_usb_udids) > 0 or self.active_transport == "USB",
+            "usb_udids": self.last_usb_udids,
+            "wifi_paired": len(self.last_wifi_udids) > 0,
+            "wifi_udids": self.last_wifi_udids,
+            "ddi_mounted": self.ddi_mounted,
+            "last_change_count": self.last_change_id[1] if self.last_change_id else None,
+            "last_sync_ms": round(self.last_sync_ms, 1) if self.last_sync_ms is not None else None,
+            "total_synced": self.total_synced,
+            "history_revision": rev,
+            "history_count": len(items),
+        }
+
+    def trigger_manual_sync(self) -> bool:
+        if self.loop and self._active_pull_trigger:
+            self.loop.call_soon_threadsafe(self._active_pull_trigger.set)
+            return True
+        return False
+
+    def set_transport_mode(self, mode: str) -> None:
+        mode = mode.lower().strip()
+        if mode not in ("auto", "usb", "wifi"):
+            raise ValueError(f"Unsupported transport mode: {mode}")
+        if self.transport_mode != mode:
+            self.transport_mode = mode
+            if self.loop and self._session_cancel_event:
+                self.loop.call_soon_threadsafe(self._session_cancel_event.set)
+
+    def copy_history_item_to_windows(self, item_id: str) -> list[str]:
+        item = self.history.get_item(item_id)
+        if not item:
+            raise KeyError(f"History item {item_id} not found")
+        fp = item.get("fingerprint")
+        if isinstance(fp, str) and fp:
+            self.recent_fingerprints[fp] = time.monotonic()
+
+        kind = item.get("kind")
+        if kind == "image":
+            img_bytes = self.history.get_image_bytes(item_id)
+            if not img_bytes:
+                raise RuntimeError("Saved image file is missing")
+            formats, _ = self.clipboard.write_image(img_bytes, "public.png")
+            return formats
+
+        text = str(item.get("text") or "")
+        html_b64 = item.get("html_base64")
+        html_bytes = base64.b64decode(html_b64) if isinstance(html_b64, str) and html_b64 else None
+        return self.clipboard.write_text(text, html_bytes=html_bytes, is_url=(kind == "url"))
 
     async def _resolve_target_and_transport(self) -> tuple[str, str]:
         """Determine `(udid, active_transport)` based on `--udid` and `--transport`."""
         usb_udids = await async_list_usb_udids()
         wifi_udids = list_wifi_paired_udids()
+        self.last_usb_udids = usb_udids
+        self.last_wifi_udids = wifi_udids
 
         # Opportunistically cache iPhone Wi-Fi IP while connected over USB
         if usb_udids and self.transport_mode in ("auto", "wifi"):
@@ -988,9 +1288,16 @@ class UniversalClipboardCoordinator:
     async def _ensure_ddi_and_monitor(self, udid: str, active_transport: str) -> None:
         """Open RSD tunnel, mount Developer Disk Image if needed, and run the notification monitor."""
         transport_key = "wifi" if active_transport == "Wi-Fi" else "usb"
+        self.state = "connecting"
+        self.state_message = f"Connecting to iPhone over {active_transport}..."
 
         for attempt in range(2):
             async with open_rsd_tunnel(udid, transport_key) as rsd:
+                self.connected_udid = rsd.udid
+                self.product_type = rsd.product_type
+                self.ios_version = rsd.product_version
+                self.active_transport = active_transport
+
                 services = (rsd.peer_info or {}).get("Services", {})
                 has_pasteboard = PasteboardService.SERVICE_NAME in services
                 if not has_pasteboard:
@@ -998,6 +1305,8 @@ class UniversalClipboardCoordinator:
                         raise RuntimeError(
                             f"{PasteboardService.SERVICE_NAME} still unavailable after mounting Developer Disk Image."
                         )
+                    self.state = "mounting_ddi"
+                    self.state_message = f"Mounting Developer Disk Image on {friendly_device_name(rsd.product_type)}..."
                     logger.info(
                         "[DDI] %s not yet advertised on %s (iOS %s); mounting Developer Disk Image...",
                         PasteboardService.SERVICE_NAME,
@@ -1011,6 +1320,7 @@ class UniversalClipboardCoordinator:
                     logger.info("[DDI] Developer Disk Image mounted; reconnecting RSD tunnel to refresh service table.")
                     continue
 
+                self.ddi_mounted = True
                 logger.info(
                     "[CONNECTED] device=%s ios=%s udid=%s transport=%s rsd_addr=%s:%s",
                     rsd.product_type,
@@ -1026,6 +1336,9 @@ class UniversalClipboardCoordinator:
     async def _monitor_session(self, rsd: RemoteServiceDiscoveryService, active_transport: str) -> None:
         """Subscribe to `com.apple.pasteboard.notify.changed` and pull changes using isolated connections."""
         pull_trigger = asyncio.Event()
+        session_cancel = asyncio.Event()
+        self._active_pull_trigger = pull_trigger
+        self._session_cancel_event = session_cancel
         pull_reason = "notification"
         pending_locked_catchup = False
 
@@ -1035,6 +1348,8 @@ class UniversalClipboardCoordinator:
                 await notif_service.notify_register_dispatch(SPRINGBOARD_LOCKSTATE_NOTIFICATION)
                 await notif_service.notify_register_dispatch(KEYBAG_LOCK_STATUS_NOTIFICATION)
 
+            self.state = "monitoring"
+            self.state_message = f"Connected to {friendly_device_name(rsd.product_type)} · iOS {rsd.product_version} ({active_transport})"
             logger.info(
                 "[SUBSCRIBED] transport=%s notification=%s service=%s policy=POLICY_PROMISE_SECONDARY",
                 active_transport,
@@ -1101,11 +1416,16 @@ class UniversalClipboardCoordinator:
                         )
                         pending_locked_catchup = needs_retry
 
+            async def _transport_switch_watcher() -> None:
+                await session_cancel.wait()
+                raise ConnectionError(f"Transport mode switched to {self.transport_mode}")
+
             reader_task = asyncio.create_task(_notification_reader(), name="notif-reader")
             worker_task = asyncio.create_task(_pull_worker(), name="pull-worker")
+            cancel_task = asyncio.create_task(_transport_switch_watcher(), name="transport-watcher")
             try:
                 done, pending = await asyncio.wait(
-                    {reader_task, worker_task},
+                    {reader_task, worker_task, cancel_task},
                     return_when=asyncio.FIRST_EXCEPTION,
                 )
                 for task in pending:
@@ -1117,7 +1437,9 @@ class UniversalClipboardCoordinator:
                     if exc is not None:
                         raise exc
             finally:
-                for task in (reader_task, worker_task):
+                self._active_pull_trigger = None
+                self._session_cancel_event = None
+                for task in (reader_task, worker_task, cancel_task):
                     if not task.done():
                         task.cancel()
 
@@ -1284,6 +1606,17 @@ class UniversalClipboardCoordinator:
                 write_ms = (time.perf_counter() - t_write) * 1000.0
                 total_ms = (time.perf_counter() - t_start) * 1000.0
                 self.recent_fingerprints[fp] = time.monotonic()
+                self.last_sync_ms = total_ms
+                self.total_synced += 1
+                self.history.add_item(
+                    payload=payload,
+                    change_count=change_count,
+                    transport=active_transport,
+                    product_type=rsd.product_type,
+                    ios_version=rsd.product_version,
+                    latency_ms=total_ms,
+                    dimensions=(width, height),
+                )
                 logger.info(
                     "[CLIPBOARD_UPDATED] status=SUCCESS trigger=%s transport=%s changeCount=%s "
                     "type=image uti=%s size=%dB dimensions=%dx%d formats=%s pull_ms=%.1f write_ms=%.1f total_ms=%.1f",
@@ -1311,6 +1644,16 @@ class UniversalClipboardCoordinator:
                 utf8_len = len(payload.text.encode("utf-8"))
                 char_len = len(payload.text)
                 self.recent_fingerprints[fp] = time.monotonic()
+                self.last_sync_ms = total_ms
+                self.total_synced += 1
+                self.history.add_item(
+                    payload=payload,
+                    change_count=change_count,
+                    transport=active_transport,
+                    product_type=rsd.product_type,
+                    ios_version=rsd.product_version,
+                    latency_ms=total_ms,
+                )
                 logger.info(
                     "[CLIPBOARD_UPDATED] status=SUCCESS trigger=%s transport=%s changeCount=%s "
                     "type=%s uti=%s size=%dB utf8_bytes=%d chars=%d formats=%s pull_ms=%.1f write_ms=%.1f total_ms=%.1f",
@@ -1341,6 +1684,7 @@ class UniversalClipboardCoordinator:
 
     async def run_forever(self) -> None:
         """Main resilient supervisor loop with automatic transport failover and reconnection."""
+        self.loop = asyncio.get_running_loop()
         logger.info(
             "[STARTUP] Universal Clipboard PoC starting (mode=%s, requested_udid=%s, heif_support=%s)",
             self.transport_mode,
@@ -1349,13 +1693,18 @@ class UniversalClipboardCoordinator:
         )
         while True:
             try:
+                self.state = "connecting"
                 udid, active_transport = await self._resolve_target_and_transport()
+                self.state_message = f"Connecting to {udid} over {active_transport}..."
                 logger.info("[CONNECTING] udid=%s transport=%s", udid, active_transport)
                 await self._ensure_ddi_and_monitor(udid, active_transport)
             except asyncio.CancelledError:
                 logger.info("[SHUTDOWN] Universal Clipboard PoC stopped cleanly.")
                 raise
             except Exception as exc:
+                self.state = "reconnecting"
+                self.active_transport = ""
+                self.state_message = str(exc)
                 logger.warning(
                     "[CONNECTION_LOST] transport_mode=%s error=%s: %s — retrying in %.1fs...",
                     self.transport_mode,
@@ -1364,6 +1713,146 @@ class UniversalClipboardCoordinator:
                     self.reconnect_delay,
                 )
             await asyncio.sleep(self.reconnect_delay)
+
+
+# ---------------------------------------------------------------------------
+# Local HTTP API Server for WinUI 3 Desktop Client (127.0.0.1:8767)
+# ---------------------------------------------------------------------------
+
+
+def start_local_api_server(
+    coordinator: UniversalClipboardCoordinator,
+    host: str = "127.0.0.1",
+    port: int = 8767,
+) -> Optional[ThreadingHTTPServer]:
+    """Start a lightweight background HTTP JSON server on `127.0.0.1:8767` for the WinUI 3 client."""
+
+    class ApiHandler(BaseHTTPRequestHandler):
+        def log_message(self, format: str, *args: Any) -> None:
+            # Suppress per-request access logs to keep stdout clean and privacy-safe
+            pass
+
+        def _send_json(self, status: int, data: dict[str, Any]) -> None:
+            body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _read_json_body(self) -> dict[str, Any]:
+            length = int(self.headers.get("Content-Length", "0") or "0")
+            if length <= 0:
+                return {}
+            raw = self.rfile.read(length)
+            with contextlib.suppress(Exception):
+                parsed = json.loads(raw.decode("utf-8"))
+                if isinstance(parsed, dict):
+                    return parsed
+            return {}
+
+        def do_GET(self) -> None:
+            path = urlparse(self.path).path.rstrip("/")
+            if path == "/api/status":
+                self._send_json(200, coordinator.get_status_snapshot())
+                return
+
+            if path == "/api/history":
+                rev, items = coordinator.history.list_items()
+                self._send_json(200, {"revision": rev, "items": items})
+                return
+
+            m_img = re.match(r"^/api/history/([^/]+)/image$", path)
+            if m_img:
+                item_id = m_img.group(1)
+                img_bytes = coordinator.history.get_image_bytes(item_id)
+                if not img_bytes:
+                    self._send_json(404, {"ok": False, "error": "Image not found"})
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "image/png")
+                self.send_header("Content-Length", str(len(img_bytes)))
+                self.send_header("Cache-Control", "public, max-age=86400")
+                self.end_headers()
+                self.wfile.write(img_bytes)
+                return
+
+            self._send_json(404, {"ok": False, "error": "Not found"})
+
+        def do_POST(self) -> None:
+            path = urlparse(self.path).path.rstrip("/")
+            body = self._read_json_body()
+
+            if path == "/api/sync-now":
+                triggered = coordinator.trigger_manual_sync()
+                self._send_json(200, {"ok": triggered})
+                return
+
+            if path == "/api/transport":
+                mode = str(body.get("mode", "auto"))
+                try:
+                    coordinator.set_transport_mode(mode)
+                    self._send_json(200, {"ok": True, "transport_mode": coordinator.transport_mode})
+                except Exception as exc:
+                    self._send_json(400, {"ok": False, "error": str(exc)})
+                return
+
+            if path == "/api/pair-wifi":
+                if not coordinator.loop:
+                    self._send_json(503, {"ok": False, "error": "Event loop not ready"})
+                    return
+                try:
+                    fut = asyncio.run_coroutine_threadsafe(
+                        pair_device_for_wifi_over_usb(coordinator.requested_udid),
+                        coordinator.loop,
+                    )
+                    paired_udid = fut.result(timeout=25.0)
+                    coordinator.last_wifi_udids = list_wifi_paired_udids()
+                    self._send_json(200, {"ok": True, "udid": paired_udid})
+                except Exception as exc:
+                    self._send_json(500, {"ok": False, "error": str(exc)})
+                return
+
+            if path == "/api/history/clear":
+                include_pinned = bool(body.get("include_pinned", False))
+                removed = coordinator.history.clear(include_pinned=include_pinned)
+                self._send_json(200, {"ok": True, "removed": removed, "revision": coordinator.history.revision})
+                return
+
+            m_action = re.match(r"^/api/history/([^/]+)/(copy|pin|delete)$", path)
+            if m_action:
+                item_id, action = m_action.group(1), m_action.group(2)
+                if action == "copy":
+                    try:
+                        formats = coordinator.copy_history_item_to_windows(item_id)
+                        self._send_json(200, {"ok": True, "formats": formats})
+                    except Exception as exc:
+                        self._send_json(400, {"ok": False, "error": str(exc)})
+                    return
+                if action == "pin":
+                    pinned = coordinator.history.toggle_pin(item_id)
+                    if pinned is None:
+                        self._send_json(404, {"ok": False, "error": "Item not found"})
+                    else:
+                        self._send_json(200, {"ok": True, "pinned": pinned, "revision": coordinator.history.revision})
+                    return
+                if action == "delete":
+                    deleted = coordinator.history.delete_item(item_id)
+                    self._send_json(200, {"ok": deleted, "revision": coordinator.history.revision})
+                    return
+
+            self._send_json(404, {"ok": False, "error": "Not found"})
+
+    try:
+        server = ThreadingHTTPServer((host, port), ApiHandler)
+        thread = threading.Thread(target=server.serve_forever, name="clipboard-api", daemon=True)
+        thread.start()
+        logger.info("[API] Local WinUI 3 backend server listening on http://%s:%d", host, port)
+        return server
+    except OSError as exc:
+        logger.warning("[API] Could not bind local API on %s:%d (%s)", host, port, exc)
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -1408,6 +1897,12 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         default=2.0,
         help="Delay in seconds before reconnecting after a disconnect (default: 2.0)",
     )
+    parser.add_argument(
+        "--api-port",
+        type=int,
+        default=8767,
+        help="Local HTTP API port for the WinUI 3 desktop client (default: 8767, 0 to disable)",
+    )
     return parser.parse_args(argv)
 
 
@@ -1425,6 +1920,8 @@ async def _async_main(args: argparse.Namespace) -> int:
         reconnect_delay=args.reconnect_delay,
         sync_on_connect=args.sync_on_connect,
     )
+    if args.api_port > 0:
+        start_local_api_server(coordinator, port=args.api_port)
     await coordinator.run_forever()
     return 0
 
