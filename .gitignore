@@ -17,3 +17,11 @@ ENV/
 # OS metadata
 Thumbs.db
 .DS_Store
+
+# .NET / WinUI 3 build outputs
+bin/
+obj/
+.vs/
+*.user
+*.suo
+

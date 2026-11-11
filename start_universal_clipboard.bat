@@ -1,6 +1,8 @@
 @echo off
-title Universal Clipboard for Windows (iPhone -> Windows)
+title Universal Clipboard for Windows
 cd /d "%~dp0"
-echo Starting Universal Clipboard for Windows (Auto USB / Wi-Fi mode)...
-python -u poc_universal_clipboard.py --transport auto --sync-on-connect
-pause
+if exist "bin\x64\Release\net10.0-windows10.0.19041.0\win-x64\UniversalClipboard.exe" (
+    start "" "bin\x64\Release\net10.0-windows10.0.19041.0\win-x64\UniversalClipboard.exe"
+) else (
+    python -u poc_universal_clipboard.py --transport auto --sync-on-connect
+)
