@@ -144,7 +144,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="ColRail" Width="50" />
                 <ColumnDefinition x:Name="ColSidebar" Width="180" />
-                <ColumnDefinition x:Name="ColFeed" Width="310" />
+                <ColumnDefinition x:Name="ColFeed" Width="330" />
                 <ColumnDefinition x:Name="ColInspector" Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -639,43 +639,156 @@
                         HorizontalScrollBarVisibility="Disabled">
                         <Grid
                             x:Name="InspectorStageGrid"
-                            Padding="28,16"
+                            Padding="24,16"
                             MinHeight="280"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Center">
-                            <!-- Image Preview Stage -->
+
+                            <!-- 1. IMAGE PREVIEW STAGE -->
                             <StackPanel
                                 x:Name="InspectorImageStage"
                                 Visibility="Collapsed"
                                 VerticalAlignment="Center"
                                 HorizontalAlignment="Center"
-                                Spacing="12">
+                                MaxWidth="640"
+                                Spacing="14">
                                 <Border
-                                    Background="#0D0D0F"
-                                    BorderBrush="#24242A"
+                                    Background="#16161D"
+                                    BorderBrush="#282836"
                                     BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="6"
-                                    HorizontalAlignment="Center">
-                                    <Image
-                                        x:Name="InspectorPreviewImage"
-                                        MaxHeight="210"
-                                        MaxWidth="460"
-                                        Stretch="Uniform" />
+                                    CornerRadius="12"
+                                    Padding="0">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Top Header Bar for Image Card -->
+                                        <Border
+                                            Grid.Row="0"
+                                            Background="#1C1C26"
+                                            BorderBrush="#262634"
+                                            BorderThickness="0,0,0,1"
+                                            CornerRadius="12,12,0,0"
+                                            Height="38"
+                                            Padding="14,0">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                    <Border
+                                                        Background="#252534"
+                                                        BorderBrush="#343448"
+                                                        BorderThickness="1"
+                                                        CornerRadius="5"
+                                                        Padding="7,2"
+                                                        VerticalAlignment="Center">
+                                                        <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                                            <FontIcon Glyph="&#xEB9F;" FontSize="11" Foreground="#A0A0B0" />
+                                                            <TextBlock Text="IMAGE" FontSize="10.5" FontWeight="SemiBold" Foreground="#D0D0DC" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <TextBlock
+                                                        x:Name="InspectorImageMetaHeader"
+                                                        Text="PNG"
+                                                        FontSize="12"
+                                                        Foreground="#8A8A96"
+                                                        VerticalAlignment="Center" />
+                                                </StackPanel>
+
+                                                <Button
+                                                    Grid.Column="1"
+                                                    Click="OnInspectorCopyClick"
+                                                    Background="#22222C"
+                                                    BorderBrush="#2E2E3A"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6"
+                                                    Padding="8,3"
+                                                    ToolTipService.ToolTip="Copy image to clipboard">
+                                                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                                        <FontIcon Glyph="&#xE8C8;" FontSize="11" Foreground="#A0A0AA" />
+                                                        <TextBlock Text="Copy Image" FontSize="11.5" Foreground="#D0D0DC" />
+                                                    </StackPanel>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Image Display Canvas -->
+                                        <Border
+                                            Grid.Row="1"
+                                            Background="#0C0C10"
+                                            Padding="14"
+                                            CornerRadius="0,0,12,12">
+                                            <StackPanel Spacing="10" HorizontalAlignment="Center">
+                                                <Image
+                                                    x:Name="InspectorPreviewImage"
+                                                    MaxHeight="260"
+                                                    MaxWidth="540"
+                                                    Stretch="Uniform" />
+                                                <TextBlock
+                                                    x:Name="InspectorImageTitleText"
+                                                    Text="Clipboard.png"
+                                                    FontSize="13"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="#EDEDF4"
+                                                    TextTrimming="CharacterEllipsis"
+                                                    HorizontalAlignment="Center" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
                                 </Border>
 
-                                <TextBlock
-                                    x:Name="InspectorImageTitleText"
-                                    Text="Clipboard.png"
-                                    FontSize="13.5"
-                                    FontWeight="SemiBold"
-                                    Foreground="#EDEDF2"
-                                    TextTrimming="CharacterEllipsis"
-                                    HorizontalAlignment="Center"
-                                    Margin="0,0,0,8" />
+                                <!-- Image Badges Chips Row -->
+                                <StackPanel
+                                    x:Name="InspectorImageChipsPanel"
+                                    Orientation="Horizontal"
+                                    Spacing="6"
+                                    HorizontalAlignment="Center">
+                                    <Border
+                                        Background="#181820"
+                                        BorderBrush="#262632"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="8,3">
+                                        <TextBlock
+                                            x:Name="InspectorImageDirText"
+                                            Text="iPhone → Windows"
+                                            FontSize="11"
+                                            Foreground="#A0A0AB" />
+                                    </Border>
+                                    <Border
+                                        Background="#181820"
+                                        BorderBrush="#262632"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="8,3">
+                                        <TextBlock
+                                            x:Name="InspectorImageUtiText"
+                                            Text="public.png"
+                                            FontSize="11"
+                                            Foreground="#8A8A96"
+                                            FontFamily="Cascadia Code, Consolas" />
+                                    </Border>
+                                    <Border
+                                        Background="#181820"
+                                        BorderBrush="#262632"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="8,3">
+                                        <TextBlock
+                                            x:Name="InspectorImageTransportText"
+                                            Text="Wi-Fi · 130 ms"
+                                            FontSize="11"
+                                            Foreground="#8A8A96" />
+                                    </Border>
+                                </StackPanel>
                             </StackPanel>
 
-                            <!-- File Preview Stage (Monochrome Carbon-Gray Badge) -->
+                            <!-- 2. FILE PREVIEW STAGE -->
                             <StackPanel
                                 x:Name="InspectorFileStage"
                                 Visibility="Collapsed"
@@ -684,8 +797,8 @@
                                 MaxWidth="520"
                                 Spacing="14">
                                 <Border
-                                    Background="#17171A"
-                                    BorderBrush="#25252A"
+                                    Background="#16161D"
+                                    BorderBrush="#282836"
                                     BorderThickness="1"
                                     CornerRadius="12"
                                     Padding="36,26"
@@ -694,9 +807,9 @@
                                         <Border
                                             Width="64"
                                             Height="64"
-                                            CornerRadius="12"
-                                            Background="#23232A"
-                                            BorderBrush="#32323C"
+                                            CornerRadius="14"
+                                            Background="#232330"
+                                            BorderBrush="#323242"
                                             BorderThickness="1"
                                             HorizontalAlignment="Center">
                                             <TextBlock
@@ -712,7 +825,7 @@
                                         <TextBlock
                                             x:Name="InspectorFileTitleText"
                                             Text="document.zip"
-                                            FontSize="15"
+                                            FontSize="14.5"
                                             FontWeight="SemiBold"
                                             Foreground="#F2F2F5"
                                             TextAlignment="Center"
@@ -725,59 +838,236 @@
                                 <TextBlock
                                     x:Name="InspectorFileSubtitle"
                                     Text=""
-                                    FontSize="12"
-                                    Foreground="#787882"
+                                    FontSize="11.5"
+                                    Foreground="#787884"
                                     Typography.NumeralAlignment="Tabular"
                                     TextAlignment="Center"
                                     TextWrapping="Wrap"
                                     HorizontalAlignment="Center" />
                             </StackPanel>
 
-                            <!-- Text / Link / Code Preview Stage -->
+                            <!-- 3. TEXT / LINK / CODE PREVIEW STAGE -->
                             <StackPanel
                                 x:Name="InspectorTextStage"
                                 Visibility="Visible"
                                 VerticalAlignment="Center"
-                                HorizontalAlignment="Stretch"
+                                HorizontalAlignment="Center"
                                 MaxWidth="640"
-                                Margin="24,0"
-                                Spacing="12">
+                                Spacing="14">
                                 <Border
                                     x:Name="InspectorTextCardBorder"
-                                    Background="#17171A"
-                                    BorderBrush="#25252A"
+                                    Background="#16161D"
+                                    BorderBrush="#282836"
                                     BorderThickness="1"
                                     CornerRadius="12"
-                                    Padding="24,20"
-                                    HorizontalAlignment="Stretch"
-                                    MaxHeight="360">
-                                    <ScrollViewer
-                                        x:Name="InspectorTextScrollViewer"
-                                        VerticalScrollBarVisibility="Auto"
-                                        HorizontalScrollBarVisibility="Disabled">
-                                        <TextBlock
-                                            x:Name="InspectorPreviewText"
-                                            Text=""
-                                            FontSize="14"
-                                            Foreground="#F2F2F5"
-                                            LineHeight="22"
-                                            TextWrapping="Wrap"
-                                            HorizontalAlignment="Stretch"
-                                            TextAlignment="Left"
-                                            IsTextSelectionEnabled="True" />
-                                    </ScrollViewer>
+                                    Padding="0"
+                                    HorizontalAlignment="Stretch">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Card Header Bar -->
+                                        <Border
+                                            Grid.Row="0"
+                                            Background="#1C1C26"
+                                            BorderBrush="#262634"
+                                            BorderThickness="0,0,0,1"
+                                            CornerRadius="12,12,0,0"
+                                            Height="38"
+                                            Padding="14,0">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Left: Type Badge & Header Title -->
+                                                <StackPanel
+                                                    x:Name="InspectorCardHeaderLeft"
+                                                    Orientation="Horizontal"
+                                                    Spacing="8"
+                                                    VerticalAlignment="Center">
+                                                    <Border
+                                                        x:Name="InspectorTypeBadge"
+                                                        Background="#22222E"
+                                                        BorderBrush="#323242"
+                                                        BorderThickness="1"
+                                                        CornerRadius="5"
+                                                        Padding="7,2"
+                                                        VerticalAlignment="Center">
+                                                        <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                                            <FontIcon
+                                                                x:Name="InspectorTypeBadgeIcon"
+                                                                Glyph="&#xE8A5;"
+                                                                FontSize="11"
+                                                                Foreground="#A0A0B0" />
+                                                            <TextBlock
+                                                                x:Name="InspectorTypeBadgeText"
+                                                                Text="TEXT"
+                                                                FontSize="10.5"
+                                                                FontWeight="SemiBold"
+                                                                Foreground="#D0D0DC"
+                                                                Typography.NumeralAlignment="Tabular" />
+                                                        </StackPanel>
+                                                    </Border>
+
+                                                    <TextBlock
+                                                        x:Name="InspectorCardHeaderTitle"
+                                                        Text="116 characters"
+                                                        FontSize="12"
+                                                        Foreground="#8A8A96"
+                                                        VerticalAlignment="Center"
+                                                        TextTrimming="CharacterEllipsis"
+                                                        MaxWidth="300" />
+                                                </StackPanel>
+
+                                                <!-- Right: Actions (Open Link / Copy) -->
+                                                <StackPanel
+                                                    Grid.Column="1"
+                                                    Orientation="Horizontal"
+                                                    Spacing="6"
+                                                    VerticalAlignment="Center">
+                                                    <Button
+                                                        x:Name="InspectorOpenLinkBtn"
+                                                        Click="OnInspectorOpenLinkClick"
+                                                        Visibility="Collapsed"
+                                                        Background="#182738"
+                                                        BorderBrush="#243C56"
+                                                        BorderThickness="1"
+                                                        CornerRadius="6"
+                                                        Padding="9,3"
+                                                        ToolTipService.ToolTip="Open URL in default web browser">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                            <FontIcon Glyph="&#xE8A7;" FontSize="11" Foreground="#60A5FA" />
+                                                            <TextBlock Text="Open Link" FontSize="11.5" FontWeight="Medium" Foreground="#93C5FD" />
+                                                        </StackPanel>
+                                                    </Button>
+
+                                                    <Button
+                                                        x:Name="InspectorHeaderCopyBtn"
+                                                        Click="OnInspectorCopyClick"
+                                                        Background="#22222C"
+                                                        BorderBrush="#2E2E3A"
+                                                        BorderThickness="1"
+                                                        CornerRadius="6"
+                                                        Padding="8,3"
+                                                        ToolTipService.ToolTip="Copy text to clipboard">
+                                                        <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                                            <FontIcon Glyph="&#xE8C8;" FontSize="11" Foreground="#A0A0AA" />
+                                                            <TextBlock Text="Copy" FontSize="11.5" Foreground="#D0D0DC" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Card Text Body -->
+                                        <ScrollViewer
+                                            Grid.Row="1"
+                                            x:Name="InspectorTextScrollViewer"
+                                            MaxHeight="330"
+                                            Padding="20,16"
+                                            VerticalScrollBarVisibility="Auto"
+                                            HorizontalScrollBarVisibility="Disabled">
+                                            <TextBlock
+                                                x:Name="InspectorPreviewText"
+                                                Text=""
+                                                FontSize="13.5"
+                                                Foreground="#EDEDF4"
+                                                LineHeight="22"
+                                                TextWrapping="Wrap"
+                                                HorizontalAlignment="Stretch"
+                                                TextAlignment="Left"
+                                                IsTextSelectionEnabled="True" />
+                                        </ScrollViewer>
+                                    </Grid>
                                 </Border>
+
+                                <!-- Text Metadata Chips Row (Neat, Centered Pills) -->
+                                <StackPanel
+                                    x:Name="InspectorChipsPanel"
+                                    Orientation="Horizontal"
+                                    Spacing="6"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                                    <Border
+                                        x:Name="InspectorDirectionChip"
+                                        Background="#181820"
+                                        BorderBrush="#262632"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="8,3">
+                                        <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                            <FontIcon
+                                                x:Name="InspectorDirectionIcon"
+                                                Glyph="&#xE8EA;"
+                                                FontSize="10.5"
+                                                Foreground="#8A8A96" />
+                                            <TextBlock
+                                                x:Name="InspectorDirectionText"
+                                                Text="Windows → iPhone"
+                                                FontSize="11"
+                                                Foreground="#A0A0AB" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border
+                                        x:Name="InspectorFormatChip"
+                                        Background="#181820"
+                                        BorderBrush="#262632"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="8,3">
+                                        <TextBlock
+                                            x:Name="InspectorFormatText"
+                                            Text="public.utf8-plain-text"
+                                            FontSize="11"
+                                            Foreground="#8A8A96"
+                                            FontFamily="Cascadia Code, Consolas" />
+                                    </Border>
+
+                                    <Border
+                                        x:Name="InspectorTransportChip"
+                                        Background="#181820"
+                                        BorderBrush="#262632"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="8,3">
+                                        <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                            <FontIcon
+                                                x:Name="InspectorTransportIcon"
+                                                Glyph="&#xE701;"
+                                                FontSize="10.5"
+                                                Foreground="#34D399" />
+                                            <TextBlock
+                                                x:Name="InspectorTransportText"
+                                                Text="Wi-Fi"
+                                                FontSize="11"
+                                                Foreground="#A0A0AB" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border
+                                        x:Name="InspectorLatencyChip"
+                                        Background="#181820"
+                                        BorderBrush="#262632"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="8,3">
+                                        <TextBlock
+                                            x:Name="InspectorLatencyText"
+                                            Text="116 B · 132 ms"
+                                            FontSize="11"
+                                            Foreground="#8A8A96"
+                                            Typography.NumeralAlignment="Tabular" />
+                                    </Border>
+                                </StackPanel>
 
                                 <TextBlock
                                     x:Name="InspectorTextSubtitle"
-                                    Text=""
-                                    FontSize="11.5"
-                                    Foreground="#787882"
-                                    Typography.NumeralAlignment="Tabular"
-                                    TextAlignment="Center"
-                                    TextWrapping="Wrap"
-                                    MaxWidth="420"
-                                    HorizontalAlignment="Center" />
+                                    Visibility="Collapsed" />
                             </StackPanel>
                         </Grid>
                     </ScrollViewer>
@@ -1571,26 +1861,33 @@
                         </Grid>
                     </Border>
 
-                    <!-- Terminal Content Body -->
-                    <ScrollViewer
+                    <!-- Terminal Content Body (Framed elevated terminal console) -->
+                    <Border
                         Grid.Row="1"
-                        x:Name="LogsScrollViewer"
-                        Background="#0D0D10"
-                        HorizontalScrollBarVisibility="Auto"
-                        VerticalScrollBarVisibility="Auto"
-                        Padding="0">
-                        <TextBox
-                            x:Name="LogsContentTextBox"
-                            IsReadOnly="True"
-                            AcceptsReturn="True"
-                            TextWrapping="NoWrap"
-                            FontFamily="Cascadia Code, Consolas, Courier New"
-                            FontSize="12.5"
-                            Foreground="#D2D2DA"
+                        Background="#0A0B0E"
+                        BorderBrush="#1E1F29"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="16,12">
+                        <ScrollViewer
+                            x:Name="LogsScrollViewer"
                             Background="Transparent"
-                            BorderThickness="0"
-                            Padding="18,14" />
-                    </ScrollViewer>
+                            HorizontalScrollBarVisibility="Auto"
+                            VerticalScrollBarVisibility="Auto"
+                            Padding="0">
+                            <TextBox
+                                x:Name="LogsContentTextBox"
+                                IsReadOnly="True"
+                                AcceptsReturn="True"
+                                TextWrapping="NoWrap"
+                                FontFamily="Cascadia Code, Consolas, Courier New"
+                                FontSize="12"
+                                Foreground="#D4D4DE"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="16,12" />
+                        </ScrollViewer>
+                    </Border>
 
                     <!-- Status Footer -->
                     <Border

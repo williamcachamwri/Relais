@@ -123,12 +123,39 @@ public sealed class ClipboardHistoryItem
 
     public bool IsImage => Kind == "image";
     public bool IsFile => Kind == "file";
-    public bool IsLink => Kind == "url";
+    public bool IsLink => Kind == "url" || ExtractedUrl != null;
     public bool IsFromPc => string.Equals(Source, "pc", StringComparison.OrdinalIgnoreCase)
                             || string.Equals(DeviceModel, "This device", StringComparison.OrdinalIgnoreCase);
     public bool IsRichText => Uti.Contains("html", StringComparison.OrdinalIgnoreCase)
                               || Uti.Contains("webarchive", StringComparison.OrdinalIgnoreCase)
                               || Uti.Contains("rtf", StringComparison.OrdinalIgnoreCase);
+
+    public string? ExtractedUrl
+    {
+        get
+        {
+            if (Kind == "url" && Uri.TryCreate(Text.Trim(), UriKind.Absolute, out _))
+            {
+                return Text.Trim();
+            }
+            if (string.IsNullOrWhiteSpace(Text)) return null;
+            var match = System.Text.RegularExpressions.Regex.Match(Text, @"https?://[^\s<>""'）]+");
+            return match.Success ? match.Value : null;
+        }
+    }
+
+    public string? ExtractedDomain
+    {
+        get
+        {
+            var url = ExtractedUrl;
+            if (!string.IsNullOrEmpty(url) && Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                return uri.Host;
+            }
+            return null;
+        }
+    }
 
     public bool IsCode => !IsImage && !IsFile && !IsLink && (
         Text.Contains("function ", StringComparison.Ordinal)

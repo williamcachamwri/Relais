@@ -69,6 +69,7 @@ public sealed partial class MainWindow : Window
     private bool? _sidebarManualOverride;
     private bool _isDeveloperModeEnabled;
     private int _logPollCounter;
+    private string _renderedItemIdsKey = "";
 
     // Carbon-Graphite Palette (Reference Image #2)
     private static readonly SolidColorBrush BrushTextPrimary = new(ColorHelper.FromArgb(0xFF, 0xF2, 0xF2, 0xF5));
@@ -79,11 +80,15 @@ public sealed partial class MainWindow : Window
 
     private static readonly SolidColorBrush BrushNeutralAccent = new(ColorHelper.FromArgb(0xFF, 0xDC, 0xDC, 0xE4));
     private static readonly SolidColorBrush BrushFileBadgeBg = new(ColorHelper.FromArgb(0xFF, 0x25, 0x25, 0x2C));
-    private static readonly SolidColorBrush BrushLinkBlueText = new(ColorHelper.FromArgb(0xFF, 0x58, 0xA6, 0xFF));
+    private static readonly SolidColorBrush BrushLinkBlueText = new(ColorHelper.FromArgb(0xFF, 0x60, 0xA5, 0xFA));
     private static readonly SolidColorBrush BrushLinkBlueBg = new(ColorHelper.FromArgb(0xFF, 0x17, 0x2A, 0x3A));
-    private static readonly SolidColorBrush BrushCodePurpleText = new(ColorHelper.FromArgb(0xFF, 0xA3, 0x71, 0xF7));
+    private static readonly SolidColorBrush BrushLinkBorder = new(ColorHelper.FromArgb(0xFF, 0x24, 0x48, 0x66));
+    private static readonly SolidColorBrush BrushCodePurpleText = new(ColorHelper.FromArgb(0xFF, 0xA7, 0x8B, 0xFA));
     private static readonly SolidColorBrush BrushCodePurpleBg = new(ColorHelper.FromArgb(0xFF, 0x23, 0x1C, 0x35));
-    private static readonly SolidColorBrush BrushStatusGreen = new(ColorHelper.FromArgb(0xFF, 0x28, 0xC8, 0x40));
+    private static readonly SolidColorBrush BrushCodeBorder = new(ColorHelper.FromArgb(0xFF, 0x3A, 0x2A, 0x56));
+    private static readonly SolidColorBrush BrushTextBg = new(ColorHelper.FromArgb(0xFF, 0x22, 0x22, 0x2E));
+    private static readonly SolidColorBrush BrushTextBorder = new(ColorHelper.FromArgb(0xFF, 0x32, 0x32, 0x42));
+    private static readonly SolidColorBrush BrushStatusGreen = new(ColorHelper.FromArgb(0xFF, 0x34, 0xD3, 0x99));
     private static readonly SolidColorBrush BrushStatusAmber = new(ColorHelper.FromArgb(0xFF, 0xFE, 0xBC, 0x2E));
 
     private static readonly SolidColorBrush BrushSidebarActive = new(ColorHelper.FromArgb(0xFF, 0x28, 0x28, 0x2D));
@@ -232,88 +237,35 @@ public sealed partial class MainWindow : Window
     {
         if (width <= 0 || height <= 0) return;
 
-        // Auto-collapse sidebar when window is resized narrow to give ample room to Feed + Inspector
-        if (width >= 960 && _sidebarManualOverride == true)
+        // Auto-collapse sidebar when window is resized narrow (< 840px)
+        if (width >= 920 && _sidebarManualOverride == true)
         {
             _sidebarManualOverride = null;
         }
 
-        var showSidebar = _sidebarManualOverride ?? (width >= 880);
-        if (width < 760)
+        var showSidebar = _sidebarManualOverride ?? (width >= 840);
+        if (width < 740)
         {
             showSidebar = false;
         }
 
         FilterSidebarBorder.Visibility = showSidebar ? Visibility.Visible : Visibility.Collapsed;
-        ColSidebar.Width = showSidebar ? new GridLength(176) : new GridLength(0);
+        ColSidebar.Width = showSidebar ? new GridLength(180) : new GridLength(0);
 
-        // Dynamic Feed column width based on remaining horizontal space
-        var remainingAfterSidebar = width - 50 - (showSidebar ? 176 : 0);
-        var targetFeedWidth = Math.Clamp(remainingAfterSidebar * 0.38, 200, 320);
-        ColFeed.Width = new GridLength(targetFeedWidth);
+        // Keep Feed column completely stable and calm (330px default, 280px on very narrow window)
+        ColFeed.Width = width < 660 ? new GridLength(280) : new GridLength(330);
 
-        // Top Bar responsive search box and subtitle visibility
-        var showTopHint = width >= 800;
+        // Top Bar search box width and hint
+        var showTopHint = width >= 820;
         TitleBarHintDot.Visibility = showTopHint ? Visibility.Visible : Visibility.Collapsed;
         TitleBarSyncHintText.Visibility = showTopHint ? Visibility.Visible : Visibility.Collapsed;
-        SearchPillBorder.Width = Math.Clamp(width * 0.28, 150, 300);
+        SearchPillBorder.Width = width < 780 ? 190 : 270;
 
-        // Inspector responsive spacing, image bounds, centered text card width, and action bar labels
-        var inspectorWidth = Math.Max(220, remainingAfterSidebar - targetFeedWidth);
-        InspectorTopBar.Padding = inspectorWidth < 380 ? new Thickness(14, 0, 14, 0) : new Thickness(24, 0, 24, 0);
-        InspectorStageGrid.Padding = inspectorWidth < 380 ? new Thickness(12, 10, 12, 10) : new Thickness(24, 16, 24, 16);
+        // Remaining width is absorbed naturally by ColInspector (*)
+        var remainingAfterCols = width - 50 - (showSidebar ? 180 : 0) - ColFeed.Width.Value;
+        var compactBar = remainingAfterCols < 420;
+        var veryCompactBar = remainingAfterCols < 330;
 
-        // Responsive text card
-        var cardMaxWidth = Math.Clamp(inspectorWidth - 40, 190, 560);
-        InspectorTextStage.MaxWidth = cardMaxWidth;
-        InspectorTextStage.Margin = new Thickness(inspectorWidth < 360 ? 10 : 20, 0, inspectorWidth < 360 ? 10 : 20, 0);
-
-        // Height-based responsive scaling
-        var availableContentHeight = Math.Max(120, height - 160);
-        if (height < 520)
-        {
-            InspectorPreviewImage.MaxHeight = Math.Clamp(availableContentHeight - 50, 110, 160);
-            InspectorPreviewImage.MaxWidth = Math.Clamp(cardMaxWidth - 30, 160, 360);
-            InspectorTextCardBorder.MaxHeight = Math.Clamp(availableContentHeight - 40, 110, 180);
-            InspectorTextCardBorder.Padding = new Thickness(14, 10, 14, 10);
-            InspectorPreviewText.FontSize = 12.5;
-            InspectorPreviewText.LineHeight = 18;
-            InspectorTextSubtitle.FontSize = 11;
-            InspectorTextStage.Spacing = 8;
-            InspectorActionBarBorder.Padding = new Thickness(10, 5, 10, 5);
-            InspectorActionBarBorder.Margin = new Thickness(0, 0, 0, 8);
-        }
-        else if (height < 650)
-        {
-            InspectorPreviewImage.MaxHeight = Math.Clamp(availableContentHeight - 60, 150, 220);
-            InspectorPreviewImage.MaxWidth = Math.Clamp(cardMaxWidth - 30, 200, 420);
-            InspectorTextCardBorder.MaxHeight = Math.Clamp(availableContentHeight - 50, 160, 260);
-            InspectorTextCardBorder.Padding = new Thickness(18, 14, 18, 14);
-            InspectorPreviewText.FontSize = 13;
-            InspectorPreviewText.LineHeight = 20;
-            InspectorTextSubtitle.FontSize = 11.5;
-            InspectorTextStage.Spacing = 10;
-            InspectorActionBarBorder.Padding = new Thickness(12, 6, 12, 6);
-            InspectorActionBarBorder.Margin = new Thickness(0, 0, 0, 12);
-        }
-        else
-        {
-            InspectorPreviewImage.MaxHeight = Math.Clamp(availableContentHeight - 70, 200, 360);
-            InspectorPreviewImage.MaxWidth = Math.Clamp(cardMaxWidth - 30, 240, 480);
-            InspectorTextCardBorder.MaxHeight = Math.Clamp(availableContentHeight - 60, 240, 440);
-            InspectorTextCardBorder.Padding = new Thickness(24, 20, 24, 20);
-            InspectorPreviewText.FontSize = 14;
-            InspectorPreviewText.LineHeight = 22;
-            InspectorTextSubtitle.FontSize = 12;
-            InspectorTextStage.Spacing = 12;
-            InspectorActionBarBorder.Padding = new Thickness(14, 7, 14, 7);
-            InspectorActionBarBorder.Margin = new Thickness(0, 0, 0, 16);
-        }
-
-        InspectorTextSubtitle.MaxWidth = Math.Max(180, cardMaxWidth - 20);
-
-        var compactBar = inspectorWidth < 430;
-        var veryCompactBar = inspectorWidth < 340;
         InspectorBarPanel.Spacing = veryCompactBar ? 0 : (compactBar ? 2 : 4);
         ActionSendIphoneLabel.Text = compactBar ? "iPhone" : "Send to iPhone";
 
@@ -330,21 +282,21 @@ public sealed partial class MainWindow : Window
         {
             if (s is FrameworkElement fe)
             {
-                AnimateScale(fe, pressedScale, 95);
+                AnimateScale(fe, pressedScale, 90);
             }
         };
         element.PointerReleased += (s, _) =>
         {
             if (s is FrameworkElement fe)
             {
-                AnimateScale(fe, 1.0f, 150);
+                AnimateScale(fe, 1.0f, 160);
             }
         };
         element.PointerExited += (s, _) =>
         {
             if (s is FrameworkElement fe)
             {
-                AnimateScale(fe, 1.0f, 150);
+                AnimateScale(fe, 1.0f, 160);
             }
         };
     }
@@ -362,7 +314,7 @@ public sealed partial class MainWindow : Window
             }
 
             var compositor = visual.Compositor;
-            var easing = compositor.CreateCubicBezierEasingFunction(new Vector2(0.22f, 1.0f), new Vector2(0.36f, 1.0f));
+            var easing = compositor.CreateCubicBezierEasingFunction(new Vector2(0.16f, 1.0f), new Vector2(0.3f, 1.0f));
             var anim = compositor.CreateVector3KeyFrameAnimation();
             anim.InsertKeyFrame(1.0f, new Vector3(targetScale, targetScale, 1.0f), easing);
             anim.Duration = TimeSpan.FromMilliseconds(durationMs);
@@ -380,22 +332,36 @@ public sealed partial class MainWindow : Window
         {
             var visual = ElementCompositionPreview.GetElementVisual(element);
             var compositor = visual.Compositor;
-            var easing = compositor.CreateCubicBezierEasingFunction(new Vector2(0.22f, 1.0f), new Vector2(0.36f, 1.0f));
+            var easing = compositor.CreateCubicBezierEasingFunction(new Vector2(0.16f, 1.0f), new Vector2(0.3f, 1.0f));
+
+            var w = (float)element.ActualWidth;
+            var h = (float)element.ActualHeight;
+            if (w > 0 && h > 0)
+            {
+                visual.CenterPoint = new Vector3(w / 2f, h / 2f, 0f);
+            }
 
             var fade = compositor.CreateScalarKeyFrameAnimation();
             fade.InsertKeyFrame(0.0f, 0.0f);
             fade.InsertKeyFrame(1.0f, 1.0f, easing);
-            fade.Duration = TimeSpan.FromMilliseconds(175);
+            fade.Duration = TimeSpan.FromMilliseconds(260);
             if (delayMs > 0) fade.DelayTime = TimeSpan.FromMilliseconds(delayMs);
 
             var slide = compositor.CreateVector3KeyFrameAnimation();
-            slide.InsertKeyFrame(0.0f, new Vector3(0f, 6f, 0f));
+            slide.InsertKeyFrame(0.0f, new Vector3(0f, 10f, 0f));
             slide.InsertKeyFrame(1.0f, Vector3.Zero, easing);
-            slide.Duration = TimeSpan.FromMilliseconds(175);
+            slide.Duration = TimeSpan.FromMilliseconds(260);
             if (delayMs > 0) slide.DelayTime = TimeSpan.FromMilliseconds(delayMs);
+
+            var scale = compositor.CreateVector3KeyFrameAnimation();
+            scale.InsertKeyFrame(0.0f, new Vector3(0.985f, 0.985f, 1.0f));
+            scale.InsertKeyFrame(1.0f, Vector3.One, easing);
+            scale.Duration = TimeSpan.FromMilliseconds(260);
+            if (delayMs > 0) scale.DelayTime = TimeSpan.FromMilliseconds(delayMs);
 
             visual.StartAnimation("Opacity", fade);
             visual.StartAnimation("Offset", slide);
+            visual.StartAnimation("Scale", scale);
         }
         catch
         {
@@ -557,6 +523,15 @@ public sealed partial class MainWindow : Window
         SearchItemCountText.Text = $"{_filteredItems.Count} items";
         EmptyFeedState.Visibility = _filteredItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
+        // Check if the filtered list IDs match the currently rendered list exactly to prevent flicker
+        var newIdsKey = string.Join(",", _filteredItems.Select(x => x.Id + (x.Pinned ? ":p" : "")));
+        if (newIdsKey == _renderedItemIdsKey && HistoryListPanel.Children.Count == _filteredItems.Count)
+        {
+            UpdateRowSelectionVisuals();
+            return;
+        }
+
+        _renderedItemIdsKey = newIdsKey;
         HistoryListPanel.Children.Clear();
         _rowBorders.Clear();
 
@@ -569,7 +544,7 @@ public sealed partial class MainWindow : Window
 
             if (animateRows && i < 8)
             {
-                AnimateStageEntrance(row, delayMs: i * 16);
+                AnimateStageEntrance(row, delayMs: i * 20);
             }
         }
 
@@ -943,6 +918,16 @@ public sealed partial class MainWindow : Window
         UpdateInspector(item, animateStage);
     }
 
+    private void UpdateRowSelectionVisuals()
+    {
+        foreach (var (id, border) in _rowBorders)
+        {
+            var isSelected = _selectedItem?.Id == id;
+            border.Background = isSelected ? BrushRowSelected : BrushTransparent;
+            border.BorderBrush = isSelected ? BrushRowSelectedEdge : BrushTransparent;
+        }
+    }
+
     private void UpdateInspector(ClipboardHistoryItem? item, bool animateStage)
     {
         if (item is null)
@@ -953,11 +938,20 @@ public sealed partial class MainWindow : Window
             InspectorImageStage.Visibility = Visibility.Collapsed;
             InspectorFileStage.Visibility = Visibility.Collapsed;
             InspectorTextStage.Visibility = Visibility.Visible;
+            InspectorOpenLinkBtn.Visibility = Visibility.Collapsed;
+            InspectorTypeBadgeText.Text = "INFO";
+            InspectorTypeBadgeIcon.Glyph = "\uE946";
+            InspectorTypeBadge.Background = BrushTextBg;
+            InspectorTypeBadge.BorderBrush = BrushTextBorder;
+            InspectorTypeBadgeText.Foreground = BrushTextPrimary;
+            InspectorTypeBadgeIcon.Foreground = BrushTextSecondary;
+            InspectorCardHeaderTitle.Text = "Universal Clipboard";
             InspectorPreviewText.Text = "Copy text, images, URLs, or files on your iPhone or Windows PC — both directions sync automatically.";
-            InspectorTextSubtitle.Text = "";
+            InspectorChipsPanel.Visibility = Visibility.Collapsed;
             return;
         }
 
+        InspectorChipsPanel.Visibility = Visibility.Visible;
         InspectorSourceIcon.Glyph = item.IsFromPc ? "\uE7F8" : "\uE8EA";
         InspectorSourceText.Text = item.IsFromPc ? "This device" : item.ShortDeviceName;
         ActionFavoriteIcon.Glyph = item.Pinned ? "\uE735" : "\uE734";
@@ -984,7 +978,14 @@ public sealed partial class MainWindow : Window
                 InspectorPreviewImage.Source = null;
             }
 
+            InspectorImageMetaHeader.Text = item.Width > 0 && item.Height > 0
+                ? $"{item.Width} × {item.Height} px  ·  {item.FormattedSize}"
+                : item.FormattedSize;
             InspectorImageTitleText.Text = item.ImageDisplayName;
+            InspectorImageDirText.Text = direction;
+            InspectorImageUtiText.Text = item.Uti;
+            InspectorImageTransportText.Text = $"{item.Transport}  ·  {item.LatencyMs:F1} ms";
+
             if (animateStage) AnimateStageEntrance(InspectorImageStage);
         }
         else if (item.IsFile)
@@ -1003,25 +1004,77 @@ public sealed partial class MainWindow : Window
         }
         else
         {
-            if (item.IsLink)
-                InspectorMetaLeftText.Text = $"URL  ·  {item.Text.Length} chars";
-            else if (item.IsCode)
-                InspectorMetaLeftText.Text = $"Code  ·  {item.Text.Length} chars";
-            else
-                InspectorMetaLeftText.Text = $"Text  ·  {item.Text.Length} chars";
-
             InspectorImageStage.Visibility = Visibility.Collapsed;
             InspectorFileStage.Visibility = Visibility.Collapsed;
             InspectorTextStage.Visibility = Visibility.Visible;
 
+            if (item.IsLink)
+            {
+                InspectorMetaLeftText.Text = $"URL  ·  {item.Text.Length} chars";
+                InspectorTypeBadgeText.Text = "URL";
+                InspectorTypeBadgeIcon.Glyph = "\uE71B";
+                InspectorTypeBadge.Background = BrushLinkBlueBg;
+                InspectorTypeBadge.BorderBrush = BrushLinkBorder;
+                InspectorTypeBadgeText.Foreground = BrushLinkBlueText;
+                InspectorTypeBadgeIcon.Foreground = BrushLinkBlueText;
+                InspectorCardHeaderTitle.Text = item.ExtractedDomain ?? $"{item.Text.Length} characters";
+                InspectorOpenLinkBtn.Visibility = item.ExtractedUrl != null ? Visibility.Visible : Visibility.Collapsed;
+            }
+            else if (item.IsCode)
+            {
+                InspectorMetaLeftText.Text = $"Code  ·  {item.Text.Length} chars";
+                InspectorTypeBadgeText.Text = "CODE";
+                InspectorTypeBadgeIcon.Glyph = "\uE943";
+                InspectorTypeBadge.Background = BrushCodePurpleBg;
+                InspectorTypeBadge.BorderBrush = BrushCodeBorder;
+                InspectorTypeBadgeText.Foreground = BrushCodePurpleText;
+                InspectorTypeBadgeIcon.Foreground = BrushCodePurpleText;
+                InspectorCardHeaderTitle.Text = $"{item.Text.Length} characters";
+                InspectorOpenLinkBtn.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                InspectorMetaLeftText.Text = $"Text  ·  {item.Text.Length} chars";
+                InspectorTypeBadgeText.Text = "TEXT";
+                InspectorTypeBadgeIcon.Glyph = "\uE8A5";
+                InspectorTypeBadge.Background = BrushTextBg;
+                InspectorTypeBadge.BorderBrush = BrushTextBorder;
+                InspectorTypeBadgeText.Foreground = BrushTextPrimary;
+                InspectorTypeBadgeIcon.Foreground = BrushTextSecondary;
+                InspectorCardHeaderTitle.Text = $"{item.Text.Length} characters";
+                InspectorOpenLinkBtn.Visibility = Visibility.Collapsed;
+            }
+
             InspectorPreviewText.Text = item.Text;
             InspectorPreviewText.FontFamily = item.IsCode
-                ? new FontFamily("Cascadia Mono, Consolas")
+                ? new FontFamily("Cascadia Code, Consolas")
                 : new FontFamily("Segoe UI Variable Text, Segoe UI");
-            InspectorPreviewText.FontSize = item.IsCode ? 13 : 14;
+            InspectorPreviewText.FontSize = item.IsCode ? 13 : 13.5;
             InspectorTextScrollViewer?.ChangeView(0, 0, 1.0f, true);
-            InspectorTextSubtitle.Text = $"{direction}  ·  {item.Uti}  ·  {item.FormattedSize}  ·  {item.Transport}  ·  {item.LatencyMs:F1} ms";
+
+            InspectorDirectionText.Text = direction;
+            InspectorDirectionIcon.Glyph = item.IsFromPc ? "\uE7F8" : "\uE8EA";
+            InspectorFormatText.Text = item.Uti;
+            InspectorTransportText.Text = item.Transport;
+            InspectorLatencyText.Text = $"{item.FormattedSize}  ·  {item.LatencyMs:F1} ms";
+
             if (animateStage) AnimateStageEntrance(InspectorTextStage);
+        }
+    }
+
+    private async void OnInspectorOpenLinkClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var url = _selectedItem?.ExtractedUrl;
+            if (!string.IsNullOrEmpty(url) && Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                await Windows.System.Launcher.LaunchUriAsync(uri);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Không thể mở liên kết: " + ex.Message, InfoBarSeverity.Warning);
         }
     }
 
