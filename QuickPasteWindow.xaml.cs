@@ -16,15 +16,32 @@ namespace UniversalClipboard;
 
 public sealed partial class QuickPasteWindow : Window
 {
-    // Logical (DIP) size of the popup; scaled by monitor DPI before positioning.
-    private const double PopupWidthDip = 400;
+    private const double PopupWidthDip = 408;
     private const double PopupHeightDip = 440;
-    private const int ScreenMarginPx = 12;
+    private const int ScreenMarginPx = 14;
+
+    private const int GwlpWndProc = -4;
+    private const int GwlStyle = -16;
+    private const uint WmNcCalcSize = 0x0083;
+    private const uint WmNcActivate = 0x0086;
+    private const long WsCaption = 0x00C00000L;
+    private const long WsThickFrame = 0x00040000L;
+    private const long WsMinimizeBox = 0x00020000L;
+    private const long WsMaximizeBox = 0x00010000L;
+    private const long WsSysMenu = 0x00080000L;
+    private const uint SwpNoSize = 0x0001;
+    private const uint SwpNoMove = 0x0002;
+    private const uint SwpNoZOrder = 0x0004;
+    private const uint SwpNoActivate = 0x0010;
+    private const uint SwpFrameChanged = 0x0020;
 
     // DWM attributes
+    private const int DwmwaUseImmersiveDarkMode = 20;
     private const int DwmwaWindowCornerPreference = 33;
     private const int DwmwaBorderColor = 34;
     private const int DwmwcpRound = 2;
+
+    private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
     private readonly ClipboardBackendService _backend;
     private List<ClipboardHistoryItem> _allItems = [];
@@ -35,32 +52,36 @@ public sealed partial class QuickPasteWindow : Window
     private IntPtr _targetForegroundHwnd = IntPtr.Zero;
     private AppWindow? _appWindow;
     private IntPtr _hwnd;
+    private IntPtr _origWndProc;
+    private WndProcDelegate? _wndProcDelegate;
     private bool _isClosingOrPasting;
 
     private static readonly SolidColorBrush BrushTextPrimary = Hex(0xF2, 0xF2, 0xF5);
-    private static readonly SolidColorBrush BrushTextRow = Hex(0xC9, 0xC9, 0xD0);
-    private static readonly SolidColorBrush BrushTextMuted = Hex(0x62, 0x62, 0x6B);
+    private static readonly SolidColorBrush BrushTextRow = Hex(0xD2, 0xD2, 0xDA);
+    private static readonly SolidColorBrush BrushTextMuted = Hex(0x66, 0x66, 0x70);
     private static readonly SolidColorBrush BrushIcon = Hex(0x8C, 0x8C, 0x95);
-    private static readonly SolidColorBrush BrushFileGold = Hex(0xD1, 0xA0, 0x5A);
+    private static readonly SolidColorBrush BrushFileGold = Hex(0xD4, 0xA3, 0x59);
     private static readonly SolidColorBrush BrushLinkBlue = Hex(0x6C, 0xA8, 0xF0);
 
-    private static readonly SolidColorBrush BrushTabActiveBg = Hex(0x26, 0x26, 0x2C);
-    private static readonly SolidColorBrush BrushTabActiveFg = Hex(0xF2, 0xF2, 0xF5);
-    private static readonly SolidColorBrush BrushTabInactiveFg = Hex(0x80, 0x80, 0x89);
+    private static readonly SolidColorBrush BrushTabActiveBg = Hex(0xED, 0xED, 0xF0);
+    private static readonly SolidColorBrush BrushTabActiveFg = Hex(0x12, 0x12, 0x14);
+    private static readonly SolidColorBrush BrushTabInactiveBg = Hex(0x1E, 0x1E, 0x24);
+    private static readonly SolidColorBrush BrushTabInactiveFg = Hex(0x8E, 0x8E, 0x98);
 
-    private static readonly SolidColorBrush BrushRowSelectedBg = Hex(0x24, 0x24, 0x2A);
-    private static readonly SolidColorBrush BrushRowHoverBg = Hex(0x1B, 0x1B, 0x20);
+    private static readonly SolidColorBrush BrushRowSelectedBg = Hex(0x25, 0x25, 0x2D);
+    private static readonly SolidColorBrush BrushRowSelectedBorder = Hex(0x36, 0x36, 0x42);
+    private static readonly SolidColorBrush BrushRowHoverBg = Hex(0x1C, 0x1C, 0x22);
     private static readonly SolidColorBrush BrushTransparent = new(Colors.Transparent);
 
-    private static readonly SolidColorBrush BrushTileBg = Hex(0x1C, 0x1C, 0x21);
-    private static readonly SolidColorBrush BrushTileBorder = Hex(0x2A, 0x2A, 0x31);
+    private static readonly SolidColorBrush BrushTileBg = Hex(0x1C, 0x1C, 0x22);
+    private static readonly SolidColorBrush BrushTileBorder = Hex(0x2C, 0x2C, 0x34);
 
-    private static readonly SolidColorBrush BrushKeyBg = Hex(0x1A, 0x1A, 0x1F);
-    private static readonly SolidColorBrush BrushKeyBorder = Hex(0x2A, 0x2A, 0x31);
-    private static readonly SolidColorBrush BrushKeyFg = Hex(0x70, 0x70, 0x79);
-    private static readonly SolidColorBrush BrushKeySelBg = Hex(0x33, 0x33, 0x3B);
-    private static readonly SolidColorBrush BrushKeySelBorder = Hex(0x45, 0x45, 0x4F);
-    private static readonly SolidColorBrush BrushKeySelFg = Hex(0xE6, 0xE6, 0xEB);
+    private static readonly SolidColorBrush BrushKeyBg = Hex(0x1B, 0x1B, 0x21);
+    private static readonly SolidColorBrush BrushKeyBorder = Hex(0x2C, 0x2C, 0x34);
+    private static readonly SolidColorBrush BrushKeyFg = Hex(0x78, 0x78, 0x82);
+    private static readonly SolidColorBrush BrushKeySelBg = Hex(0x32, 0x32, 0x3C);
+    private static readonly SolidColorBrush BrushKeySelBorder = Hex(0x48, 0x48, 0x56);
+    private static readonly SolidColorBrush BrushKeySelFg = Hex(0xEC, 0xEC, 0xF2);
 
     private readonly List<Border> _rowBorders = [];
 
@@ -82,7 +103,6 @@ public sealed partial class QuickPasteWindow : Window
         _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
-        _appWindow.IsShownInSwitchers = false;
 
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
@@ -90,27 +110,52 @@ public sealed partial class QuickPasteWindow : Window
             presenter.IsMaximizable = false;
             presenter.IsMinimizable = false;
             presenter.IsResizable = false;
-            // Keep the native frame (no caption): DWM then draws real rounded corners,
-            // a hairline border and the system drop shadow around the popup.
-            presenter.SetBorderAndTitleBar(true, false);
+            presenter.SetBorderAndTitleBar(false, false);
         }
 
-        // Must be applied AFTER the frame style change, otherwise DWM resets it.
+        // Subclass WndProc to return 0 on WM_NCCALCSIZE (eliminates the white Win32 caption bar completely)
+        _wndProcDelegate = PopupWndProc;
+        var fnPtr = Marshal.GetFunctionPointerForDelegate(_wndProcDelegate);
+        _origWndProc = SetWindowLongPtrW(_hwnd, GwlpWndProc, fnPtr);
+
+        // Strip caption/sysmenu/thickframe styles so Win32 never paints a title bar
+        var style = GetWindowLongPtrW(_hwnd, GwlStyle).ToInt64();
+        style &= ~(WsCaption | WsThickFrame | WsMinimizeBox | WsMaximizeBox | WsSysMenu);
+        SetWindowLongPtrW(_hwnd, GwlStyle, new IntPtr(style));
+
+        SetWindowPos(_hwnd, IntPtr.Zero, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoZOrder | SwpNoActivate | SwpFrameChanged);
+
+        ApplyDwmRoundingAndBorder();
+    }
+
+    private void ApplyDwmRoundingAndBorder()
+    {
+        if (_hwnd == IntPtr.Zero) return;
+
+        var dark = 1;
+        DwmSetWindowAttribute(_hwnd, DwmwaUseImmersiveDarkMode, ref dark, sizeof(int));
+
         var corner = DwmwcpRound;
         DwmSetWindowAttribute(_hwnd, DwmwaWindowCornerPreference, ref corner, sizeof(int));
 
-        // Hairline border color as COLORREF (0x00BBGGRR) -> #2E2E36
-        var borderColor = 0x00362E2E;
+        // Subtle dark border color as COLORREF (0x00BBGGRR) -> #2B2B33
+        var borderColor = 0x00332B2B;
         DwmSetWindowAttribute(_hwnd, DwmwaBorderColor, ref borderColor, sizeof(int));
+    }
 
-        try
+    private IntPtr PopupWndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
+    {
+        if (msg == WmNcCalcSize && wParam != IntPtr.Zero)
         {
-            SystemBackdrop = new DesktopAcrylicBackdrop();
+            // Returning 0 tells Windows the entire window is client area (no white caption bar)
+            return IntPtr.Zero;
         }
-        catch
+        if (msg == WmNcActivate)
         {
-            // Acrylic unsupported: the opaque root background still applies.
+            // Prevent Win32 from painting a classic non-client border on activation change
+            return new IntPtr(1);
         }
+        return CallWindowProcW(_origWndProc, hWnd, msg, wParam, lParam);
     }
 
     public void ShowPopup(IntPtr previousForegroundHwnd, List<ClipboardHistoryItem> items, BackendStatus? status)
@@ -126,6 +171,7 @@ public sealed partial class QuickPasteWindow : Window
         _selectedIndex = 0;
 
         PositionAwayFromCaret(previousForegroundHwnd);
+        ApplyDwmRoundingAndBorder();
         ApplyFiltersAndRender();
 
         _appWindow?.Show();
@@ -151,17 +197,18 @@ public sealed partial class QuickPasteWindow : Window
     }
 
     // -----------------------------------------------------------------------
-    // Positioning: anchor below the text caret (like Win + V) so the popup
-    // never covers the line being edited. Falls back to the mouse cursor.
+    // Positioning: anchor beside/below caret or cursor so it never covers text
     // -----------------------------------------------------------------------
 
     private void PositionAwayFromCaret(IntPtr targetHwnd)
     {
         if (_appWindow is null) return;
 
-        var anchor = TryGetCaretScreenRect(targetHwnd, out var caret)
-            ? caret
-            : GetCursorAnchorRect();
+        var hasCaret = TryGetCaretScreenRect(targetHwnd, out var anchor);
+        if (!hasCaret)
+        {
+            anchor = GetCursorAnchorRect();
+        }
 
         var displayArea = DisplayArea.GetFromPoint(new PointInt32(anchor.Left, anchor.Bottom), DisplayAreaFallback.Primary);
         var work = displayArea.WorkArea;
@@ -169,15 +216,20 @@ public sealed partial class QuickPasteWindow : Window
         var scale = GetScaleForPoint(anchor.Left, anchor.Bottom);
         var w = (int)Math.Round(PopupWidthDip * scale);
         var h = (int)Math.Round(PopupHeightDip * scale);
-        var gap = (int)Math.Round(10 * scale);
+        var gap = (int)Math.Round(16 * scale);
 
-        var x = anchor.Left;
+        // Place slightly to the right and below the caret/cursor so the active line remains visible
+        var x = anchor.Left + gap;
         var y = anchor.Bottom + gap;
 
-        // Not enough room below: place above the anchor instead of on top of it.
+        if (x + w > work.X + work.Width - ScreenMarginPx)
+        {
+            x = Math.Max(work.X + ScreenMarginPx, anchor.Left - w - gap);
+        }
+
         if (y + h > work.Y + work.Height - ScreenMarginPx)
         {
-            y = anchor.Top - gap - h;
+            y = Math.Max(work.Y + ScreenMarginPx, anchor.Top - h - gap);
         }
 
         x = Math.Clamp(x, work.X + ScreenMarginPx, work.X + work.Width - w - ScreenMarginPx);
@@ -190,12 +242,12 @@ public sealed partial class QuickPasteWindow : Window
     {
         if (GetCursorPos(out var pt))
         {
-            return new RECT { Left = pt.X, Top = pt.Y - 2, Right = pt.X + 1, Bottom = pt.Y + 18 };
+            return new RECT { Left = pt.X, Top = pt.Y - 4, Right = pt.X + 4, Bottom = pt.Y + 20 };
         }
         var work = DisplayArea.Primary.WorkArea;
-        var cx = work.X + work.Width / 2 - 200;
-        var cy = work.Y + work.Height / 4;
-        return new RECT { Left = cx, Top = cy, Right = cx + 1, Bottom = cy };
+        var cx = work.X + work.Width - 440;
+        var cy = work.Y + 80;
+        return new RECT { Left = cx, Top = cy, Right = cx + 1, Bottom = cy + 1 };
     }
 
     private static bool TryGetCaretScreenRect(IntPtr targetHwnd, out RECT rect)
@@ -226,15 +278,15 @@ public sealed partial class QuickPasteWindow : Window
     {
         try
         {
-            var monitor = MonitorFromPoint(new POINT { X = x, Y = y }, 2 /* MONITOR_DEFAULTTONEAREST */);
-            if (GetDpiForMonitor(monitor, 0 /* MDT_EFFECTIVE_DPI */, out var dpiX, out _) == 0 && dpiX > 0)
+            var monitor = MonitorFromPoint(new POINT { X = x, Y = y }, 2);
+            if (GetDpiForMonitor(monitor, 0, out var dpiX, out _) == 0 && dpiX > 0)
             {
                 return dpiX / 96.0;
             }
         }
         catch
         {
-            // Fall through to 100%.
+            // Default to 1.0
         }
         return 1.0;
     }
@@ -250,10 +302,10 @@ public sealed partial class QuickPasteWindow : Window
             var fade = compositor.CreateScalarKeyFrameAnimation();
             fade.InsertKeyFrame(0.0f, 0.0f);
             fade.InsertKeyFrame(1.0f, 1.0f, easing);
-            fade.Duration = TimeSpan.FromMilliseconds(120);
+            fade.Duration = TimeSpan.FromMilliseconds(125);
 
             var slide = compositor.CreateVector3KeyFrameAnimation();
-            slide.InsertKeyFrame(0.0f, new Vector3(0f, -4f, 0f));
+            slide.InsertKeyFrame(0.0f, new Vector3(0f, 5f, 0f));
             slide.InsertKeyFrame(1.0f, Vector3.Zero, easing);
             slide.Duration = TimeSpan.FromMilliseconds(140);
 
@@ -287,7 +339,7 @@ public sealed partial class QuickPasteWindow : Window
                 "text" => !item.IsImage && !item.IsFile,
                 "richtext" => item.IsRichText,
                 "image" => item.IsImage,
-                "file" => item.IsFile,
+                "file" => item.IsFile || item.IsImage,
                 _ => true,
             };
             if (!matchesTab) return false;
@@ -326,9 +378,11 @@ public sealed partial class QuickPasteWindow : Window
         var rowBorder = new Border
         {
             MinHeight = 40,
-            CornerRadius = new CornerRadius(7),
-            Padding = new Thickness(8, 6, 10, 6),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(9, 6, 10, 6),
             Background = isSelected ? BrushRowSelectedBg : BrushTransparent,
+            BorderBrush = isSelected ? BrushRowSelectedBorder : BrushTransparent,
+            BorderThickness = new Thickness(1),
         };
 
         rowBorder.PointerEntered += (_, _) =>
@@ -350,7 +404,7 @@ public sealed partial class QuickPasteWindow : Window
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        // Leading tile: thumbnail for images, glyph tile otherwise (all same 28x28 footprint)
+        // Leading tile: thumbnail for images, glyph tile otherwise
         var tile = new Border
         {
             Width = 28,
@@ -407,7 +461,7 @@ public sealed partial class QuickPasteWindow : Window
         {
             Text = TitleFor(item),
             FontSize = 13,
-            FontWeight = isSelected ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal,
+            FontWeight = isSelected ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Medium,
             Foreground = isSelected ? BrushTextPrimary : BrushTextRow,
             TextTrimming = TextTrimming.CharacterEllipsis,
             TextWrapping = TextWrapping.NoWrap,
@@ -428,14 +482,14 @@ public sealed partial class QuickPasteWindow : Window
         Grid.SetColumn(textStack, 1);
         grid.Children.Add(textStack);
 
-        // Shortcut keycap (Ctrl + 1..9)
+        // Shortcut pill badge (^1 .. ^9)
         if (index < 9)
         {
             var keyText = new TextBlock
             {
-                Text = $"⌃{index + 1}",
-                FontSize = 10.5,
-                FontWeight = Microsoft.UI.Text.FontWeights.Medium,
+                Text = $"^{index + 1}",
+                FontSize = 11,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                 Foreground = isSelected ? BrushKeySelFg : BrushKeyFg,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -444,13 +498,13 @@ public sealed partial class QuickPasteWindow : Window
 
             var keycap = new Border
             {
-                MinWidth = 24,
+                MinWidth = 26,
                 Height = 20,
-                CornerRadius = new CornerRadius(5),
-                Padding = new Thickness(5, 0, 5, 0),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(6, 0, 6, 0),
                 Background = isSelected ? BrushKeySelBg : BrushKeyBg,
                 BorderBrush = isSelected ? BrushKeySelBorder : BrushKeyBorder,
-                BorderThickness = new Thickness(1, 1, 1, 2),
+                BorderThickness = new Thickness(1),
                 VerticalAlignment = VerticalAlignment.Center,
                 Child = keyText,
             };
@@ -519,7 +573,6 @@ public sealed partial class QuickPasteWindow : Window
         var old = _selectedIndex;
         _selectedIndex = newIndex;
 
-        // Rebuild only the two affected rows instead of the whole list (no flicker).
         RebuildRow(old);
         RebuildRow(newIndex);
         UpdateFooterForSelection();
@@ -590,7 +643,6 @@ public sealed partial class QuickPasteWindow : Window
         const byte VK_V = 0x56;
         const uint KEYEVENTF_KEYUP = 0x0002;
 
-        // Make sure Alt/Win from the hotkey are not still logically held.
         keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
         keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
 
@@ -599,10 +651,6 @@ public sealed partial class QuickPasteWindow : Window
         keybd_event(VK_V, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
         keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
     }
-
-    // -----------------------------------------------------------------------
-    // Tabs & keyboard
-    // -----------------------------------------------------------------------
 
     private void OnTabFilterClick(object sender, RoutedEventArgs e)
     {
@@ -626,12 +674,12 @@ public sealed partial class QuickPasteWindow : Window
         foreach (var btn in tabs)
         {
             var isActive = string.Equals(btn.Tag as string, _activeTab, StringComparison.OrdinalIgnoreCase);
-            btn.Background = isActive ? BrushTabActiveBg : BrushTransparent;
+            btn.Background = isActive ? BrushTabActiveBg : BrushTabInactiveBg;
             if (btn.Content is TextBlock tb)
             {
                 tb.Foreground = isActive ? BrushTabActiveFg : BrushTabInactiveFg;
                 tb.FontWeight = isActive ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Medium;
-                tb.FontSize = 12.5;
+                tb.FontSize = 12;
             }
         }
     }
@@ -716,10 +764,6 @@ public sealed partial class QuickPasteWindow : Window
         return $"{diff / 86400}d";
     }
 
-    // -----------------------------------------------------------------------
-    // Win32 interop
-    // -----------------------------------------------------------------------
-
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT
     {
@@ -779,4 +823,16 @@ public sealed partial class QuickPasteWindow : Window
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+    private static extern IntPtr GetWindowLongPtrW(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
+    private static extern IntPtr SetWindowLongPtrW(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport("user32.dll", EntryPoint = "CallWindowProcW")]
+    private static extern IntPtr CallWindowProcW(IntPtr lpPrevWndFunc, IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 }
