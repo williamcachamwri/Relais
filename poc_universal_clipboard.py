@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import base64
+import collections
 import contextlib
 import ctypes
 from ctypes import wintypes
@@ -52,7 +53,7 @@ import sys
 import threading
 import time
 from typing import Any, Optional, cast
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import ifaddr
 from PIL import Image, ImageGrab, ImageOps
@@ -2423,6 +2424,36 @@ class UniversalClipboardCoordinator:
 # ---------------------------------------------------------------------------
 
 
+class CircularLogHandler(logging.Handler):
+    """Keep last N formatted log lines in memory to serve live to the WinUI 3 Developer Mode console."""
+
+    def __init__(self, capacity: int = 1500) -> None:
+        super().__init__()
+        self.capacity = capacity
+        self.buffer: collections.deque[str] = collections.deque(maxlen=capacity)
+        self._lock = threading.Lock()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = self.format(record)
+            with self._lock:
+                self.buffer.append(msg)
+        except Exception:
+            pass
+
+    def get_lines(self, tail: int = 200) -> list[str]:
+        with self._lock:
+            items = list(self.buffer)
+        return items[-tail:] if tail > 0 else items
+
+    def clear(self) -> None:
+        with self._lock:
+            self.buffer.clear()
+
+
+GLOBAL_LOG_HANDLER = CircularLogHandler(capacity=1500)
+
+
 def start_local_api_server(
     coordinator: UniversalClipboardCoordinator,
     host: str = "127.0.0.1",
@@ -2464,6 +2495,14 @@ def start_local_api_server(
             if path == "/api/history":
                 rev, items = coordinator.history.list_items()
                 self._send_json(200, {"revision": rev, "items": items})
+                return
+
+            if path == "/api/logs":
+                parsed = urlparse(self.path)
+                query = parse_qs(parsed.query)
+                tail = int(query.get("tail", ["300"])[0])
+                lines = GLOBAL_LOG_HANDLER.get_lines(tail)
+                self._send_json(200, {"ok": True, "count": len(lines), "logs": lines})
                 return
 
             m_img = re.match(r"^/api/history/([^/]+)/image$", path)
@@ -2515,6 +2554,11 @@ def start_local_api_server(
                     self._send_json(200, {"ok": True, "udid": paired_udid})
                 except Exception as exc:
                     self._send_json(500, {"ok": False, "error": str(exc)})
+                return
+
+            if path == "/api/logs/clear":
+                GLOBAL_LOG_HANDLER.clear()
+                self._send_json(200, {"ok": True})
                 return
 
             if path == "/api/history/clear":
@@ -2647,7 +2691,14 @@ def main() -> int:
         format="%(asctime)s.%(msecs)03d [%(levelname)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         stream=sys.stdout,
+        force=True,
     )
+    formatter = logging.Formatter(
+        fmt="%(asctime)s.%(msecs)03d [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    GLOBAL_LOG_HANDLER.setFormatter(formatter)
+    logging.getLogger().addHandler(GLOBAL_LOG_HANDLER)
     # Keep underlying libraries quiet at INFO level
     logging.getLogger("pymobiledevice3").setLevel(logging.WARNING)
     logging.getLogger("pmd_pytcp").setLevel(logging.WARNING)

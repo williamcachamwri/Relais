@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -66,6 +67,8 @@ public sealed partial class MainWindow : Window
     private string _timeFilter = "time:all";
     private string _searchQuery = "";
     private bool? _sidebarManualOverride;
+    private bool _isDeveloperModeEnabled;
+    private int _logPollCounter;
 
     // Carbon-Graphite Palette (Reference Image #2)
     private static readonly SolidColorBrush BrushTextPrimary = new(ColorHelper.FromArgb(0xFF, 0xF2, 0xF2, 0xF5));
@@ -105,6 +108,7 @@ public sealed partial class MainWindow : Window
         RegisterGlobalHotkeys();
         AttachGlobalAnimations();
         SidebarPcNameText.Text = "This device";
+        LoadAppSettings();
 
         RootGrid.Loaded += (_, _) => ApplyResponsiveLayout(RootGrid.ActualWidth > 0 ? RootGrid.ActualWidth : 1050, RootGrid.ActualHeight > 0 ? RootGrid.ActualHeight : 680);
 
@@ -161,8 +165,8 @@ public sealed partial class MainWindow : Window
             var dpi = GetDpiForWindow(hWnd);
             var scale = dpi > 0 ? (float)dpi / 96.0f : 1.0f;
             var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
-            mmi.ptMinTrackSize.x = (int)(920 * scale);
-            mmi.ptMinTrackSize.y = (int)(560 * scale);
+            mmi.ptMinTrackSize.x = (int)(680 * scale);
+            mmi.ptMinTrackSize.y = (int)(420 * scale);
             Marshal.StructureToPtr(mmi, lParam, false);
             return IntPtr.Zero;
         }
@@ -228,14 +232,14 @@ public sealed partial class MainWindow : Window
     {
         if (width <= 0 || height <= 0) return;
 
-        // Reset manual override once window is resized wide enough
+        // Auto-collapse sidebar when window is resized narrow to give ample room to Feed + Inspector
         if (width >= 960 && _sidebarManualOverride == true)
         {
             _sidebarManualOverride = null;
         }
 
-        var showSidebar = _sidebarManualOverride ?? (width >= 920);
-        if (width < 640)
+        var showSidebar = _sidebarManualOverride ?? (width >= 880);
+        if (width < 760)
         {
             showSidebar = false;
         }
@@ -245,23 +249,68 @@ public sealed partial class MainWindow : Window
 
         // Dynamic Feed column width based on remaining horizontal space
         var remainingAfterSidebar = width - 50 - (showSidebar ? 176 : 0);
-        var targetFeedWidth = Math.Clamp(remainingAfterSidebar * 0.40, 210, 330);
+        var targetFeedWidth = Math.Clamp(remainingAfterSidebar * 0.38, 200, 320);
         ColFeed.Width = new GridLength(targetFeedWidth);
 
         // Top Bar responsive search box and subtitle visibility
-        var showTopHint = width >= 820;
+        var showTopHint = width >= 800;
         TitleBarHintDot.Visibility = showTopHint ? Visibility.Visible : Visibility.Collapsed;
         TitleBarSyncHintText.Visibility = showTopHint ? Visibility.Visible : Visibility.Collapsed;
-        SearchPillBorder.Width = Math.Clamp(width * 0.29, 165, 320);
+        SearchPillBorder.Width = Math.Clamp(width * 0.28, 150, 300);
 
         // Inspector responsive spacing, image bounds, centered text card width, and action bar labels
-        var inspectorWidth = Math.Max(240, remainingAfterSidebar - targetFeedWidth);
+        var inspectorWidth = Math.Max(220, remainingAfterSidebar - targetFeedWidth);
         InspectorTopBar.Padding = inspectorWidth < 380 ? new Thickness(14, 0, 14, 0) : new Thickness(24, 0, 24, 0);
-        InspectorStageGrid.Padding = inspectorWidth < 380 ? new Thickness(16, 12, 16, 12) : new Thickness(28, 16, 28, 16);
+        InspectorStageGrid.Padding = inspectorWidth < 380 ? new Thickness(12, 10, 12, 10) : new Thickness(24, 16, 24, 16);
 
-        InspectorTextStage.Width = Math.Clamp(inspectorWidth - 64, 220, 500);
-        InspectorPreviewImage.MaxWidth = Math.Max(180, inspectorWidth - 64);
-        InspectorPreviewImage.MaxHeight = Math.Max(160, height - 210);
+        // Responsive text card
+        var cardMaxWidth = Math.Clamp(inspectorWidth - 40, 190, 560);
+        InspectorTextStage.MaxWidth = cardMaxWidth;
+        InspectorTextStage.Margin = new Thickness(inspectorWidth < 360 ? 10 : 20, 0, inspectorWidth < 360 ? 10 : 20, 0);
+
+        // Height-based responsive scaling
+        var availableContentHeight = Math.Max(120, height - 160);
+        if (height < 520)
+        {
+            InspectorPreviewImage.MaxHeight = Math.Clamp(availableContentHeight - 50, 110, 160);
+            InspectorPreviewImage.MaxWidth = Math.Clamp(cardMaxWidth - 30, 160, 360);
+            InspectorTextCardBorder.MaxHeight = Math.Clamp(availableContentHeight - 40, 110, 180);
+            InspectorTextCardBorder.Padding = new Thickness(14, 10, 14, 10);
+            InspectorPreviewText.FontSize = 12.5;
+            InspectorPreviewText.LineHeight = 18;
+            InspectorTextSubtitle.FontSize = 11;
+            InspectorTextStage.Spacing = 8;
+            InspectorActionBarBorder.Padding = new Thickness(10, 5, 10, 5);
+            InspectorActionBarBorder.Margin = new Thickness(0, 0, 0, 8);
+        }
+        else if (height < 650)
+        {
+            InspectorPreviewImage.MaxHeight = Math.Clamp(availableContentHeight - 60, 150, 220);
+            InspectorPreviewImage.MaxWidth = Math.Clamp(cardMaxWidth - 30, 200, 420);
+            InspectorTextCardBorder.MaxHeight = Math.Clamp(availableContentHeight - 50, 160, 260);
+            InspectorTextCardBorder.Padding = new Thickness(18, 14, 18, 14);
+            InspectorPreviewText.FontSize = 13;
+            InspectorPreviewText.LineHeight = 20;
+            InspectorTextSubtitle.FontSize = 11.5;
+            InspectorTextStage.Spacing = 10;
+            InspectorActionBarBorder.Padding = new Thickness(12, 6, 12, 6);
+            InspectorActionBarBorder.Margin = new Thickness(0, 0, 0, 12);
+        }
+        else
+        {
+            InspectorPreviewImage.MaxHeight = Math.Clamp(availableContentHeight - 70, 200, 360);
+            InspectorPreviewImage.MaxWidth = Math.Clamp(cardMaxWidth - 30, 240, 480);
+            InspectorTextCardBorder.MaxHeight = Math.Clamp(availableContentHeight - 60, 240, 440);
+            InspectorTextCardBorder.Padding = new Thickness(24, 20, 24, 20);
+            InspectorPreviewText.FontSize = 14;
+            InspectorPreviewText.LineHeight = 22;
+            InspectorTextSubtitle.FontSize = 12;
+            InspectorTextStage.Spacing = 12;
+            InspectorActionBarBorder.Padding = new Thickness(14, 7, 14, 7);
+            InspectorActionBarBorder.Margin = new Thickness(0, 0, 0, 16);
+        }
+
+        InspectorTextSubtitle.MaxWidth = Math.Max(180, cardMaxWidth - 20);
 
         var compactBar = inspectorWidth < 430;
         var veryCompactBar = inspectorWidth < 340;
@@ -364,6 +413,10 @@ public sealed partial class MainWindow : Window
     private async void OnPollTimerTick(object? sender, object e)
     {
         await RefreshStatusAndHistoryAsync();
+        if (LogsPane.Visibility == Visibility.Visible && ++_logPollCounter % 2 == 0)
+        {
+            await RefreshBackendLogsAsync();
+        }
     }
 
     private async Task RefreshStatusAndHistoryAsync()
@@ -1006,10 +1059,12 @@ public sealed partial class MainWindow : Window
         {
             OnboardingPane.Visibility = Visibility.Collapsed;
             AboutPane.Visibility = Visibility.Collapsed;
+            LogsPane.Visibility = Visibility.Collapsed;
             InspectorPane.Visibility = Visibility.Visible;
             RailClipboardBtn.Background = BrushRailActive;
             RailAboutBtn.Background = BrushTransparent;
             RailSettingsBtn.Background = BrushTransparent;
+            RailLogsBtn.Background = BrushTransparent;
             AnimateStageEntrance(InspectorPane);
         }
     }
@@ -1018,10 +1073,12 @@ public sealed partial class MainWindow : Window
     {
         InspectorPane.Visibility = Visibility.Collapsed;
         AboutPane.Visibility = Visibility.Collapsed;
+        LogsPane.Visibility = Visibility.Collapsed;
         OnboardingPane.Visibility = Visibility.Visible;
         RailSettingsBtn.Background = BrushRailActive;
         RailAboutBtn.Background = BrushTransparent;
         RailClipboardBtn.Background = BrushTransparent;
+        RailLogsBtn.Background = BrushTransparent;
         AnimateStageEntrance(OnboardingPane);
     }
 
@@ -1029,11 +1086,140 @@ public sealed partial class MainWindow : Window
     {
         InspectorPane.Visibility = Visibility.Collapsed;
         OnboardingPane.Visibility = Visibility.Collapsed;
+        LogsPane.Visibility = Visibility.Collapsed;
         AboutPane.Visibility = Visibility.Visible;
         RailAboutBtn.Background = BrushRailActive;
         RailSettingsBtn.Background = BrushTransparent;
         RailClipboardBtn.Background = BrushTransparent;
+        RailLogsBtn.Background = BrushTransparent;
         AnimateStageEntrance(AboutPane);
+    }
+
+    private void ShowLogsPane()
+    {
+        InspectorPane.Visibility = Visibility.Collapsed;
+        OnboardingPane.Visibility = Visibility.Collapsed;
+        AboutPane.Visibility = Visibility.Collapsed;
+        LogsPane.Visibility = Visibility.Visible;
+        RailLogsBtn.Background = BrushRailActive;
+        RailAboutBtn.Background = BrushTransparent;
+        RailSettingsBtn.Background = BrushTransparent;
+        RailClipboardBtn.Background = BrushTransparent;
+        AnimateStageEntrance(LogsPane);
+        _ = RefreshBackendLogsAsync();
+    }
+
+    private void OnRailLogsClick(object sender, RoutedEventArgs e)
+    {
+        if (LogsPane.Visibility == Visibility.Visible)
+        {
+            ShowInspectorPane();
+        }
+        else
+        {
+            ShowLogsPane();
+        }
+    }
+
+    private void OnDeveloperModeToggled(object sender, RoutedEventArgs e)
+    {
+        _isDeveloperModeEnabled = DeveloperModeToggle.IsOn;
+        RailLogsBtn.Visibility = _isDeveloperModeEnabled ? Visibility.Visible : Visibility.Collapsed;
+        SaveAppSettings();
+        if (!_isDeveloperModeEnabled && LogsPane.Visibility == Visibility.Visible)
+        {
+            ShowInspectorPane();
+        }
+    }
+
+    private async Task RefreshBackendLogsAsync()
+    {
+        try
+        {
+            var logs = await _backend.GetBackendLogsAsync(350);
+            var text = logs.Count > 0 ? string.Join(Environment.NewLine, logs) : "(No logs captured yet from CoreDevice daemon)";
+            LogsContentTextBox.Text = text;
+            LogsFooterInfo.Text = $"Showing {logs.Count} lines · 127.0.0.1:8767";
+            if (LogsAutoScrollCheck.IsChecked == true)
+            {
+                LogsScrollViewer.ChangeView(null, LogsScrollViewer.ScrollableHeight, null, false);
+            }
+        }
+        catch (Exception ex)
+        {
+            LogsContentTextBox.Text = $"Failed to fetch logs: {ex.Message}";
+        }
+    }
+
+    private async void OnRefreshLogsClick(object sender, RoutedEventArgs e)
+    {
+        await RefreshBackendLogsAsync();
+    }
+
+    private async void OnClearLogsClick(object sender, RoutedEventArgs e)
+    {
+        await _backend.ClearBackendLogsAsync();
+        await RefreshBackendLogsAsync();
+    }
+
+    private void OnCopyLogsClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dp = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            dp.SetText(LogsContentTextBox.Text);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dp);
+            LogsFooterInfo.Text = "Copied all logs to Windows Clipboard!";
+        }
+        catch
+        {
+            // Ignore
+        }
+    }
+
+    private static string GetSettingsFilePath()
+    {
+        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "UniversalClipboard");
+        Directory.CreateDirectory(dir);
+        return Path.Combine(dir, "app_settings.json");
+    }
+
+    private void LoadAppSettings()
+    {
+        try
+        {
+            var file = GetSettingsFilePath();
+            if (File.Exists(file))
+            {
+                var json = File.ReadAllText(file);
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("developer_mode", out var devProp))
+                {
+                    _isDeveloperModeEnabled = devProp.GetBoolean();
+                }
+            }
+        }
+        catch
+        {
+            _isDeveloperModeEnabled = false;
+        }
+
+        DeveloperModeToggle.IsOn = _isDeveloperModeEnabled;
+        RailLogsBtn.Visibility = _isDeveloperModeEnabled ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void SaveAppSettings()
+    {
+        try
+        {
+            var file = GetSettingsFilePath();
+            var json = JsonSerializer.Serialize(new { developer_mode = _isDeveloperModeEnabled });
+            File.WriteAllText(file, json);
+        }
+        catch
+        {
+            // Ignore
+        }
     }
 
     private void OnRailClipboardClick(object sender, RoutedEventArgs e)

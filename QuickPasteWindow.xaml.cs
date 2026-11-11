@@ -100,6 +100,7 @@ public sealed partial class QuickPasteWindow : Window
 
     private void ConfigurePopupChrome()
     {
+        ExtendsContentIntoTitleBar = true;
         _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
@@ -111,6 +112,13 @@ public sealed partial class QuickPasteWindow : Window
             presenter.IsMinimizable = false;
             presenter.IsResizable = false;
             presenter.SetBorderAndTitleBar(false, false);
+        }
+
+        if (AppWindowTitleBar.IsCustomizationSupported() && _appWindow.TitleBar is { } titleBar)
+        {
+            titleBar.ExtendsContentIntoTitleBar = true;
+            titleBar.ButtonBackgroundColor = Colors.Transparent;
+            titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
         }
 
         // Subclass WndProc to return 0 on WM_NCCALCSIZE (eliminates the white Win32 caption bar completely)

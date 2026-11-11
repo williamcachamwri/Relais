@@ -175,6 +175,20 @@
 
                     <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Center" Spacing="6">
                         <Button
+                            x:Name="RailLogsBtn"
+                            Click="OnRailLogsClick"
+                            Width="34"
+                            Height="34"
+                            Padding="0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Visibility="Collapsed"
+                            ToolTipService.ToolTip="Backend Logs">
+                            <FontIcon Glyph="&#xE756;" FontSize="15" Foreground="#8A8A92" />
+                        </Button>
+
+                        <Button
                             x:Name="RailAboutBtn"
                             Click="OnRailAboutClick"
                             Width="34"
@@ -712,10 +726,10 @@
                                 x:Name="InspectorTextStage"
                                 Visibility="Visible"
                                 VerticalAlignment="Center"
-                                HorizontalAlignment="Stretch"
-                                MaxWidth="640"
-                                Margin="28,0"
-                                Spacing="14">
+                                HorizontalAlignment="Center"
+                                MaxWidth="560"
+                                Margin="20,0"
+                                Spacing="12">
                                 <Border
                                     x:Name="InspectorTextCardBorder"
                                     Background="#17171A"
@@ -744,11 +758,12 @@
                                 <TextBlock
                                     x:Name="InspectorTextSubtitle"
                                     Text=""
-                                    FontSize="12"
+                                    FontSize="11.5"
                                     Foreground="#787882"
                                     Typography.NumeralAlignment="Tabular"
                                     TextAlignment="Center"
                                     TextWrapping="Wrap"
+                                    MaxWidth="420"
                                     HorizontalAlignment="Center" />
                             </StackPanel>
                         </Grid>
@@ -756,6 +771,7 @@
 
                     <!-- Bottom Action Toolbar: Copy C · Send to iPhone S · Favorite F · Delete D -->
                     <Border
+                        x:Name="InspectorActionBarBorder"
                         Grid.Row="2"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
@@ -763,7 +779,8 @@
                         BorderBrush="#26262D"
                         BorderThickness="1"
                         CornerRadius="10"
-                        Padding="5,4">
+                        Padding="5,4"
+                        Margin="0,0,0,16">
                         <StackPanel
                             x:Name="InspectorBarPanel"
                             Orientation="Horizontal"
@@ -1188,6 +1205,50 @@
                             </Grid>
                         </Border>
 
+                        <!-- Card 04: Developer Mode -->
+                        <Border
+                            Background="#18181B"
+                            BorderBrush="#242428"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,14">
+                            <Grid ColumnSpacing="14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Text="04"
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    Foreground="#6E6E76"
+                                    Typography.NumeralAlignment="Tabular"
+                                    VerticalAlignment="Top"
+                                    Margin="0,2,0,0" />
+                                <StackPanel Grid.Column="1" Spacing="4">
+                                    <TextBlock
+                                        Text="Developer Mode"
+                                        FontSize="13.5"
+                                        FontWeight="SemiBold"
+                                        Foreground="#F2F2F5" />
+                                    <TextBlock
+                                        Text="Hiển thị icon nhật ký backend ở thanh điều hướng để theo dõi tiến trình CoreDevice và kết nối iPhone thời gian thực."
+                                        FontSize="11.5"
+                                        Foreground="#8A8A92"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+
+                                <ToggleSwitch
+                                    x:Name="DeveloperModeToggle"
+                                    Grid.Column="2"
+                                    Toggled="OnDeveloperModeToggled"
+                                    OnContent=""
+                                    OffContent=""
+                                    VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
                         <TextBlock
                             x:Name="OnboardingFeedbackText"
                             Text=""
@@ -1390,6 +1451,158 @@
                         </Border>
                     </StackPanel>
                 </ScrollViewer>
+
+                <!-- LAYER D: BACKEND LOGS PANE (Terminal / Developer Console) -->
+                <Grid
+                    x:Name="LogsPane"
+                    Visibility="Collapsed"
+                    Background="#111114"
+                    RowSpacing="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Logs Pane Header -->
+                    <Border
+                        Grid.Row="0"
+                        Background="#151518"
+                        BorderBrush="#232328"
+                        BorderThickness="0,0,0,1"
+                        Padding="20,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE756;" FontSize="15" Foreground="#A0A0AA" />
+                                <TextBlock
+                                    Text="CoreDevice Backend Logs"
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    Foreground="#EDEDF2" />
+                                <Border
+                                    Background="#1E281E"
+                                    BorderBrush="#2E482E"
+                                    BorderThickness="1"
+                                    CornerRadius="4"
+                                    Padding="6,2">
+                                    <TextBlock
+                                        x:Name="LogsStatusBadge"
+                                        Text="LIVE · 127.0.0.1:8767"
+                                        FontSize="10.5"
+                                        Foreground="#4ADE80"
+                                        FontWeight="Medium" />
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Header Actions -->
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <Button
+                                    Click="OnRefreshLogsClick"
+                                    Background="#202025"
+                                    BorderBrush="#2C2C32"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="10,4"
+                                    ToolTipService.ToolTip="Refresh Logs (F5)">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE72C;" FontSize="11" Foreground="#A0A0AA" />
+                                        <TextBlock Text="Refresh" FontSize="11.5" Foreground="#EDEDF2" />
+                                    </StackPanel>
+                                </Button>
+                                <Button
+                                    Click="OnCopyLogsClick"
+                                    Background="#202025"
+                                    BorderBrush="#2C2C32"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="10,4"
+                                    ToolTipService.ToolTip="Copy all logs to Windows Clipboard">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE8C8;" FontSize="11" Foreground="#A0A0AA" />
+                                        <TextBlock Text="Copy" FontSize="11.5" Foreground="#EDEDF2" />
+                                    </StackPanel>
+                                </Button>
+                                <Button
+                                    Click="OnClearLogsClick"
+                                    Background="#202025"
+                                    BorderBrush="#2C2C32"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="10,4"
+                                    ToolTipService.ToolTip="Clear Backend Buffer">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE74D;" FontSize="11" Foreground="#A0A0AA" />
+                                        <TextBlock Text="Clear" FontSize="11.5" Foreground="#EDEDF2" />
+                                    </StackPanel>
+                                </Button>
+                                <Button
+                                    Click="OnRailClipboardClick"
+                                    Background="#202025"
+                                    BorderBrush="#2C2C32"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="10,4">
+                                    <TextBlock Text="Close" FontSize="11.5" Foreground="#EDEDF2" />
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Terminal Content Body -->
+                    <ScrollViewer
+                        Grid.Row="1"
+                        x:Name="LogsScrollViewer"
+                        Background="#0D0D10"
+                        HorizontalScrollBarVisibility="Auto"
+                        VerticalScrollBarVisibility="Auto"
+                        Padding="16,12">
+                        <TextBox
+                            x:Name="LogsContentTextBox"
+                            IsReadOnly="True"
+                            AcceptsReturn="True"
+                            TextWrapping="NoWrap"
+                            FontFamily="Cascadia Code, Consolas, Courier New"
+                            FontSize="12"
+                            Foreground="#C8C8D0"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0" />
+                    </ScrollViewer>
+
+                    <!-- Status Footer -->
+                    <Border
+                        Grid.Row="2"
+                        Background="#131316"
+                        BorderBrush="#202024"
+                        BorderThickness="0,1,0,0"
+                        Padding="16,6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                x:Name="LogsFooterInfo"
+                                Text="Showing latest 300 lines · Auto-scroll active"
+                                FontSize="11"
+                                Foreground="#6E6E78" />
+                            <CheckBox
+                                x:Name="LogsAutoScrollCheck"
+                                Grid.Column="1"
+                                Content="Auto-scroll"
+                                IsChecked="True"
+                                FontSize="11"
+                                Foreground="#8E8E98"
+                                MinWidth="0"
+                                Padding="6,0,0,0" />
+                        </Grid>
+                    </Border>
+                </Grid>
             </Grid>
         </Grid>
     </Grid>

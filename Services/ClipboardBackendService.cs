@@ -223,6 +223,18 @@ public sealed class ClipboardHistoryItem
     }
 }
 
+public sealed class LogsResponse
+{
+    [JsonPropertyName("ok")]
+    public bool Ok { get; set; }
+
+    [JsonPropertyName("count")]
+    public int Count { get; set; }
+
+    [JsonPropertyName("logs")]
+    public List<string> Logs { get; set; } = [];
+}
+
 public sealed class HistoryResponse
 {
     [JsonPropertyName("revision")]
@@ -376,6 +388,32 @@ public sealed class ClipboardBackendService : IDisposable
         try
         {
             using var resp = await _http.PostAsJsonAsync($"{BaseUrl}/api/history/clear", new { include_pinned = includePinned });
+            return resp.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<List<string>> GetBackendLogsAsync(int tail = 300)
+    {
+        try
+        {
+            var res = await _http.GetFromJsonAsync<LogsResponse>($"{BaseUrl}/api/logs?tail={tail}");
+            return res?.Logs ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    public async Task<bool> ClearBackendLogsAsync()
+    {
+        try
+        {
+            using var resp = await _http.PostAsync($"{BaseUrl}/api/logs/clear", null);
             return resp.IsSuccessStatusCode;
         }
         catch
