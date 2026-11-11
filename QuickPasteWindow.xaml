@@ -129,7 +129,7 @@
                 <Button x:Name="TabImageBtn" Tag="image" Click="OnTabFilterClick" Style="{StaticResource QuickTabStyle}">
                     <TextBlock Text="Image" />
                 </Button>
-                <Button x:Name="TabFileBtn" Tag="file" Click="OnTabFilterClick" Style="{StaticResource QuickTabStyle}">
+                <Button x:Name="TabFileBtn" Tag="file" Click="OnTabFilterClick" Style="{StaticResource QuickTabStyle}" Visibility="Collapsed">
                     <TextBlock Text="File" />
                 </Button>
             </StackPanel>

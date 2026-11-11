@@ -575,28 +575,8 @@ class WindowsClipboardWriter:
                         ),
                         (width, height),
                     )
-
-                uti = FILE_EXT_TO_UTI.get(
-                    ext,
-                    UTI_UTF8_PLAIN_TEXT if ext in TEXT_FILE_EXTENSIONS else "public.data",
-                )
-                preview_text = p.name
-                if ext in TEXT_FILE_EXTENSIONS:
-                    with contextlib.suppress(UnicodeDecodeError):
-                        decoded = raw_bytes.decode("utf-8")
-                        if decoded.strip():
-                            preview_text = decoded
-                return (
-                    ExtractedPayload(
-                        kind="file",
-                        uti=uti,
-                        raw_size=len(raw_bytes),
-                        text=preview_text,
-                        file_name=p.name,
-                        file_bytes=raw_bytes,
-                    ),
-                    None,
-                )
+                # Non-image files are omitted (bỏ copy file đi k cần thiết lắm)
+                continue
 
         # 1. Check Unicode Text
         if self._user32.IsClipboardFormatAvailable(CF_UNICODETEXT):
@@ -812,9 +792,8 @@ class WindowsClipboardWriter:
         self,
         image_bytes: bytes,
         uti: str,
-        file_path: Optional[str] = None,
     ) -> tuple[list[str], tuple[int, int]]:
-        """Decode image (PNG, JPEG, HEIC, TIFF, GIF, WebP) and write `CF_DIBV5`, `CF_DIB`, `PNG`, and optional `CF_HDROP`."""
+        """Decode image (PNG, JPEG, HEIC, TIFF, GIF, WebP) and write native `CF_DIBV5`, `CF_DIB`, and `PNG`."""
         if uti == "public.heic" and not HEIF_AVAILABLE:
             raise RuntimeError("HEIC image received but pillow-heif is not installed")
 
@@ -834,11 +813,6 @@ class WindowsClipboardWriter:
             if self.cf_png:
                 self._set_raw_format(self.cf_png, png_bytes)
                 formats_written.append("PNG")
-
-            if file_path and os.path.isfile(file_path):
-                with contextlib.suppress(Exception):
-                    self._set_raw_format(CF_HDROP, self._build_hdrop_payload([file_path]))
-                    formats_written.append("CF_HDROP")
 
         return formats_written, dimensions
 
@@ -2273,11 +2247,9 @@ class UniversalClipboardCoordinator:
                     latency_ms=total_ms,
                     source="iphone",
                 )
-                saved_img_path = self.history.get_file_path(str(entry["id"]))
                 formats, (width, height) = self.clipboard.write_image(
                     payload.image_bytes,
                     base_uti,
-                    file_path=str(saved_img_path) if saved_img_path else None,
                 )
                 write_ms = (time.perf_counter() - t_write) * 1000.0
                 total_ms = (time.perf_counter() - t_start) * 1000.0
@@ -2433,9 +2405,73 @@ class CircularLogHandler(logging.Handler):
         self.buffer: collections.deque[str] = collections.deque(maxlen=capacity)
         self._lock = threading.Lock()
 
+    @staticmethod
+    def _format_clean_log(record: logging.LogRecord) -> str:
+        msg = record.getMessage()
+        dt = datetime.fromtimestamp(record.created)
+        time_str = dt.strftime("%H:%M:%S")
+
+        if "[STARTUP]" in msg:
+            return f"{time_str}  [STARTUP]  Universal Clipboard daemon started (Auto Wi-Fi / USB)"
+        if "[API]" in msg and "listening on" in msg:
+            return f"{time_str}  [API]      WinUI 3 local bridge listening on port 8767"
+        if "[CONNECTING]" in msg:
+            transport = "Wi-Fi" if "transport=Wi-Fi" in msg else "USB"
+            return f"{time_str}  [CONNECT]  Connecting to iPhone via {transport}..."
+        if "[CONNECTED]" in msg:
+            device = "iPhone"
+            m_dev = re.search(r"device=([^\s]+)", msg)
+            if m_dev:
+                device = m_dev.group(1)
+            transport = "Wi-Fi" if "transport=Wi-Fi" in msg else "USB"
+            return f"{time_str}  [ONLINE]   {device} paired and ready via {transport}"
+        if "[SUBSCRIBED]" in msg:
+            return f"{time_str}  [READY]    Listening for iPhone pasteboard copy events"
+        if "[NOTIFICATION]" in msg:
+            return f"{time_str}  [EVENT]    iPhone copied new content"
+        if "[CLIPBOARD_UPDATED]" in msg:
+            if "status=SUCCESS" in msg:
+                m_type = re.search(r"type=([^\s]+)", msg)
+                t_kind = m_type.group(1) if m_type else "text"
+                m_lat = re.search(r"total_ms=([0-9\.]+)", msg)
+                lat = f"{m_lat.group(1)}ms" if m_lat else ""
+                transport = "Wi-Fi" if "transport=Wi-Fi" in msg else "USB"
+                if t_kind == "image":
+                    m_dim = re.search(r"dimensions=([0-9x]+)", msg)
+                    dim = m_dim.group(1) if m_dim else "image"
+                    return f"{time_str}  [SYNC]     iPhone → Windows · Image ({dim}) · {transport} · {lat}"
+                elif t_kind == "url":
+                    return f"{time_str}  [SYNC]     iPhone → Windows · URL Link · {transport} · {lat}"
+                else:
+                    m_chars = re.search(r"chars=([0-9]+)", msg)
+                    chars = f"{m_chars.group(1)} chars" if m_chars else "text"
+                    return f"{time_str}  [SYNC]     iPhone → Windows · Text ({chars}) · {transport} · {lat}"
+            elif "status=ERROR" in msg:
+                m_err = re.search(r"error=([^\n]+)", msg)
+                err = m_err.group(1) if m_err else "Sync error"
+                return f"{time_str}  [ERROR]    Sync failed: {err}"
+        if "[CLIPBOARD_PUSHED]" in msg:
+            if "status=SUCCESS" in msg:
+                m_type = re.search(r"type=([^\s]+)", msg)
+                t_kind = m_type.group(1) if m_type else "text"
+                m_lat = re.search(r"total_ms=([0-9\.]+)", msg)
+                lat = f"{m_lat.group(1)}ms" if m_lat else ""
+                transport = "Wi-Fi" if "transport=Wi-Fi" in msg else "USB"
+                return f"{time_str}  [PUSH]     Windows → iPhone · {t_kind.capitalize()} · {transport} · {lat}"
+            else:
+                return f"{time_str}  [ERROR]    Failed to push Windows clipboard to iPhone"
+        if "[SKIP]" in msg:
+            return f"{time_str}  [SKIP]     Identical payload (echo loop prevented)"
+        if "[DISCONNECTED]" in msg:
+            return f"{time_str}  [OFFLINE]  iPhone disconnected, reconnecting in background..."
+
+        level = record.levelname
+        clean_msg = re.sub(r"^\[[^\]]+\]\s*", "", msg)
+        return f"{time_str}  [{level}]  {clean_msg}"
+
     def emit(self, record: logging.LogRecord) -> None:
         try:
-            msg = self.format(record)
+            msg = self._format_clean_log(record)
             with self._lock:
                 self.buffer.append(msg)
         except Exception:

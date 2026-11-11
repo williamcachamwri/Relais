@@ -332,7 +332,8 @@
                             Padding="10,0"
                             CornerRadius="8"
                             Background="Transparent"
-                            BorderThickness="0">
+                            BorderThickness="0"
+                            Visibility="Collapsed">
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <FontIcon Glyph="&#xE7C3;" FontSize="13" Foreground="#9A9AA2" />
                                 <TextBlock Text="File" FontSize="13" Foreground="#9A9AA2" />
@@ -1245,7 +1246,12 @@
                                     Toggled="OnDeveloperModeToggled"
                                     OnContent=""
                                     OffContent=""
-                                    VerticalAlignment="Center" />
+                                    MinWidth="0"
+                                    HorizontalAlignment="Right"
+                                    HorizontalContentAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Margin="0"
+                                    Padding="0" />
                             </Grid>
                         </Border>
 
@@ -1560,18 +1566,18 @@
                         Background="#0D0D10"
                         HorizontalScrollBarVisibility="Auto"
                         VerticalScrollBarVisibility="Auto"
-                        Padding="16,12">
+                        Padding="0">
                         <TextBox
                             x:Name="LogsContentTextBox"
                             IsReadOnly="True"
                             AcceptsReturn="True"
                             TextWrapping="NoWrap"
                             FontFamily="Cascadia Code, Consolas, Courier New"
-                            FontSize="12"
-                            Foreground="#C8C8D0"
+                            FontSize="12.5"
+                            Foreground="#D2D2DA"
                             Background="Transparent"
                             BorderThickness="0"
-                            Padding="0" />
+                            Padding="18,14" />
                     </ScrollViewer>
 
                     <!-- Status Footer -->

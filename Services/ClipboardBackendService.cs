@@ -156,10 +156,7 @@ public sealed class ClipboardHistoryItem
         get
         {
             if (!string.IsNullOrWhiteSpace(FileName)) return FileName;
-            var dt = Timestamp > 0
-                ? DateTimeOffset.FromUnixTimeSeconds((long)Timestamp).ToLocalTime()
-                : DateTimeOffset.Now;
-            return $"Clipboard_{dt:yyyy-MM-dd_HH-mm-ss}.png";
+            return !string.IsNullOrWhiteSpace(Text) && Text != "Image" && !Text.StartsWith("Clipboard_") ? Text : "Image";
         }
     }
 
