@@ -60,7 +60,11 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Test-Path Relais.msi)) { throw "Relais.msi was not produced." }
-          Get-Item Relais.msi | Format-List Name, Length
+          $mb = (Get-Item Relais.msi).Length / 1MB
+          "Relais.msi size: $([math]::Round($mb, 2)) MB"
+          # The app is published self-contained (~90 MB of payload), so an MSI
+          # far below this means the Files harvest found nothing (empty MSI).
+          if ($mb -lt 10) { throw "Relais.msi is only $([math]::Round($mb, 2)) MB - the dist\Relais payload was probably not harvested." }
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

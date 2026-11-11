@@ -31,8 +31,10 @@
       <Directory Id="INSTALLFOLDER" Name="Relais" />
     </StandardDirectory>
 
+    <!-- Harvest all published files (path is relative to this .wxs file,
+         so it works both locally and on CI checkouts). -->
     <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
-      <Files Include="d:\UniversalClipboard\dist\Relais\**" />
+      <Files Include="dist\Relais\**" />
     </ComponentGroup>
 
     <StandardDirectory Id="ProgramMenuFolder">
