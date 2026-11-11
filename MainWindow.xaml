@@ -747,118 +747,216 @@
                         Grid.Row="2"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        Background="#18181C"
-                        BorderBrush="#26262C"
+                        Background="#17171B"
+                        BorderBrush="#26262D"
                         BorderThickness="1"
                         CornerRadius="10"
-                        Padding="4">
-                    <StackPanel
-                        x:Name="InspectorBarPanel"
-                        Orientation="Horizontal"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Spacing="16">
-                        <Button
-                            x:Name="ActionCopyBtn"
-                            Click="OnInspectorCopyClick"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="10,6"
-                            CornerRadius="6"
-                            ToolTipService.ToolTip="Copy to Windows clipboard (C)">
-                            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-                                <FontIcon Glyph="&#xE8C8;" FontSize="13" Foreground="#F2F2F5" />
-                                <TextBlock
-                                    x:Name="ActionCopyLabel"
-                                    Text="Copy"
-                                    FontSize="13"
-                                    FontWeight="SemiBold"
-                                    Foreground="#F2F2F5" />
-                                <TextBlock
-                                    x:Name="KeyHintC"
-                                    Text="C"
-                                    FontSize="12"
-                                    Foreground="#5A5A62"
-                                    Margin="2,0,0,0" />
-                            </StackPanel>
-                        </Button>
+                        Padding="5,4">
+                        <StackPanel
+                            x:Name="InspectorBarPanel"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="4">
+                            <Button
+                                x:Name="ActionCopyBtn"
+                                Click="OnInspectorCopyClick"
+                                Height="30"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="10,0"
+                                CornerRadius="7"
+                                VerticalAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                ToolTipService.ToolTip="Copy to Windows clipboard (C)">
+                                <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                                    <FontIcon
+                                        Glyph="&#xE8C8;"
+                                        FontSize="12.5"
+                                        Foreground="#F2F2F5"
+                                        VerticalAlignment="Center"
+                                        Margin="0,1,0,0" />
+                                    <TextBlock
+                                        x:Name="ActionCopyLabel"
+                                        Text="Copy"
+                                        FontSize="12.5"
+                                        FontWeight="SemiBold"
+                                        Foreground="#F2F2F5"
+                                        LineHeight="18"
+                                        LineStackingStrategy="BlockLineHeight"
+                                        VerticalAlignment="Center" />
+                                    <Border
+                                        x:Name="KeyHintC"
+                                        Width="18"
+                                        Height="18"
+                                        CornerRadius="4"
+                                        Background="#212127"
+                                        BorderBrush="#2F2F37"
+                                        BorderThickness="1"
+                                        VerticalAlignment="Center"
+                                        Margin="1,0,0,0">
+                                        <TextBlock
+                                            Text="C"
+                                            FontSize="10.5"
+                                            FontWeight="Medium"
+                                            Foreground="#868690"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center" />
+                                    </Border>
+                                </StackPanel>
+                            </Button>
 
-                        <Button
-                            x:Name="ActionSendIphoneBtn"
-                            Click="OnInspectorSendIphoneClick"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="10,6"
-                            CornerRadius="6"
-                            ToolTipService.ToolTip="Push this item to iPhone clipboard (S)">
-                            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-                                <FontIcon Glyph="&#xE8EA;" FontSize="13" Foreground="#9A9AA2" />
-                                <TextBlock
-                                    x:Name="ActionSendIphoneLabel"
-                                    Text="Send to iPhone"
-                                    FontSize="13"
-                                    Foreground="#9A9AA2" />
-                                <TextBlock
-                                    x:Name="KeyHintS"
-                                    Text="S"
-                                    FontSize="12"
-                                    Foreground="#5A5A62"
-                                    Margin="2,0,0,0" />
-                            </StackPanel>
-                        </Button>
+                            <Border Width="1" Height="14" Background="#25252C" VerticalAlignment="Center" />
 
-                        <Button
-                            x:Name="ActionFavoriteBtn"
-                            Click="OnInspectorFavoriteClick"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="10,6"
-                            CornerRadius="6"
-                            ToolTipService.ToolTip="Toggle Favorite (F)">
-                            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-                                <FontIcon
-                                    x:Name="ActionFavoriteIcon"
-                                    Glyph="&#xE734;"
-                                    FontSize="13"
-                                    Foreground="#9A9AA2" />
-                                <TextBlock
-                                    x:Name="ActionFavoriteLabel"
-                                    Text="Favorite"
-                                    FontSize="13"
-                                    Foreground="#9A9AA2" />
-                                <TextBlock
-                                    x:Name="KeyHintF"
-                                    Text="F"
-                                    FontSize="12"
-                                    Foreground="#5A5A62"
-                                    Margin="2,0,0,0" />
-                            </StackPanel>
-                        </Button>
+                            <Button
+                                x:Name="ActionSendIphoneBtn"
+                                Click="OnInspectorSendIphoneClick"
+                                Height="30"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="10,0"
+                                CornerRadius="7"
+                                VerticalAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                ToolTipService.ToolTip="Push this item to iPhone clipboard (S)">
+                                <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                                    <FontIcon
+                                        Glyph="&#xE8EA;"
+                                        FontSize="12.5"
+                                        Foreground="#A6A6B0"
+                                        VerticalAlignment="Center"
+                                        Margin="0,1,0,0" />
+                                    <TextBlock
+                                        x:Name="ActionSendIphoneLabel"
+                                        Text="Send to iPhone"
+                                        FontSize="12.5"
+                                        FontWeight="Medium"
+                                        Foreground="#A6A6B0"
+                                        LineHeight="18"
+                                        LineStackingStrategy="BlockLineHeight"
+                                        VerticalAlignment="Center" />
+                                    <Border
+                                        x:Name="KeyHintS"
+                                        Width="18"
+                                        Height="18"
+                                        CornerRadius="4"
+                                        Background="#212127"
+                                        BorderBrush="#2F2F37"
+                                        BorderThickness="1"
+                                        VerticalAlignment="Center"
+                                        Margin="1,0,0,0">
+                                        <TextBlock
+                                            Text="S"
+                                            FontSize="10.5"
+                                            FontWeight="Medium"
+                                            Foreground="#868690"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center" />
+                                    </Border>
+                                </StackPanel>
+                            </Button>
 
-                        <Button
-                            x:Name="ActionDeleteBtn"
-                            Click="OnInspectorDeleteClick"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="10,6"
-                            CornerRadius="6"
-                            ToolTipService.ToolTip="Delete item (D)">
-                            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-                                <FontIcon Glyph="&#xE74D;" FontSize="13" Foreground="#9A9AA2" />
-                                <TextBlock
-                                    x:Name="ActionDeleteLabel"
-                                    Text="Delete"
-                                    FontSize="13"
-                                    Foreground="#9A9AA2" />
-                                <TextBlock
-                                    x:Name="KeyHintD"
-                                    Text="D"
-                                    FontSize="12"
-                                    Foreground="#5A5A62"
-                                    Margin="2,0,0,0" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
+                            <Border Width="1" Height="14" Background="#25252C" VerticalAlignment="Center" />
+
+                            <Button
+                                x:Name="ActionFavoriteBtn"
+                                Click="OnInspectorFavoriteClick"
+                                Height="30"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="10,0"
+                                CornerRadius="7"
+                                VerticalAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                ToolTipService.ToolTip="Toggle Favorite (F)">
+                                <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                                    <FontIcon
+                                        x:Name="ActionFavoriteIcon"
+                                        Glyph="&#xE734;"
+                                        FontSize="12.5"
+                                        Foreground="#A6A6B0"
+                                        VerticalAlignment="Center"
+                                        Margin="0,1,0,0" />
+                                    <TextBlock
+                                        x:Name="ActionFavoriteLabel"
+                                        Text="Favorite"
+                                        FontSize="12.5"
+                                        FontWeight="Medium"
+                                        Foreground="#A6A6B0"
+                                        LineHeight="18"
+                                        LineStackingStrategy="BlockLineHeight"
+                                        VerticalAlignment="Center" />
+                                    <Border
+                                        x:Name="KeyHintF"
+                                        Width="18"
+                                        Height="18"
+                                        CornerRadius="4"
+                                        Background="#212127"
+                                        BorderBrush="#2F2F37"
+                                        BorderThickness="1"
+                                        VerticalAlignment="Center"
+                                        Margin="1,0,0,0">
+                                        <TextBlock
+                                            Text="F"
+                                            FontSize="10.5"
+                                            FontWeight="Medium"
+                                            Foreground="#868690"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center" />
+                                    </Border>
+                                </StackPanel>
+                            </Button>
+
+                            <Border Width="1" Height="14" Background="#25252C" VerticalAlignment="Center" />
+
+                            <Button
+                                x:Name="ActionDeleteBtn"
+                                Click="OnInspectorDeleteClick"
+                                Height="30"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="10,0"
+                                CornerRadius="7"
+                                VerticalAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                ToolTipService.ToolTip="Delete item (D)">
+                                <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                                    <FontIcon
+                                        Glyph="&#xE74D;"
+                                        FontSize="12.5"
+                                        Foreground="#A6A6B0"
+                                        VerticalAlignment="Center"
+                                        Margin="0,1,0,0" />
+                                    <TextBlock
+                                        x:Name="ActionDeleteLabel"
+                                        Text="Delete"
+                                        FontSize="12.5"
+                                        FontWeight="Medium"
+                                        Foreground="#A6A6B0"
+                                        LineHeight="18"
+                                        LineStackingStrategy="BlockLineHeight"
+                                        VerticalAlignment="Center" />
+                                    <Border
+                                        x:Name="KeyHintD"
+                                        Width="18"
+                                        Height="18"
+                                        CornerRadius="4"
+                                        Background="#212127"
+                                        BorderBrush="#2F2F37"
+                                        BorderThickness="1"
+                                        VerticalAlignment="Center"
+                                        Margin="1,0,0,0">
+                                        <TextBlock
+                                            Text="D"
+                                            FontSize="10.5"
+                                            FontWeight="Medium"
+                                            Foreground="#868690"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center" />
+                                    </Border>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
                     </Border>
                 </Grid>
 
