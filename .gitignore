@@ -1,0 +1,19 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+
+# Logs and local runtime state
+*.log
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS metadata
+Thumbs.db
+.DS_Store
