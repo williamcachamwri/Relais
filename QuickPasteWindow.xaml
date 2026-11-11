@@ -2,7 +2,7 @@
     x:Class="UniversalClipboard.QuickPasteWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="Universal Clipboard">
+    Title="Relais">
 
     <Grid
         x:Name="PopupRoot"
@@ -190,7 +190,7 @@
                     Foreground="#6C6C75" />
                 <TextBlock
                     x:Name="FooterSourceText"
-                    Text="Universal Clipboard"
+                    Text="Relais"
                     FontSize="11.5"
                     Foreground="#6C6C75"
                     TextTrimming="CharacterEllipsis"

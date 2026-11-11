@@ -2,7 +2,7 @@
     x:Class="UniversalClipboard.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="Universal Clipboard">
+    Title="Relais">
 
     <Grid
         x:Name="RootGrid"
@@ -45,7 +45,7 @@
                             Foreground="#8E8E96"
                             VerticalAlignment="Center" />
                         <TextBlock
-                            Text="Universal Clipboard"
+                            Text="Relais"
                             FontSize="12.5"
                             FontWeight="SemiBold"
                             Foreground="#D4D4DC"
@@ -159,6 +159,92 @@
                 VerticalAlignment="Top"
                 Canvas.ZIndex="1000" />
 
+            <!-- Floating AirDrop Incoming Transfer Request Modal / Banner -->
+            <Border
+                x:Name="AirDropIncomingPromptCard"
+                Grid.ColumnSpan="4"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Center"
+                Margin="0,14,0,0"
+                Background="#1C1C22"
+                BorderBrush="#3B82F6"
+                BorderThickness="1.5"
+                CornerRadius="12"
+                Padding="16,12"
+                Visibility="Collapsed"
+                Canvas.ZIndex="2000"
+                MaxWidth="560">
+                <Grid ColumnSpacing="14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- AirDrop Avatar / Icon -->
+                    <Border
+                        Grid.Column="0"
+                        Width="40"
+                        Height="40"
+                        CornerRadius="20"
+                        Background="#1E293B"
+                        BorderBrush="#38BDF8"
+                        BorderThickness="1"
+                        VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE72D;" FontSize="17" Foreground="#38BDF8" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+
+                    <!-- Transfer Info -->
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock
+                                x:Name="AirDropIncomingSenderText"
+                                Text="iPhone"
+                                FontSize="13.5"
+                                FontWeight="SemiBold"
+                                Foreground="#FFFFFF" />
+                            <Border
+                                Background="#1E3A8A"
+                                CornerRadius="4"
+                                Padding="5,1"
+                                VerticalAlignment="Center">
+                                <TextBlock Text="AirDrop" FontSize="10" FontWeight="SemiBold" Foreground="#93C5FD" />
+                            </Border>
+                        </StackPanel>
+                        <TextBlock
+                            x:Name="AirDropIncomingFilesText"
+                            Text="wants to share files"
+                            FontSize="12"
+                            Foreground="#94A3B8"
+                            TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+
+                    <!-- Action Buttons -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button
+                            x:Name="AirDropDeclineBtn"
+                            Click="OnAirDropDeclineClick"
+                            Background="#282830"
+                            BorderBrush="#383842"
+                            BorderThickness="1"
+                            CornerRadius="7"
+                            Padding="12,5">
+                            <TextBlock Text="Decline" FontSize="12" FontWeight="SemiBold" Foreground="#E2E8F0" />
+                        </Button>
+                        <Button
+                            x:Name="AirDropAcceptBtn"
+                            Click="OnAirDropAcceptClick"
+                            Background="#2563EB"
+                            BorderBrush="#3B82F6"
+                            BorderThickness="1"
+                            CornerRadius="7"
+                            Padding="14,5">
+                            <TextBlock Text="Accept" FontSize="12" FontWeight="Bold" Foreground="#FFFFFF" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <!-- =============================================================== -->
             <!-- COLUMN 0: FAR-LEFT ICON RAIL                                    -->
             <!-- =============================================================== -->
@@ -181,6 +267,19 @@
                             BorderThickness="0"
                             ToolTipService.ToolTip="Clipboard History">
                             <FontIcon Glyph="&#xE81E;" FontSize="15" Foreground="#F2F2F5" />
+                        </Button>
+
+                        <Button
+                            x:Name="RailAirDropBtn"
+                            Click="OnRailAirDropClick"
+                            Width="34"
+                            Height="34"
+                            Padding="0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ToolTipService.ToolTip="Apple AirDrop">
+                            <FontIcon Glyph="&#xE72D;" FontSize="15" Foreground="#8A8A92" />
                         </Button>
                     </StackPanel>
 
@@ -208,7 +307,7 @@
                             CornerRadius="8"
                             Background="Transparent"
                             BorderThickness="0"
-                            ToolTipService.ToolTip="About Universal Clipboard">
+                            ToolTipService.ToolTip="About Relais">
                             <FontIcon Glyph="&#xE946;" FontSize="15" Foreground="#8A8A92" />
                         </Button>
 
@@ -1557,6 +1656,56 @@
                             </Grid>
                         </Border>
 
+                        <!-- Card 05: Apple AirDrop -->
+                        <Border
+                            Background="#18181B"
+                            BorderBrush="#242428"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,14">
+                            <Grid ColumnSpacing="14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Text="05"
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    Foreground="#6E6E76"
+                                    Typography.NumeralAlignment="Tabular"
+                                    VerticalAlignment="Top"
+                                    Margin="0,2,0,0" />
+                                <StackPanel Grid.Column="1" Spacing="4">
+                                    <TextBlock
+                                        Text="Apple AirDrop"
+                                        FontSize="13.5"
+                                        FontWeight="SemiBold"
+                                        Foreground="#F2F2F5" />
+                                    <TextBlock
+                                        Text="Nhận ảnh, video và tệp tin trực tiếp từ iPhone qua Apple AirDrop native. Lưu an toàn vào Downloads\AirDrop với Mark-of-the-Web."
+                                        FontSize="11.5"
+                                        Foreground="#8A8A92"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+
+                                <ToggleSwitch
+                                    x:Name="AirDropQuickToggle"
+                                    Grid.Column="2"
+                                    Toggled="OnAirDropReceivingToggled"
+                                    IsOn="True"
+                                    OnContent=""
+                                    OffContent=""
+                                    MinWidth="0"
+                                    HorizontalAlignment="Right"
+                                    HorizontalContentAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Margin="0"
+                                    Padding="0" />
+                            </Grid>
+                        </Border>
+
                         <TextBlock
                             x:Name="OnboardingFeedbackText"
                             Text=""
@@ -1601,7 +1750,7 @@
                             <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                     <TextBlock
-                                        Text="Universal Clipboard"
+                                        Text="Relais"
                                         FontSize="18"
                                         FontWeight="SemiBold"
                                         Foreground="#F2F2F5" />
@@ -1613,7 +1762,7 @@
                                         Padding="7,1"
                                         VerticalAlignment="Center">
                                         <TextBlock
-                                            Text="v1.2.0"
+                                            Text="v2.0.0"
                                             FontSize="11"
                                             FontWeight="Medium"
                                             Foreground="#B8B8C2"
@@ -1621,9 +1770,9 @@
                                     </Border>
                                 </StackPanel>
                                 <TextBlock
-                                    Text="Native iPhone ⇄ Windows Continuity Clipboard Engine"
+                                    Text="Native iPhone ⇄ Windows Continuity &amp; AirDrop Engine"
                                     FontSize="12.5"
-                                    Foreground="#8A8A92" />
+                                    Foreground="#8A8A96" />
                             </StackPanel>
 
                             <Button
@@ -1918,6 +2067,318 @@
                         </Grid>
                     </Border>
                 </Grid>
+
+                <!-- LAYER E: AIRDROP CENTER PANE (Monochrome Carbon-Graphite) -->
+                <ScrollViewer
+                    x:Name="AirDropPane"
+                    Visibility="Collapsed"
+                    VerticalScrollBarVisibility="Auto"
+                    Padding="32,24">
+                    <StackPanel MaxWidth="560" HorizontalAlignment="Center" Spacing="16">
+                        <!-- AirDrop Header Row -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border
+                                Grid.Column="0"
+                                Width="44"
+                                Height="44"
+                                CornerRadius="11"
+                                Background="#1C1C21"
+                                BorderBrush="#2C2C34"
+                                BorderThickness="1"
+                                Margin="0,0,14,0"
+                                VerticalAlignment="Center">
+                                <FontIcon
+                                    Glyph="&#xE72D;"
+                                    FontSize="19"
+                                    Foreground="#38BDF8"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center" />
+                            </Border>
+
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock
+                                        Text="Apple AirDrop"
+                                        FontSize="18"
+                                        FontWeight="SemiBold"
+                                        Foreground="#F2F2F5" />
+                                    <Border
+                                        x:Name="AirDropStatusPill"
+                                        Background="#1C261C"
+                                        BorderBrush="#2D482D"
+                                        BorderThickness="1"
+                                        CornerRadius="5"
+                                        Padding="7,1"
+                                        VerticalAlignment="Center">
+                                        <TextBlock
+                                            x:Name="AirDropStatusPillText"
+                                            Text="● Ready · Everyone"
+                                            FontSize="11"
+                                            FontWeight="Medium"
+                                            Foreground="#4ADE80" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock
+                                    Text="Native iPhone ⇄ Windows Continuity Receiver"
+                                    FontSize="12.5"
+                                    Foreground="#8A8A96" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+                                <Button
+                                    Click="OnOpenAirDropFolderClick"
+                                    Background="#212125"
+                                    BorderBrush="#2C2C30"
+                                    BorderThickness="1"
+                                    CornerRadius="7"
+                                    Padding="10,5"
+                                    ToolTipService.ToolTip="Open Downloads\AirDrop folder">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE838;" FontSize="12" Foreground="#A0A0AA" />
+                                        <TextBlock Text="Downloads" FontSize="11.5" Foreground="#F2F2F5" />
+                                    </StackPanel>
+                                </Button>
+                                <Button
+                                    Click="OnRailClipboardClick"
+                                    Background="#212125"
+                                    BorderBrush="#2C2C30"
+                                    BorderThickness="1"
+                                    CornerRadius="7"
+                                    Padding="10,5">
+                                    <TextBlock Text="Close" FontSize="11.5" FontWeight="SemiBold" Foreground="#F2F2F5" />
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Card 1: AirDrop Service Toggle & Device Identity -->
+                        <Border
+                            Background="#18181B"
+                            BorderBrush="#242428"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,14">
+                            <StackPanel Spacing="14">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Spacing="3">
+                                        <TextBlock
+                                            Text="AirDrop Discoverability"
+                                            FontSize="13.5"
+                                            FontWeight="SemiBold"
+                                            Foreground="#F2F2F5" />
+                                        <TextBlock
+                                            Text="Allows iPhones on the local network to discover this PC in the native AirDrop share sheet."
+                                            FontSize="12"
+                                            Foreground="#8A8A92"
+                                            TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <ToggleSwitch
+                                        x:Name="AirDropMainToggle"
+                                        Grid.Column="1"
+                                        Toggled="OnAirDropReceivingToggled"
+                                        IsOn="True"
+                                        OnContent=""
+                                        OffContent=""
+                                        MinWidth="0"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Center"
+                                        Margin="0"
+                                        Padding="0" />
+                                </Grid>
+
+                                <Border Height="1" Background="#242428" Margin="0,2" />
+
+                                <!-- Computer Name in AirDrop -->
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock
+                                        Text="Device Name:"
+                                        FontSize="12.5"
+                                        Foreground="#8A8A96"
+                                        VerticalAlignment="Center" />
+                                    <TextBox
+                                        x:Name="AirDropDeviceNameInput"
+                                        Grid.Column="1"
+                                        Text="Relais PC"
+                                        FontSize="12.5"
+                                        Background="#1E1E22"
+                                        BorderBrush="#2C2C32"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="8,4"
+                                        VerticalAlignment="Center" />
+                                    <Button
+                                        Grid.Column="2"
+                                        Click="OnSaveAirDropDeviceNameClick"
+                                        Background="#25252A"
+                                        BorderBrush="#323238"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="10,4"
+                                        VerticalAlignment="Center">
+                                        <TextBlock Text="Save" FontSize="11.5" Foreground="#EDEDF2" />
+                                    </Button>
+                                </Grid>
+
+                                <!-- Hardware Diagnostics Chips -->
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Hardware &amp; Network Diagnostics" FontSize="11.5" FontWeight="SemiBold" Foreground="#6E6E78" />
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border
+                                            Grid.Column="0"
+                                            Background="#151518"
+                                            BorderBrush="#222226"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Padding="8,6">
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="BLUETOOTH" FontSize="9.5" FontWeight="Bold" Foreground="#60A5FA" />
+                                                <TextBlock x:Name="AirDropBleStatusChip" Text="Advertising Wake" FontSize="11" Foreground="#D4D4DE" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border
+                                            Grid.Column="1"
+                                            Background="#151518"
+                                            BorderBrush="#222226"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Padding="8,6">
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="WI-FI ADAPTER" FontSize="9.5" FontWeight="Bold" Foreground="#34D399" />
+                                                <TextBlock x:Name="AirDropWifiStatusChip" Text="Intel AX211" FontSize="11" Foreground="#D4D4DE" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border
+                                            Grid.Column="2"
+                                            Background="#151518"
+                                            BorderBrush="#222226"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Padding="8,6">
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="PROTOCOL" FontSize="9.5" FontWeight="Bold" Foreground="#A78BFA" />
+                                                <TextBlock x:Name="AirDropProtoStatusChip" Text="mDNS &amp; HTTPS" FontSize="11" Foreground="#D4D4DE" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                    <TextBlock
+                                        x:Name="AirDropAwdlNote"
+                                        Text="Zero-configuration native AirDrop: iPhones on the same Wi-Fi network discover this PC instantly via BLE beacon and mDNS HTTPS responder. Windows SmartScreen Mark-of-the-Web is applied to all incoming files."
+                                        FontSize="11"
+                                        Foreground="#6E6E78"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 2: Active Transfer Progress (Visible when receiving) -->
+                        <Border
+                            x:Name="AirDropActiveTransferCard"
+                            Visibility="Collapsed"
+                            Background="#18181B"
+                            BorderBrush="#3B82F6"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,14">
+                            <StackPanel Spacing="10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock
+                                            x:Name="AirDropActiveTransferTitle"
+                                            Text="Receiving from iPhone..."
+                                            FontSize="13"
+                                            FontWeight="SemiBold"
+                                            Foreground="#F2F2F5" />
+                                        <TextBlock
+                                            x:Name="AirDropActiveTransferSub"
+                                            Text="Photo.heic (12.4 MB)"
+                                            FontSize="12"
+                                            Foreground="#8A8A92" />
+                                    </StackPanel>
+                                    <TextBlock
+                                        x:Name="AirDropActiveTransferPercent"
+                                        Grid.Column="1"
+                                        Text="0%"
+                                        FontSize="14"
+                                        FontWeight="Bold"
+                                        Foreground="#38BDF8"
+                                        VerticalAlignment="Center" />
+                                </Grid>
+                                <ProgressBar
+                                    x:Name="AirDropActiveProgressBar"
+                                    Value="0"
+                                    Maximum="100"
+                                    Height="6"
+                                    Foreground="#3B82F6"
+                                    Background="#232328"
+                                    CornerRadius="3" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 3: Recent AirDrop Transfers -->
+                        <Border
+                            Background="#18181B"
+                            BorderBrush="#242428"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,14">
+                            <StackPanel Spacing="12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock
+                                        Text="Recent Transfers"
+                                        FontSize="13.5"
+                                        FontWeight="SemiBold"
+                                        Foreground="#F2F2F5" />
+                                    <TextBlock
+                                        x:Name="AirDropTransferCountText"
+                                        Grid.Column="1"
+                                        Text="0 received"
+                                        FontSize="11.5"
+                                        Foreground="#6E6E78" />
+                                </Grid>
+
+                                <!-- Transfer list container -->
+                                <StackPanel x:Name="AirDropRecentTransfersPanel" Spacing="8">
+                                    <TextBlock
+                                        x:Name="AirDropNoTransfersText"
+                                        Text="No AirDrop transfers received yet. Send a photo or file from iPhone via AirDrop to see it here."
+                                        FontSize="12"
+                                        Foreground="#6E6E78"
+                                        Padding="4,8" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
             </Grid>
         </Grid>
     </Grid>

@@ -473,6 +473,60 @@ public sealed class ClipboardBackendService : IDisposable
         }
     }
 
+    public async Task<AirDropStatus?> GetAirDropStatusAsync()
+    {
+        try
+        {
+            return await _http.GetFromJsonAsync<AirDropStatus>($"{BaseUrl}/api/airdrop/status");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<bool> ToggleAirDropAsync(bool enable)
+    {
+        try
+        {
+            using var resp = await _http.PostAsJsonAsync($"{BaseUrl}/api/airdrop/toggle", new { enable });
+            return resp.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> SubmitAirDropConsentAsync(string id, bool accept)
+    {
+        try
+        {
+            using var resp = await _http.PostAsJsonAsync($"{BaseUrl}/api/airdrop/consent", new { id, accept });
+            return resp.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> ConfigureAirDropAsync(string? computerName = null, string? downloadsDir = null)
+    {
+        try
+        {
+            var payload = new Dictionary<string, object>();
+            if (!string.IsNullOrWhiteSpace(computerName)) payload["computer_name"] = computerName;
+            if (!string.IsNullOrWhiteSpace(downloadsDir)) payload["downloads_dir"] = downloadsDir;
+            using var resp = await _http.PostAsJsonAsync($"{BaseUrl}/api/airdrop/config", payload);
+            return resp.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task<(bool Ok, string Message)> PairWifiOverUsbAsync()
     {
         try

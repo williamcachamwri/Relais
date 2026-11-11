@@ -179,5 +179,69 @@ class TestLiveHardwareConnectivity(unittest.TestCase):
             asyncio.run(_verify_transport("wifi"))
 
 
+class TestAirDropProtocol(unittest.TestCase):
+    def test_safe_name_and_traversal_prevention(self) -> None:
+        from CoreDeviceBridge.airdropService import safe_name
+        self.assertEqual(safe_name("normal_file.png"), "normal_file.png")
+        self.assertEqual(safe_name("../../etc/passwd"), "passwd")
+        self.assertEqual(safe_name("C:\\Windows\\System32\\cmd.exe"), "cmd.exe")
+        self.assertEqual(safe_name("CON.txt"), "_CON.txt")
+        self.assertEqual(safe_name("NUL"), "_NUL")
+        self.assertEqual(safe_name("bad:file*name?.jpg"), "bad_file_name_.jpg")
+        self.assertEqual(safe_name("   "), "unnamed_transfer")
+        self.assertEqual(safe_name("Báo cáo tài chính 2026.pdf"), "Báo cáo tài chính 2026.pdf")
+
+    def test_cpio_and_dvzip_archive_parsing(self) -> None:
+        from CoreDeviceBridge.airdropService import decode_dvzip, parse_cpio
+        import struct, zlib
+
+        # Construct a synthetic CPIO archive with 2 files
+        def _make_odc(files: list[tuple[str, bytes]]) -> bytes:
+            out = bytearray()
+            for inode, (name, payload) in enumerate([*files, ("TRAILER!!!", b"")], 1):
+                raw_name = name.encode("utf-8") + b"\x00"
+                hdr = (
+                    b"070707"
+                    + f"{0:06o}".encode()
+                    + f"{inode:06o}".encode()
+                    + f"{0o100644:06o}".encode()
+                    + f"{0:06o}".encode()
+                    + f"{0:06o}".encode()
+                    + f"{1:06o}".encode()
+                    + f"{0:06o}".encode()
+                    + f"{0:011o}".encode()
+                    + f"{len(raw_name):06o}".encode()
+                    + f"{len(payload):011o}".encode()
+                )
+                out.extend(hdr)
+                out.extend(raw_name)
+                out.extend(payload)
+            return bytes(out)
+
+        sample_files = [
+            ("photo.jpg", b"\xff\xd8\xff\xe0test_jpeg_bytes"),
+            ("notes.txt", "Tài liệu tiếng Việt".encode("utf-8")),
+        ]
+        cpio_raw = _make_odc(sample_files)
+        # Wrap into DVZip block
+        compressed = zlib.compress(cpio_raw)
+        dvzip_blob = struct.pack(">I", len(compressed)) + compressed
+
+        inflated = decode_dvzip(dvzip_blob)
+        self.assertEqual(inflated, cpio_raw)
+
+        extracted = parse_cpio(inflated)
+        self.assertEqual(len(extracted), 2)
+        self.assertEqual(extracted[0], sample_files[0])
+        self.assertEqual(extracted[1], sample_files[1])
+
+    def test_airdrop_service_status(self) -> None:
+        from CoreDeviceBridge.airdropService import AIRDROP_SERVICE
+        status = AIRDROP_SERVICE.get_status()
+        self.assertIn("enabled", status)
+        self.assertIn("computer_name", status)
+        self.assertIn("downloads_dir", status)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

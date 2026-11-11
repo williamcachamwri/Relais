@@ -615,7 +615,7 @@ public sealed partial class QuickPasteWindow : Window
         else
         {
             FooterSourceIcon.Glyph = "\uE81E";
-            FooterSourceText.Text = "Universal Clipboard";
+            FooterSourceText.Text = "Relais";
         }
     }
 

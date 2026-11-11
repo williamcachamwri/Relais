@@ -14,7 +14,10 @@ ENV/
 .mypy_cache/
 .ruff_cache/
 
-# OS metadata
+# External reference clones
+reference/
+external/
+external_references/
 Thumbs.db
 .DS_Store
 

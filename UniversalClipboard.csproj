@@ -31,5 +31,8 @@
   <ItemGroup>
     <Compile Remove="docs\**" />
     <Page Remove="docs\**" />
+    <Compile Remove="external_references\**" />
+    <Page Remove="external_references\**" />
+    <None Remove="external_references\**" />
   </ItemGroup>
 </Project>

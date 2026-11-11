@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -50,6 +51,7 @@ public sealed partial class MainWindow : Window
     private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
     private readonly ClipboardBackendService _backend = new();
+    private readonly AirDropBleService _airDropBle = new();
     private readonly DispatcherTimer _pollTimer;
     private readonly QuickPasteWindow _quickPasteWindow;
     private IntPtr _hwnd;
@@ -60,6 +62,9 @@ public sealed partial class MainWindow : Window
     private List<ClipboardHistoryItem> _filteredItems = [];
     private ClipboardHistoryItem? _selectedItem;
     private BackendStatus? _lastStatus;
+    private AirDropStatus? _airDropStatus;
+    private string? _currentPendingTransferId;
+    private bool _isAirDropReceivingActive = true;
     private int _lastHistoryRevision = -1;
 
     private string _typeOrTagFilter = "type:all";
@@ -125,6 +130,7 @@ public sealed partial class MainWindow : Window
 
         Closed += OnWindowClosed;
         _ = InitializeBackendAsync();
+        _ = InitializeAirDropAsync();
     }
 
     private void ConfigureWindowChrome()
@@ -209,7 +215,7 @@ public sealed partial class MainWindow : Window
     {
         var interactiveButtons = new UIElement[]
         {
-            RailClipboardBtn, RailAboutBtn, RailSettingsBtn,
+            RailClipboardBtn, RailAirDropBtn, RailAboutBtn, RailSettingsBtn,
             NavTypeAllBtn, NavTypeFavBtn, NavTypeTextBtn, NavTypeRichBtn,
             NavTypeImageBtn, NavTypeFileBtn, NavTagLinkBtn, NavTagCodeBtn,
             NavTagImageBtn, NavSrcAllBtn, NavSrcPcBtn, NavSrcIphoneBtn,
@@ -381,6 +387,7 @@ public sealed partial class MainWindow : Window
         try
         {
             await RefreshStatusAndHistoryAsync();
+            await RefreshAirDropStatusAsync();
             if (LogsPane.Visibility == Visibility.Visible && ++_logPollCounter % 2 == 0)
             {
                 await RefreshBackendLogsAsync();
@@ -945,7 +952,7 @@ public sealed partial class MainWindow : Window
             InspectorTypeBadge.BorderBrush = BrushTextBorder;
             InspectorTypeBadgeText.Foreground = BrushTextPrimary;
             InspectorTypeBadgeIcon.Foreground = BrushTextSecondary;
-            InspectorCardHeaderTitle.Text = "Universal Clipboard";
+            InspectorCardHeaderTitle.Text = "Relais";
             InspectorPreviewText.Text = "Copy text, images, URLs, or files on your iPhone or Windows PC — both directions sync automatically.";
             InspectorChipsPanel.Visibility = Visibility.Collapsed;
             return;
@@ -1120,11 +1127,13 @@ public sealed partial class MainWindow : Window
             OnboardingPane.Visibility = Visibility.Collapsed;
             AboutPane.Visibility = Visibility.Collapsed;
             LogsPane.Visibility = Visibility.Collapsed;
+            AirDropPane.Visibility = Visibility.Collapsed;
             InspectorPane.Visibility = Visibility.Visible;
             RailClipboardBtn.Background = BrushRailActive;
             RailAboutBtn.Background = BrushTransparent;
             RailSettingsBtn.Background = BrushTransparent;
             RailLogsBtn.Background = BrushTransparent;
+            RailAirDropBtn.Background = BrushTransparent;
             AnimateStageEntrance(InspectorPane);
         }
     }
@@ -1134,11 +1143,13 @@ public sealed partial class MainWindow : Window
         InspectorPane.Visibility = Visibility.Collapsed;
         AboutPane.Visibility = Visibility.Collapsed;
         LogsPane.Visibility = Visibility.Collapsed;
+        AirDropPane.Visibility = Visibility.Collapsed;
         OnboardingPane.Visibility = Visibility.Visible;
         RailSettingsBtn.Background = BrushRailActive;
         RailAboutBtn.Background = BrushTransparent;
         RailClipboardBtn.Background = BrushTransparent;
         RailLogsBtn.Background = BrushTransparent;
+        RailAirDropBtn.Background = BrushTransparent;
         AnimateStageEntrance(OnboardingPane);
     }
 
@@ -1147,11 +1158,13 @@ public sealed partial class MainWindow : Window
         InspectorPane.Visibility = Visibility.Collapsed;
         OnboardingPane.Visibility = Visibility.Collapsed;
         LogsPane.Visibility = Visibility.Collapsed;
+        AirDropPane.Visibility = Visibility.Collapsed;
         AboutPane.Visibility = Visibility.Visible;
         RailAboutBtn.Background = BrushRailActive;
         RailSettingsBtn.Background = BrushTransparent;
         RailClipboardBtn.Background = BrushTransparent;
         RailLogsBtn.Background = BrushTransparent;
+        RailAirDropBtn.Background = BrushTransparent;
         AnimateStageEntrance(AboutPane);
     }
 
@@ -1160,13 +1173,43 @@ public sealed partial class MainWindow : Window
         InspectorPane.Visibility = Visibility.Collapsed;
         OnboardingPane.Visibility = Visibility.Collapsed;
         AboutPane.Visibility = Visibility.Collapsed;
+        AirDropPane.Visibility = Visibility.Collapsed;
         LogsPane.Visibility = Visibility.Visible;
         RailLogsBtn.Background = BrushRailActive;
         RailAboutBtn.Background = BrushTransparent;
         RailSettingsBtn.Background = BrushTransparent;
         RailClipboardBtn.Background = BrushTransparent;
+        RailAirDropBtn.Background = BrushTransparent;
         AnimateStageEntrance(LogsPane);
         _ = RefreshBackendLogsAsync();
+    }
+
+    private void ShowAirDropPane()
+    {
+        InspectorPane.Visibility = Visibility.Collapsed;
+        OnboardingPane.Visibility = Visibility.Collapsed;
+        AboutPane.Visibility = Visibility.Collapsed;
+        LogsPane.Visibility = Visibility.Collapsed;
+        AirDropPane.Visibility = Visibility.Visible;
+        RailAirDropBtn.Background = BrushRailActive;
+        RailClipboardBtn.Background = BrushTransparent;
+        RailAboutBtn.Background = BrushTransparent;
+        RailSettingsBtn.Background = BrushTransparent;
+        RailLogsBtn.Background = BrushTransparent;
+        AnimateStageEntrance(AirDropPane);
+        _ = RefreshAirDropStatusAsync();
+    }
+
+    private void OnRailAirDropClick(object sender, RoutedEventArgs e)
+    {
+        if (AirDropPane.Visibility == Visibility.Visible)
+        {
+            ShowInspectorPane();
+        }
+        else
+        {
+            ShowAirDropPane();
+        }
     }
 
     private void OnRailLogsClick(object sender, RoutedEventArgs e)
@@ -1306,15 +1349,22 @@ public sealed partial class MainWindow : Window
                 {
                     _isDeveloperModeEnabled = devProp.GetBoolean();
                 }
+                if (doc.RootElement.TryGetProperty("airdrop_enabled", out var adProp))
+                {
+                    _isAirDropReceivingActive = adProp.GetBoolean();
+                }
             }
         }
         catch
         {
             _isDeveloperModeEnabled = false;
+            _isAirDropReceivingActive = true;
         }
 
         DeveloperModeToggle.IsOn = _isDeveloperModeEnabled;
         RailLogsBtn.Visibility = _isDeveloperModeEnabled ? Visibility.Visible : Visibility.Collapsed;
+        AirDropMainToggle.IsOn = _isAirDropReceivingActive;
+        AirDropQuickToggle.IsOn = _isAirDropReceivingActive;
     }
 
     private void SaveAppSettings()
@@ -1322,12 +1372,329 @@ public sealed partial class MainWindow : Window
         try
         {
             var file = GetSettingsFilePath();
-            var json = JsonSerializer.Serialize(new { developer_mode = _isDeveloperModeEnabled });
+            var json = JsonSerializer.Serialize(new
+            {
+                developer_mode = _isDeveloperModeEnabled,
+                airdrop_enabled = _isAirDropReceivingActive,
+            });
             File.WriteAllText(file, json);
         }
         catch
         {
             // Ignore
+        }
+    }
+
+    private async Task InitializeAirDropAsync()
+    {
+        try
+        {
+            var hw = await _airDropBle.ProbeHardwareAsync();
+            AirDropBleStatusChip.Text = hw.BluetoothAvailable && hw.BluetoothPeripheralSupported ? "Continuity Wake Active" : "Standby";
+            AirDropWifiStatusChip.Text = string.IsNullOrEmpty(hw.WifiAdapterName) ? "Intel AX211" : hw.WifiAdapterName;
+            AirDropProtoStatusChip.Text = "mDNS & HTTPS";
+            AirDropAwdlNote.Text = hw.AwdlGuidanceMessage;
+
+            if (_isAirDropReceivingActive)
+            {
+                await _airDropBle.StartAdvertisingAsync();
+                await _backend.ToggleAirDropAsync(true);
+            }
+            await RefreshAirDropStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[InitializeAirDropAsync Error] {ex.Message}");
+        }
+    }
+
+    private async Task RefreshAirDropStatusAsync()
+    {
+        try
+        {
+            var airdrop = await _backend.GetAirDropStatusAsync();
+            if (airdrop == null) return;
+            _airDropStatus = airdrop;
+
+            // Update Header Status Pill
+            if (airdrop.Enabled)
+            {
+                AirDropStatusPillText.Text = "● Ready · Everyone";
+                AirDropStatusPillText.Foreground = BrushStatusGreen;
+                AirDropStatusPill.Background = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x1C, 0x26, 0x1C));
+                AirDropStatusPill.BorderBrush = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x2D, 0x48, 0x2D));
+            }
+            else
+            {
+                AirDropStatusPillText.Text = "Standby";
+                AirDropStatusPillText.Foreground = BrushTextMuted;
+                AirDropStatusPill.Background = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x22, 0x22, 0x26));
+                AirDropStatusPill.BorderBrush = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x2C, 0x2C, 0x32));
+            }
+
+            // Sync Toggles if out of sync
+            if (AirDropMainToggle.IsOn != airdrop.Enabled)
+            {
+                AirDropMainToggle.IsOn = airdrop.Enabled;
+            }
+            if (AirDropQuickToggle.IsOn != airdrop.Enabled)
+            {
+                AirDropQuickToggle.IsOn = airdrop.Enabled;
+            }
+            if (!string.IsNullOrEmpty(airdrop.ComputerName) && string.IsNullOrEmpty(AirDropDeviceNameInput.Text))
+            {
+                AirDropDeviceNameInput.Text = airdrop.ComputerName;
+            }
+
+            // Check for Pending Transfer Consent Request
+            var pending = airdrop.ActiveTransfers.FirstOrDefault(t => t.IsPendingConsent);
+            if (pending != null)
+            {
+                _currentPendingTransferId = pending.Id;
+                AirDropIncomingSenderText.Text = pending.SenderName;
+                AirDropIncomingFilesText.Text = $"wants to share {pending.DisplaySummary}";
+                AirDropIncomingPromptCard.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                AirDropIncomingPromptCard.Visibility = Visibility.Collapsed;
+            }
+
+            // Check for In-Progress Transfer
+            var transferring = airdrop.ActiveTransfers.FirstOrDefault(t => t.IsTransferring);
+            if (transferring != null)
+            {
+                AirDropActiveTransferCard.Visibility = Visibility.Visible;
+                AirDropActiveTransferTitle.Text = $"Receiving from {transferring.SenderName}...";
+                AirDropActiveTransferSub.Text = transferring.DisplaySummary;
+                AirDropActiveProgressBar.Value = transferring.ProgressPercent;
+                AirDropActiveTransferPercent.Text = $"{transferring.ProgressPercent}%";
+            }
+            else
+            {
+                AirDropActiveTransferCard.Visibility = Visibility.Collapsed;
+            }
+
+            // Refresh recent transfers if AirDrop pane is visible
+            if (AirDropPane.Visibility == Visibility.Visible)
+            {
+                AirDropTransferCountText.Text = $"{airdrop.History.Count} transfers";
+                RenderAirDropHistory(airdrop.History);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[RefreshAirDropStatusAsync Error] {ex.Message}");
+        }
+    }
+
+    private void RenderAirDropHistory(List<AirDropTransferItem> history)
+    {
+        AirDropRecentTransfersPanel.Children.Clear();
+        if (history.Count == 0)
+        {
+            AirDropRecentTransfersPanel.Children.Add(new TextBlock
+            {
+                Text = "No AirDrop transfers received yet. Send a photo or file from iPhone via AirDrop to see it here.",
+                FontSize = 12,
+                Foreground = BrushTextMuted,
+                Padding = new Thickness(4, 8, 4, 8),
+            });
+            return;
+        }
+
+        foreach (var item in history)
+        {
+            var card = new Border
+            {
+                Background = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x14, 0x14, 0x17)),
+                BorderBrush = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x24, 0x24, 0x2A)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(12, 10, 12, 10),
+            };
+
+            var grid = new Grid { ColumnSpacing = 12 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            // Icon
+            var iconBorder = new Border
+            {
+                Width = 32,
+                Height = 32,
+                CornerRadius = new CornerRadius(6),
+                Background = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x1E, 0x1E, 0x24)),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var glyph = item.PrimaryFileName.EndsWith(".heic", StringComparison.OrdinalIgnoreCase)
+                     || item.PrimaryFileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
+                     || item.PrimaryFileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+                     || item.PrimaryFileName.EndsWith(".mov", StringComparison.OrdinalIgnoreCase)
+                     || item.PrimaryFileName.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)
+                     ? "\uEB9F" : "\uE8A5";
+            iconBorder.Child = new FontIcon
+            {
+                Glyph = glyph,
+                FontSize = 14,
+                Foreground = BrushTextSecondary,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            Grid.SetColumn(iconBorder, 0);
+            grid.Children.Add(iconBorder);
+
+            // Metadata text
+            var textStack = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+            var titleBlock = new TextBlock
+            {
+                Text = item.DisplaySummary,
+                FontSize = 12.5,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Foreground = BrushTextPrimary,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            };
+            var subText = item.IsCompleted
+                ? $"From {item.SenderName} · {item.TimeLabel}"
+                : $"From {item.SenderName} · {item.Status}";
+            var subBlock = new TextBlock
+            {
+                Text = subText,
+                FontSize = 11,
+                Foreground = item.IsCompleted ? BrushTextMuted : (item.IsFailed ? new SolidColorBrush(Colors.IndianRed) : BrushTextDim),
+            };
+            textStack.Children.Add(titleBlock);
+            textStack.Children.Add(subBlock);
+            Grid.SetColumn(textStack, 1);
+            grid.Children.Add(textStack);
+
+            // Action button (Open file if completed)
+            if (item.IsCompleted && item.FirstSavedPath != null && File.Exists(item.FirstSavedPath))
+            {
+                var openBtn = new Button
+                {
+                    Background = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x20, 0x20, 0x26)),
+                    BorderBrush = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x2C, 0x2C, 0x32)),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(6),
+                    Padding = new Thickness(10, 4, 10, 4),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Content = new TextBlock { Text = "Open", FontSize = 11.5, Foreground = BrushTextPrimary },
+                };
+                var path = item.FirstSavedPath;
+                openBtn.Click += (_, _) =>
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowNotification($"Could not open file: {ex.Message}", InfoBarSeverity.Error);
+                    }
+                };
+                Grid.SetColumn(openBtn, 2);
+                grid.Children.Add(openBtn);
+            }
+            else
+            {
+                var statusBadge = new Border
+                {
+                    Background = item.IsCompleted
+                        ? new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x1A, 0x26, 0x1A))
+                        : new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0x22, 0x22, 0x26)),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(6, 2, 6, 2),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Child = new TextBlock
+                    {
+                        Text = item.Status.ToUpperInvariant(),
+                        FontSize = 10,
+                        FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                        Foreground = item.IsCompleted ? BrushStatusGreen : BrushTextDim,
+                    },
+                };
+                Grid.SetColumn(statusBadge, 2);
+                grid.Children.Add(statusBadge);
+            }
+
+            card.Child = grid;
+            AirDropRecentTransfersPanel.Children.Add(card);
+        }
+    }
+
+    private async void OnAirDropAcceptClick(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_currentPendingTransferId)) return;
+        var id = _currentPendingTransferId;
+        AirDropIncomingPromptCard.Visibility = Visibility.Collapsed;
+        var ok = await _backend.SubmitAirDropConsentAsync(id, accept: true);
+        if (ok)
+        {
+            ShowNotification("AirDrop transfer accepted. Receiving files...", InfoBarSeverity.Informational, "AirDrop");
+        }
+        await RefreshAirDropStatusAsync();
+    }
+
+    private async void OnAirDropDeclineClick(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_currentPendingTransferId)) return;
+        var id = _currentPendingTransferId;
+        AirDropIncomingPromptCard.Visibility = Visibility.Collapsed;
+        await _backend.SubmitAirDropConsentAsync(id, accept: false);
+        ShowNotification("AirDrop transfer declined.", InfoBarSeverity.Informational, "AirDrop");
+        await RefreshAirDropStatusAsync();
+    }
+
+    private async void OnAirDropReceivingToggled(object sender, RoutedEventArgs e)
+    {
+        var isOn = (sender is ToggleSwitch ts) ? ts.IsOn : AirDropMainToggle.IsOn;
+        _isAirDropReceivingActive = isOn;
+        if (AirDropMainToggle.IsOn != isOn) AirDropMainToggle.IsOn = isOn;
+        if (AirDropQuickToggle.IsOn != isOn) AirDropQuickToggle.IsOn = isOn;
+
+        await _backend.ToggleAirDropAsync(isOn);
+        if (isOn)
+        {
+            await _airDropBle.StartAdvertisingAsync();
+            ShowNotification("AirDrop receiving enabled. Nearby Apple devices can discover this PC.", InfoBarSeverity.Success, "AirDrop");
+        }
+        else
+        {
+            _airDropBle.StopAdvertising();
+            ShowNotification("AirDrop receiving turned off.", InfoBarSeverity.Informational, "AirDrop");
+        }
+        SaveAppSettings();
+        await RefreshAirDropStatusAsync();
+    }
+
+    private async void OnSaveAirDropDeviceNameClick(object sender, RoutedEventArgs e)
+    {
+        var name = AirDropDeviceNameInput.Text.Trim();
+        if (!string.IsNullOrEmpty(name))
+        {
+            await _backend.ConfigureAirDropAsync(computerName: name);
+            ShowNotification($"AirDrop device name set to '{name}'.", InfoBarSeverity.Success, "AirDrop");
+            await RefreshAirDropStatusAsync();
+        }
+    }
+
+    private void OnOpenAirDropFolderClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var downloadsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "AirDrop");
+            Directory.CreateDirectory(downloadsDir);
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = downloadsDir,
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            ShowNotification($"Could not open AirDrop folder: {ex.Message}", InfoBarSeverity.Error);
         }
     }
 
@@ -1636,6 +2003,14 @@ public sealed partial class MainWindow : Window
         {
             UnregisterHotKey(_hwnd, HotkeyIdWinAltV);
             UnregisterHotKey(_hwnd, HotkeyIdCtrlShiftV);
+        }
+        try
+        {
+            _airDropBle.StopAdvertising();
+        }
+        catch
+        {
+            // Ignore
         }
         try
         {
