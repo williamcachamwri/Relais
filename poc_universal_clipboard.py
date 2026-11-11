@@ -93,6 +93,10 @@ from pymobiledevice3.services.notification_proxy import NotificationProxyService
 
 logger = logging.getLogger("universal_clipboard")
 
+PASTEBOARD_CHANGED_NOTIFICATION = "com.apple.pasteboard.notify.changed"
+SPRINGBOARD_LOCKSTATE_NOTIFICATION = "com.apple.springboard.lockstate"
+KEYBAG_LOCK_STATUS_NOTIFICATION = "com.apple.mobile.keybagd.lock_status"
+
 UTI_HTML = "public.html"
 UTI_RTF = "public.rtf"
 UTI_FLAT_RTFD = "com.apple.flat-rtfd"
@@ -1020,12 +1024,17 @@ class UniversalClipboardCoordinator:
                 return
 
     async def _monitor_session(self, rsd: RemoteServiceDiscoveryService, active_transport: str) -> None:
-        """Subscribe to `com.apple.pasteboard.notify.changed` and pull changes over a persistent session."""
+        """Subscribe to `com.apple.pasteboard.notify.changed` and pull changes using isolated connections."""
         pull_trigger = asyncio.Event()
         pull_reason = "notification"
+        pending_locked_catchup = False
 
-        async with NotificationProxyService(rsd) as notif_service, PasteboardService(rsd) as pb_service:
+        async with NotificationProxyService(rsd) as notif_service:
             await notif_service.notify_register_dispatch(PASTEBOARD_CHANGED_NOTIFICATION)
+            with contextlib.suppress(Exception):
+                await notif_service.notify_register_dispatch(SPRINGBOARD_LOCKSTATE_NOTIFICATION)
+                await notif_service.notify_register_dispatch(KEYBAG_LOCK_STATUS_NOTIFICATION)
+
             logger.info(
                 "[SUBSCRIBED] transport=%s notification=%s service=%s policy=POLICY_PROMISE_SECONDARY",
                 active_transport,
@@ -1035,7 +1044,8 @@ class UniversalClipboardCoordinator:
 
             # Baseline check on connect/reconnect
             if self.last_change_id is None and not self.sync_on_connect:
-                init_snap = await pb_service.get(GENERAL_PASTEBOARD, POLICY_ALL_PROMISED)
+                async with PasteboardService(rsd) as pb_service:
+                    init_snap = await pb_service.get(GENERAL_PASTEBOARD, POLICY_ALL_PROMISED)
                 self.last_change_id = extract_change_info(init_snap)
                 logger.info(
                     "[BASELINE] transport=%s initial_changeCount=%s (waiting for new iPhone Copy events...)",
@@ -1043,35 +1053,53 @@ class UniversalClipboardCoordinator:
                     self.last_change_id[1] if self.last_change_id else None,
                 )
             else:
-                # Either sync_on_connect=True or we are reconnecting after a dropped link and
-                # want to catch any Copy made while disconnected.
                 pull_reason = "reconnect_catchup" if self.last_change_id is not None else "initial_sync"
                 pull_trigger.set()
 
             async def _notification_reader() -> None:
-                nonlocal pull_reason
+                nonlocal pull_reason, pending_locked_catchup
                 async for event in notif_service.receive_notification():
                     if event.get("Command") == "ProxyDeath":
                         raise ConnectionError("NotificationProxyService reported ProxyDeath")
-                    if event.get("Name") == PASTEBOARD_CHANGED_NOTIFICATION:
+                    name = event.get("Name")
+                    state = event.get("State")
+                    if name == PASTEBOARD_CHANGED_NOTIFICATION:
                         logger.info(
                             "[NOTIFICATION] received=%s transport=%s state=%s",
                             PASTEBOARD_CHANGED_NOTIFICATION,
                             active_transport,
-                            event.get("State"),
+                            state,
                         )
                         pull_reason = "notification"
                         pull_trigger.set()
+                    elif name in (SPRINGBOARD_LOCKSTATE_NOTIFICATION, KEYBAG_LOCK_STATUS_NOTIFICATION):
+                        logger.info(
+                            "[DEVICE_STATE] notification=%s transport=%s state=%s",
+                            name,
+                            active_transport,
+                            state,
+                        )
+                        # If a previous pull occurred while the device pasteboard was locked, retry on unlock
+                        if pending_locked_catchup or state == 0:
+                            pull_reason = "unlock_catchup"
+                            pull_trigger.set()
 
             async def _pull_worker() -> None:
+                nonlocal pending_locked_catchup
                 while True:
                     await pull_trigger.wait()
-                    # Clear immediately BEFORE pulling so that rapid consecutive Copy notifications
+                    # Clear immediately BEFORE pulling so rapid consecutive Copy notifications
                     # arriving while a pull is in-flight re-set `pull_trigger` and immediately trigger
-                    # a follow-up pull without dropping the newest Copy!
+                    # a follow-up pull without dropping the newest Copy.
                     pull_trigger.clear()
                     reason = pull_reason
-                    await self._pull_and_update_clipboard(rsd, pb_service, active_transport, reason)
+                    # Use a dedicated PasteboardService connection per pull so any slow or timed-out
+                    # secondary RESOLVE never corrupts or blocks subsequent pulls.
+                    async with PasteboardService(rsd) as pb_service:
+                        needs_retry = await self._pull_and_update_clipboard(
+                            rsd, pb_service, active_transport, reason
+                        )
+                        pending_locked_catchup = needs_retry
 
             reader_task = asyncio.create_task(_notification_reader(), name="notif-reader")
             worker_task = asyncio.create_task(_pull_worker(), name="pull-worker")
@@ -1099,9 +1127,10 @@ class UniversalClipboardCoordinator:
         pb_service: PasteboardService,
         active_transport: str,
         reason: str,
-    ) -> None:
+    ) -> bool:
         """Pull the pasteboard with `POLICY_PROMISE_SECONDARY`, resolve secondary promises if needed,
-        and write to the Windows clipboard.
+        and write to the Windows clipboard. Returns True if pasteboard items were locked/unavailable
+        and should be retried on unlock.
         """
         t_start = time.perf_counter()
         snapshot = await asyncio.wait_for(
@@ -1114,13 +1143,14 @@ class UniversalClipboardCoordinator:
         change_count = change_id[1]
 
         if change_id[1] is not None and change_id == self.last_change_id:
-            logger.info(
-                "[SKIP] reason=duplicate_changeCount changeCount=%s transport=%s pull_ms=%.1f",
-                change_count,
-                active_transport,
-                pull_ms,
-            )
-            return
+            if reason != "unlock_catchup":
+                logger.info(
+                    "[SKIP] reason=duplicate_changeCount changeCount=%s transport=%s pull_ms=%.1f",
+                    change_count,
+                    active_transport,
+                    pull_ms,
+                )
+            return False
 
         payload = extract_inline_payload(snapshot)
 
@@ -1202,19 +1232,23 @@ class UniversalClipboardCoordinator:
                         except UnicodeDecodeError:
                             pass
 
-        self.last_change_id = change_id
-
         if payload is None:
             pb_dict = snapshot.get("pasteboard", {}) if isinstance(snapshot.get("pasteboard"), dict) else snapshot
             items = pb_dict.get("items", []) or []
             advertised = [i.get("types", []) for i in items if isinstance(i, dict)]
+            # Do not mark `self.last_change_id = change_id` if items were advertised but data was
+            # empty (e.g. iPhone screen was locked), so unlocking can retry this changeCount.
+            if not advertised:
+                self.last_change_id = change_id
             logger.info(
-                "[SKIP] reason=no_supported_payload changeCount=%s advertised_types=%s pull_ms=%.1f",
+                "[SKIP] reason=no_supported_or_locked_payload changeCount=%s advertised_types=%s pull_ms=%.1f",
                 change_count,
                 advertised,
                 pull_ms,
             )
-            return
+            return bool(advertised)
+
+        self.last_change_id = change_id
 
         # Feedback / echo-loop prevention
         now = time.monotonic()
@@ -1230,7 +1264,7 @@ class UniversalClipboardCoordinator:
                 payload.uti,
                 payload.raw_size,
             )
-            return
+            return False
 
         # Write to Windows System Clipboard
         t_write = time.perf_counter()
@@ -1294,6 +1328,7 @@ class UniversalClipboardCoordinator:
                 type(exc).__name__,
                 exc,
             )
+        return False
 
     async def run_forever(self) -> None:
         """Main resilient supervisor loop with automatic transport failover and reconnection."""
