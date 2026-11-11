@@ -9,6 +9,7 @@
         Background="#0A0A0A"
         KeyDown="OnRootGridKeyDown"
         SizeChanged="OnRootGridSizeChanged">
+
         <Grid.RowDefinitions>
             <RowDefinition Height="44" />
             <RowDefinition Height="*" />

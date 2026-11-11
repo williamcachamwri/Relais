@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using H.NotifyIcon;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -47,53 +48,9 @@ public sealed partial class MainWindow : Window
     private const uint ModWin = 0x0008;
     private const uint ModNoRepeat = 0x4000;
     private const uint VkV = 0x56;
-
-    private const uint WmTrayIcon = 0x8000 + 101;
-    private const uint NIM_ADD = 0x00000000;
-    private const uint NIM_MODIFY = 0x00000001;
-    private const uint NIM_DELETE = 0x00000002;
-    private const uint NIF_MESSAGE = 0x00000001;
-    private const uint NIF_ICON = 0x00000002;
-    private const uint NIF_TIP = 0x00000004;
-
-    private const uint WmLButtonUp = 0x0202;
-    private const uint WmLButtonDblClk = 0x0203;
-    private const uint WmRButtonUp = 0x0205;
-    private const uint WmContextMenu = 0x007B;
-
-    private const uint MfString = 0x00000000;
-    private const uint MfSeparator = 0x00000800;
-    private const uint TpmRightButton = 0x0002;
-    private const uint TpmReturnCmd = 0x0100;
     private const int SwRestore = 9;
-
-    private const int CmdTrayOpen = 2001;
-    private const int CmdTrayQuickPaste = 2002;
-    private const int CmdTraySyncNow = 2003;
-    private const int CmdTrayExit = 2004;
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct NOTIFYICONDATAW
-    {
-        public int cbSize;
-        public IntPtr hWnd;
-        public int uID;
-        public uint uFlags;
-        public uint uCallbackMessage;
-        public IntPtr hIcon;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
-        public string szTip;
-        public int dwState;
-        public int dwStateMask;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
-        public string szInfo;
-        public int uTimeoutOrVersion;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
-        public string szInfoTitle;
-        public int dwInfoFlags;
-        public Guid guidItem;
-        public IntPtr hBalloonIcon;
-    }
+    private const uint WmSysCommand = 0x0112;
+    private const uint ScMinimize = 0xF020;
 
     private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
@@ -104,11 +61,8 @@ public sealed partial class MainWindow : Window
     private IntPtr _hwnd;
     private IntPtr _origWndProc;
     private WndProcDelegate? _wndProcDelegate;
-
-    private NOTIFYICONDATAW _nid;
-    private IntPtr _trayIconHandle = IntPtr.Zero;
-    private bool _trayIconAdded;
     private bool _isExplicitExit;
+    private TaskbarIcon? AppTrayIcon;
 
     private List<ClipboardHistoryItem> _allItems = [];
     private List<ClipboardHistoryItem> _filteredItems = [];
@@ -178,6 +132,7 @@ public sealed partial class MainWindow : Window
         _pollTimer.Tick += OnPollTimerTick;
 
         Closed += OnWindowClosed;
+        InitializeTrayIcon();
         _ = InitializeBackendAsync();
     }
 
@@ -209,7 +164,6 @@ public sealed partial class MainWindow : Window
         }
 
         _appWindow.Closing += OnAppWindowClosing;
-        InitializeTrayIcon();
     }
 
     private void OnAppWindowClosing(AppWindow sender, AppWindowClosingEventArgs args)
@@ -223,51 +177,75 @@ public sealed partial class MainWindow : Window
 
     private void InitializeTrayIcon()
     {
-        if (_trayIconAdded || _hwnd == IntPtr.Zero) return;
+        // Build context menu flyout entirely in code so the XAML compiler
+        // does not need to resolve H.NotifyIcon types at build time.
+        // H.NotifyIcon's default ContextMenuMode (PopupMenu) converts the
+        // MenuFlyout into a native Win32 menu which only dispatches ICommand —
+        // MenuFlyoutItem.Click is never raised there. Wire ICommand instead.
+        var openItem = new MenuFlyoutItem { Text = "Open Relais", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
+        openItem.Command = new TrayDelegateCommand(RestoreMainWindow);
+
+        var quickPasteItem = new MenuFlyoutItem { Text = "Quick Paste  (Win + Alt + V)" };
+        quickPasteItem.Command = new TrayDelegateCommand(() =>
+        {
+            var fgHwnd = GetForegroundWindow();
+            ToggleQuickPastePopup(fgHwnd);
+        });
+
+        var syncItem = new MenuFlyoutItem { Text = "Sync Now" };
+        syncItem.Command = new TrayDelegateCommand(() => _ = TriggerTraySyncNowAsync());
+
+        var exitItem = new MenuFlyoutItem { Text = "Exit Relais" };
+        exitItem.Command = new TrayDelegateCommand(ExitApplication);
+
+        var flyout = new MenuFlyout();
+        flyout.Items.Add(openItem);
+        flyout.Items.Add(quickPasteItem);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(syncItem);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(exitItem);
 
         try
         {
             var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
-            if (File.Exists(iconPath))
+            AppTrayIcon = new TaskbarIcon
             {
-                _trayIconHandle = LoadImageW(IntPtr.Zero, iconPath, 1 /* IMAGE_ICON */, 16, 16, 0x00000010 /* LR_LOADFROMFILE */);
-            }
-            if (_trayIconHandle == IntPtr.Zero)
-            {
-                _trayIconHandle = LoadIconW(IntPtr.Zero, (IntPtr)32512 /* IDI_APPLICATION */);
-            }
-
-            _nid = new NOTIFYICONDATAW
-            {
-                cbSize = Marshal.SizeOf<NOTIFYICONDATAW>(),
-                hWnd = _hwnd,
-                uID = 1001,
-                uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP,
-                uCallbackMessage = WmTrayIcon,
-                hIcon = _trayIconHandle,
-                szTip = "Relais — Universal Clipboard"
+                ToolTipText = "Relais - Universal Clipboard",
+                ContextFlyout = flyout,
+                // Render the context menu as a real WinUI 3 MenuFlyout instead
+                // of the emulated native Win32 menu (preview feature of the lib).
+                ContextMenuMode = ContextMenuMode.SecondWindow,
+                // Left-click on the tray icon restores the main window
+                LeftClickCommand = new TrayDelegateCommand(RestoreMainWindow),
             };
 
-            _trayIconAdded = Shell_NotifyIconW(NIM_ADD, ref _nid);
+            if (File.Exists(iconPath))
+            {
+                // IconSource is ImageSource; use BitmapImage with an absolute file URI
+                AppTrayIcon.IconSource = new BitmapImage(new Uri(iconPath));
+            }
+
+            // ForceCreate registers the icon in the system tray immediately
+            AppTrayIcon.ForceCreate(enablesEfficiencyMode: false);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[InitializeTrayIcon Error] {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Tray] Failed to initialize tray icon: {ex.Message}");
         }
     }
 
-    private void RemoveTrayIcon()
+    /// <summary>
+    /// Minimal ICommand wrapper used to wire tray-icon click actions without
+    /// requiring a full MVVM framework.
+    /// </summary>
+    private sealed class TrayDelegateCommand(Action execute) : System.Windows.Input.ICommand
     {
-        if (_trayIconAdded)
-        {
-            Shell_NotifyIconW(NIM_DELETE, ref _nid);
-            _trayIconAdded = false;
-        }
-        if (_trayIconHandle != IntPtr.Zero)
-        {
-            DestroyIcon(_trayIconHandle);
-            _trayIconHandle = IntPtr.Zero;
-        }
+#pragma warning disable CS0067 // Event is never used — required by ICommand interface
+        public event EventHandler? CanExecuteChanged;
+#pragma warning restore CS0067
+        public bool CanExecute(object? parameter) => true;
+        public void Execute(object? parameter) => execute();
     }
 
     private void RestoreMainWindow()
@@ -282,50 +260,6 @@ public sealed partial class MainWindow : Window
             }
         }
     }
-
-    private void ShowTrayContextMenu()
-    {
-        var hMenu = CreatePopupMenu();
-        if (hMenu == IntPtr.Zero) return;
-
-        try
-        {
-            AppendMenuW(hMenu, MfString, (UIntPtr)CmdTrayOpen, "Open Relais");
-            AppendMenuW(hMenu, MfString, (UIntPtr)CmdTrayQuickPaste, "Quick Paste (Win + Alt + V)");
-            AppendMenuW(hMenu, MfSeparator, UIntPtr.Zero, string.Empty);
-            AppendMenuW(hMenu, MfString, (UIntPtr)CmdTraySyncNow, "Sync Now");
-            AppendMenuW(hMenu, MfSeparator, UIntPtr.Zero, string.Empty);
-            AppendMenuW(hMenu, MfString, (UIntPtr)CmdTrayExit, "Exit Relais");
-
-            SetForegroundWindow(_hwnd);
-            GetCursorPos(out var pt);
-
-            var cmd = TrackPopupMenuEx(hMenu, TpmRightButton | TpmReturnCmd, pt.x, pt.y, _hwnd, IntPtr.Zero);
-            PostMessageW(_hwnd, 0, IntPtr.Zero, IntPtr.Zero);
-
-            switch (cmd)
-            {
-                case CmdTrayOpen:
-                    RestoreMainWindow();
-                    break;
-                case CmdTrayQuickPaste:
-                    var fgHwnd = GetForegroundWindow();
-                    ToggleQuickPastePopup(fgHwnd);
-                    break;
-                case CmdTraySyncNow:
-                    _ = TriggerTraySyncNowAsync();
-                    break;
-                case CmdTrayExit:
-                    ExitApplication();
-                    break;
-            }
-        }
-        finally
-        {
-            DestroyMenu(hMenu);
-        }
-    }
-
     private async Task TriggerTraySyncNowAsync()
     {
         try
@@ -344,7 +278,14 @@ public sealed partial class MainWindow : Window
     private void ExitApplication()
     {
         _isExplicitExit = true;
-        RemoveTrayIcon();
+        try
+        {
+            AppTrayIcon?.Dispose();
+        }
+        catch
+        {
+            // Ignore
+        }
         UnregisterGlobalHotkeys();
         try
         {
@@ -401,19 +342,11 @@ public sealed partial class MainWindow : Window
 
     private IntPtr CustomWndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
-        if (msg == WmTrayIcon)
+        // Minimize hides the window into the tray instead of minimizing to the
+        // taskbar. Suppressing the default handling prevents the minimize.
+        if (msg == WmSysCommand && ((unchecked((uint)wParam.ToInt64())) & 0xFFF0) == ScMinimize)
         {
-            var mouseMsg = (uint)(lParam.ToInt64() & 0xFFFF);
-            if (mouseMsg == WmRButtonUp || mouseMsg == WmContextMenu)
-            {
-                DispatcherQueue.TryEnqueue(ShowTrayContextMenu);
-                return IntPtr.Zero;
-            }
-            if (mouseMsg == WmLButtonUp || mouseMsg == WmLButtonDblClk)
-            {
-                DispatcherQueue.TryEnqueue(RestoreMainWindow);
-                return IntPtr.Zero;
-            }
+            DispatcherQueue.TryEnqueue(() => _appWindow?.Hide());
             return IntPtr.Zero;
         }
 
@@ -1865,7 +1798,14 @@ public sealed partial class MainWindow : Window
     private void OnWindowClosed(object sender, WindowEventArgs args)
     {
         _isExplicitExit = true;
-        RemoveTrayIcon();
+        try
+        {
+            AppTrayIcon?.Dispose();
+        }
+        catch
+        {
+            // Ignore
+        }
         UnregisterGlobalHotkeys();
         try
         {
@@ -1878,36 +1818,6 @@ public sealed partial class MainWindow : Window
         _pollTimer.Stop();
         _backend.Dispose();
     }
-
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern bool Shell_NotifyIconW(uint dwMessage, ref NOTIFYICONDATAW lpData);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr CreatePopupMenu();
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern bool AppendMenuW(IntPtr hMenu, uint uFlags, UIntPtr uIDNewItem, string lpNewItem);
-
-    [DllImport("user32.dll")]
-    private static extern int TrackPopupMenuEx(IntPtr hMenu, uint uFlags, int x, int y, IntPtr hWnd, IntPtr lpTPMParams);
-
-    [DllImport("user32.dll")]
-    private static extern bool DestroyMenu(IntPtr hMenu);
-
-    [DllImport("user32.dll")]
-    private static extern bool PostMessageW(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
-
-    [DllImport("user32.dll")]
-    private static extern bool GetCursorPos(out POINT lpPoint);
-
-    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    private static extern IntPtr LoadImageW(IntPtr hInst, string lpszName, uint uType, int cxDesired, int cyDesired, uint fuLoad);
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr LoadIconW(IntPtr hInstance, IntPtr lpIconName);
-
-    [DllImport("user32.dll")]
-    private static extern bool DestroyIcon(IntPtr hIcon);
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
