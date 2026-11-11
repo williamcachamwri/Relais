@@ -244,7 +244,7 @@ class _AppleHTMLTextExtractor(HTMLParser):
     _BLOCK_TAGS = frozenset({
         "p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "pre", "section", "article"
     })
-    _IGNORE_TAGS = frozenset({"head", "style", "script", "title", "meta", "link"})
+    _IGNORE_TAGS = frozenset({"head", "style", "script", "title"})
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
