@@ -60,7 +60,7 @@ public sealed partial class QuickPasteWindow : Window
     private static readonly SolidColorBrush BrushTextRow = Hex(0xD2, 0xD2, 0xDA);
     private static readonly SolidColorBrush BrushTextMuted = Hex(0x66, 0x66, 0x70);
     private static readonly SolidColorBrush BrushIcon = Hex(0x8C, 0x8C, 0x95);
-    private static readonly SolidColorBrush BrushFileGold = Hex(0xC8, 0xC8, 0xD2);
+    private static readonly SolidColorBrush BrushNeutralAccent = Hex(0xC8, 0xC8, 0xD2);
     private static readonly SolidColorBrush BrushLinkBlue = Hex(0x6C, 0xA8, 0xF0);
 
     private static readonly SolidColorBrush BrushTabActiveBg = Hex(0xED, 0xED, 0xF0);
@@ -438,7 +438,7 @@ public sealed partial class QuickPasteWindow : Window
                 Text = ShortExt(item.FileExtensionBadge),
                 FontSize = 8.5,
                 FontWeight = Microsoft.UI.Text.FontWeights.Bold,
-                Foreground = BrushFileGold,
+                Foreground = BrushNeutralAccent,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
             };

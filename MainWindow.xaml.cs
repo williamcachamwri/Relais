@@ -56,7 +56,7 @@ public sealed partial class MainWindow : Window
     private static readonly SolidColorBrush BrushTextDim = new(ColorHelper.FromArgb(0xFF, 0x5E, 0x5E, 0x66));
     private static readonly SolidColorBrush BrushWhite = new(Colors.White);
 
-    private static readonly SolidColorBrush BrushFileGold = new(ColorHelper.FromArgb(0xFF, 0xB8, 0xB8, 0xC2));
+    private static readonly SolidColorBrush BrushNeutralAccent = new(ColorHelper.FromArgb(0xFF, 0xDC, 0xDC, 0xE4));
     private static readonly SolidColorBrush BrushFileBadgeBg = new(ColorHelper.FromArgb(0xFF, 0x25, 0x25, 0x2C));
     private static readonly SolidColorBrush BrushLinkBlueText = new(ColorHelper.FromArgb(0xFF, 0x58, 0xA6, 0xFF));
     private static readonly SolidColorBrush BrushLinkBlueBg = new(ColorHelper.FromArgb(0xFF, 0x17, 0x2A, 0x3A));
@@ -550,33 +550,85 @@ public sealed partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Center,
         };
 
-        if (item.IsImage || item.IsFile)
+        if (item.IsImage)
+        {
+            leftMeta.Children.Add(new FontIcon
+            {
+                Glyph = "\uEB9F",
+                FontSize = 11.5,
+                Foreground = BrushTextSecondary,
+            });
+            leftMeta.Children.Add(new TextBlock
+            {
+                Text = "Image",
+                FontSize = 12,
+                FontWeight = Microsoft.UI.Text.FontWeights.Medium,
+                Foreground = BrushTextSecondary,
+            });
+            if (item.Width > 0 && item.Height > 0)
+            {
+                var dimBlock = new TextBlock
+                {
+                    Text = $"{item.Width}×{item.Height}",
+                    FontSize = 11.5,
+                    Foreground = BrushTextDim,
+                    Margin = new Thickness(4, 0, 0, 0),
+                };
+                Microsoft.UI.Xaml.Documents.Typography.SetNumeralAlignment(dimBlock, FontNumeralAlignment.Tabular);
+                leftMeta.Children.Add(dimBlock);
+            }
+            else if (!string.IsNullOrWhiteSpace(item.FormattedSize))
+            {
+                var sizeBlock = new TextBlock
+                {
+                    Text = item.FormattedSize,
+                    FontSize = 11.5,
+                    Foreground = BrushTextDim,
+                    Margin = new Thickness(4, 0, 0, 0),
+                };
+                Microsoft.UI.Xaml.Documents.Typography.SetNumeralAlignment(sizeBlock, FontNumeralAlignment.Tabular);
+                leftMeta.Children.Add(sizeBlock);
+            }
+        }
+        else if (item.IsFile)
         {
             leftMeta.Children.Add(new FontIcon
             {
                 Glyph = "\uE7C3",
                 FontSize = 11.5,
-                Foreground = BrushFileGold,
+                Foreground = BrushTextSecondary,
             });
             leftMeta.Children.Add(new TextBlock
             {
                 Text = "File",
                 FontSize = 12,
                 FontWeight = Microsoft.UI.Text.FontWeights.Medium,
-                Foreground = BrushFileGold,
+                Foreground = BrushTextSecondary,
             });
+            if (!string.IsNullOrWhiteSpace(item.FormattedSize))
+            {
+                var sizeBlock = new TextBlock
+                {
+                    Text = item.FormattedSize,
+                    FontSize = 11.5,
+                    Foreground = BrushTextDim,
+                    Margin = new Thickness(4, 0, 0, 0),
+                };
+                Microsoft.UI.Xaml.Documents.Typography.SetNumeralAlignment(sizeBlock, FontNumeralAlignment.Tabular);
+                leftMeta.Children.Add(sizeBlock);
+            }
         }
         else
         {
             leftMeta.Children.Add(new FontIcon
             {
-                Glyph = "\uE8A5",
+                Glyph = item.IsLink ? "\uE71B" : (item.IsCode ? "\uE943" : "\uE8A5"),
                 FontSize = 11.5,
                 Foreground = BrushTextSecondary,
             });
             leftMeta.Children.Add(new TextBlock
             {
-                Text = "Text",
+                Text = item.IsLink ? "URL" : (item.IsCode ? "Code" : "Text"),
                 FontSize = 12,
                 FontWeight = Microsoft.UI.Text.FontWeights.Medium,
                 Foreground = BrushTextSecondary,
@@ -598,7 +650,7 @@ public sealed partial class MainWindow : Window
             {
                 Glyph = "\uE735",
                 FontSize = 11,
-                Foreground = BrushFileGold,
+                Foreground = BrushNeutralAccent,
                 Margin = new Thickness(4, 0, 0, 0),
             });
         }
@@ -820,14 +872,16 @@ public sealed partial class MainWindow : Window
         InspectorSourceIcon.Glyph = item.IsFromPc ? "\uE7F8" : "\uE8EA";
         InspectorSourceText.Text = item.IsFromPc ? "This device" : item.ShortDeviceName;
         ActionFavoriteIcon.Glyph = item.Pinned ? "\uE735" : "\uE734";
-        ActionFavoriteIcon.Foreground = item.Pinned ? BrushFileGold : BrushTextSecondary;
+        ActionFavoriteIcon.Foreground = item.Pinned ? BrushNeutralAccent : BrushTextSecondary;
         ActionFavoriteLabel.Text = item.Pinned ? "Favorited" : "Favorite";
 
         var direction = item.IsFromPc ? "Windows → iPhone" : "iPhone → Windows";
 
         if (item.IsImage)
         {
-            InspectorMetaLeftText.Text = "File  ·  1 files";
+            InspectorMetaLeftText.Text = item.Width > 0 && item.Height > 0
+                ? $"Image  ·  {item.Width} × {item.Height} px"
+                : (!string.IsNullOrWhiteSpace(item.FormattedSize) ? $"Image  ·  {item.FormattedSize}" : "Image");
             InspectorTextStage.Visibility = Visibility.Collapsed;
             InspectorFileStage.Visibility = Visibility.Collapsed;
             InspectorImageStage.Visibility = Visibility.Visible;
@@ -846,7 +900,9 @@ public sealed partial class MainWindow : Window
         }
         else if (item.IsFile)
         {
-            InspectorMetaLeftText.Text = "File  ·  1 files";
+            InspectorMetaLeftText.Text = !string.IsNullOrWhiteSpace(item.FormattedSize)
+                ? $"File  ·  {item.FormattedSize}"
+                : "File";
             InspectorImageStage.Visibility = Visibility.Collapsed;
             InspectorTextStage.Visibility = Visibility.Collapsed;
             InspectorFileStage.Visibility = Visibility.Visible;
@@ -858,7 +914,13 @@ public sealed partial class MainWindow : Window
         }
         else
         {
-            InspectorMetaLeftText.Text = $"Text  ·  {item.Text.Length} chars";
+            if (item.IsLink)
+                InspectorMetaLeftText.Text = $"URL  ·  {item.Text.Length} chars";
+            else if (item.IsCode)
+                InspectorMetaLeftText.Text = $"Code  ·  {item.Text.Length} chars";
+            else
+                InspectorMetaLeftText.Text = $"Text  ·  {item.Text.Length} chars";
+
             InspectorImageStage.Visibility = Visibility.Collapsed;
             InspectorFileStage.Visibility = Visibility.Collapsed;
             InspectorTextStage.Visibility = Visibility.Visible;

@@ -112,6 +112,13 @@ UTI_HTML = "public.html"
 UTI_RTF = "public.rtf"
 UTI_FLAT_RTFD = "com.apple.flat-rtfd"
 TEXT_UTIS = (UTI_UTF8_PLAIN_TEXT, UTI_PLAIN_TEXT, UTI_TEXT)
+URL_UTIS = (
+    UTI_URL,
+    "public.uri-list",
+    "public.url-name",
+    "com.apple.cocoa.pasteboard.url",
+    "com.apple.pasteboard.promised-url",
+)
 URL_REGEX = re.compile(r"^(https?://|mailto:|ftp://)\S+$", re.IGNORECASE)
 
 _BONJOUR_PATCHED = False
@@ -876,6 +883,76 @@ def _inline_bytes(data_map: dict[str, Any], uti: str) -> Optional[bytes]:
     return None
 
 
+def _find_url_in_plist_object(obj: Any) -> Optional[str]:
+    """Recursively search a parsed plist object or Cocoa NSKeyedArchiver for a valid URL string."""
+    if isinstance(obj, str):
+        cleaned = obj.strip("\x00\ufffc\r\n\t ")
+        if cleaned.startswith(("http://", "https://", "ftp://", "mailto:")) or URL_REGEX.match(cleaned):
+            return cleaned
+        return None
+    if isinstance(obj, dict):
+        # Specific known Cocoa NSURL archive keys
+        for key in ("NS.relative", "relative", "URL", "url", "href", "urlString"):
+            val = obj.get(key)
+            if isinstance(val, str):
+                cleaned = val.strip("\x00\ufffc\r\n\t ")
+                if cleaned.startswith(("http://", "https://", "ftp://", "mailto:")) or URL_REGEX.match(cleaned):
+                    return cleaned
+        # Check NSKeyedArchiver $objects array
+        objects = obj.get("$objects")
+        if isinstance(objects, list):
+            for item in objects:
+                res = _find_url_in_plist_object(item)
+                if res:
+                    return res
+        for val in obj.values():
+            res = _find_url_in_plist_object(val)
+            if res:
+                return res
+    elif isinstance(obj, (list, tuple)):
+        for item in obj:
+            res = _find_url_in_plist_object(item)
+            if res:
+                return res
+    return None
+
+
+def _extract_url_from_raw(raw: bytes) -> Optional[str]:
+    """Extract a valid URL string from raw bytes (binary plist, XML plist, UTF-8 text, or binary stream)."""
+    if not raw:
+        return None
+
+    # Case 1: Binary property list (bplist00) or XML plist (iOS Share Sheet / UIPasteboard NSURL)
+    if raw.startswith(b"bplist00") or raw.startswith(b"<?xml") or b"<!DOCTYPE plist" in raw[:120]:
+        try:
+            parsed = plistlib.loads(raw)
+            url = _find_url_in_plist_object(parsed)
+            if url:
+                return url
+        except Exception:
+            pass
+
+    # Case 2: Plain text UTF-8 / ASCII string
+    try:
+        decoded = raw.decode("utf-8").strip("\x00\ufffc\r\n\t ")
+        if decoded and (decoded.startswith(("http://", "https://", "ftp://", "mailto:")) or URL_REGEX.match(decoded)):
+            return decoded
+    except UnicodeDecodeError:
+        pass
+
+    # Case 3: Binary regex fallback for URLs embedded inside binary serialized structures
+    match = re.search(rb"https?://[a-zA-Z0-9\-\._~:/\?#\[\]@!$&'()*+,;=%]+", raw)
+    if match:
+        try:
+            candidate = match.group(0).decode("utf-8", errors="replace").strip()
+            if candidate and URL_REGEX.match(candidate):
+                return candidate
+        except Exception:
+            pass
+
+    return None
+
+
 def _extract_from_webarchive(archive_bytes: bytes) -> tuple[Optional[tuple[str, bytes]], Optional[str], Optional[bytes]]:
     """Extract `(image_uti_and_bytes, text, html_bytes)` from a `com.apple.webarchive` plist."""
     try:
@@ -935,7 +1012,21 @@ def extract_inline_payload(snapshot: dict[str, Any]) -> Optional[ExtractedPayloa
         data_map = cast(dict[str, Any], item.get("data") or {})
         html_inline = _inline_bytes(data_map, UTI_HTML)
 
-        url_bytes = _inline_bytes(data_map, UTI_URL)
+        # 2a. Priority check: Check URL UTIs (Safari Share Sheet 'Sao chép', Safari address bar, etc.)
+        for u_uti in URL_UTIS:
+            u_bytes = _inline_bytes(data_map, u_uti)
+            if u_bytes is not None:
+                extracted_url = _extract_url_from_raw(u_bytes)
+                if extracted_url:
+                    return ExtractedPayload(
+                        kind="url",
+                        uti=u_uti,
+                        raw_size=len(u_bytes),
+                        text=extracted_url,
+                        html_bytes=html_inline,
+                    )
+
+        # 2b. Check plain text UTIs
         for txt_uti in TEXT_UTIS:
             txt_bytes = _inline_bytes(data_map, txt_uti)
             if txt_bytes is not None:
@@ -945,26 +1036,12 @@ def extract_inline_payload(snapshot: dict[str, Any]) -> Optional[ExtractedPayloa
                     continue
                 if not text.strip():
                     continue
-                is_url = bool(url_bytes or URL_REGEX.match(text.strip()))
+                is_url = bool(URL_REGEX.match(text.strip()))
                 return ExtractedPayload(
                     kind="url" if is_url else "text",
-                    uti=UTI_URL if is_url and url_bytes else txt_uti,
+                    uti=UTI_URL if is_url else txt_uti,
                     raw_size=len(txt_bytes),
                     text=text,
-                    html_bytes=html_inline,
-                )
-
-        if url_bytes is not None:
-            try:
-                url_text = url_bytes.decode("utf-8").strip()
-            except UnicodeDecodeError:
-                url_text = ""
-            if url_text:
-                return ExtractedPayload(
-                    kind="url",
-                    uti=UTI_URL,
-                    raw_size=len(url_bytes),
-                    text=url_text,
                     html_bytes=html_inline,
                 )
 
@@ -1047,7 +1124,7 @@ def find_resolvable_Secondary_representation(
         UTI_UTF8_PLAIN_TEXT,
         UTI_PLAIN_TEXT,
         UTI_TEXT,
-        UTI_URL,
+        *URL_UTIS,
         UTI_HTML,
         UTI_WEB_ARCHIVE,
     )
@@ -2101,19 +2178,37 @@ class UniversalClipboardCoordinator:
                                 text=text,
                                 html_bytes=resolved_bytes,
                             )
+                    elif target_uti in URL_UTIS:
+                        extracted_url = _extract_url_from_raw(resolved_bytes)
+                        if extracted_url:
+                            payload = ExtractedPayload(
+                                kind="url",
+                                uti=target_uti,
+                                raw_size=len(resolved_bytes),
+                                text=extracted_url,
+                            )
                     else:
-                        try:
-                            text = resolved_bytes.decode("utf-8").strip("\ufffc")
-                            if text.strip():
-                                is_url = target_uti == UTI_URL or bool(URL_REGEX.match(text.strip()))
-                                payload = ExtractedPayload(
-                                    kind="url" if is_url else "text",
-                                    uti=target_uti,
-                                    raw_size=len(resolved_bytes),
-                                    text=text,
-                                )
-                        except UnicodeDecodeError:
-                            pass
+                        extracted_url = _extract_url_from_raw(resolved_bytes) if (target_uti in URL_UTIS or target_uti == UTI_URL) else None
+                        if extracted_url:
+                            payload = ExtractedPayload(
+                                kind="url",
+                                uti=target_uti,
+                                raw_size=len(resolved_bytes),
+                                text=extracted_url,
+                            )
+                        else:
+                            try:
+                                text = resolved_bytes.decode("utf-8").strip("\ufffc")
+                                if text.strip():
+                                    is_url = bool(URL_REGEX.match(text.strip()))
+                                    payload = ExtractedPayload(
+                                        kind="url" if is_url else "text",
+                                        uti=target_uti,
+                                        raw_size=len(resolved_bytes),
+                                        text=text,
+                                    )
+                            except UnicodeDecodeError:
+                                pass
 
         if payload is None:
             pb_dict = snapshot.get("pasteboard", {}) if isinstance(snapshot.get("pasteboard"), dict) else snapshot
