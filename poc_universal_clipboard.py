@@ -88,6 +88,7 @@ from pymobiledevice3.remote.core_device.pasteboard_service import (
     UTI_URL,
     UTI_UTF8_PLAIN_TEXT,
     UTI_WEB_ARCHIVE,
+    PasteboardItem,
     PasteboardService,
     data_item,
     text_item,
